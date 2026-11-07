@@ -9,7 +9,6 @@ import {
 import { computeSweeps, type SweepSettings } from './sweep'
 import { createNonlinearSolver } from './nonlinear'
 import { createAutomaticSolver, type AutomaticSearchResult } from './automatic'
-import { computeBranchSweeps } from './branches'
 import { createSimulationPanelComputer } from './simulation-panels'
 type Request = {
   id: number
@@ -22,6 +21,7 @@ type Request = {
   searchBounds?: { min: number; max: number }
   solutionIndex?: number
   simulationAnchors?: SimulationAnchor[]
+  selectedAnchor?: SimulationAnchor
 }
 const ready = createSolver()
 const nonlinearReady = createNonlinearSolver()
@@ -64,6 +64,7 @@ async function handleRequest(request: Request) {
     searchBounds,
     solutionIndex,
     simulationAnchors,
+    selectedAnchor,
   } = request
   try {
     if (mode === 'nonlinear' && nonlinearSearch !== 'manual') {
@@ -92,7 +93,16 @@ async function handleRequest(request: Request) {
             conditionNorm,
           )
         : undefined
-      if (!found.solutions.length) {
+      const selectedSimulation = selectedAnchor
+        ? computePanels(
+            source,
+            parameters,
+            sweep,
+            [selectedAnchor],
+            conditionNorm,
+          )[0]
+        : undefined
+      if (!found.solutions.length && !selectedSimulation?.result) {
         self.postMessage({
           id,
           ok: false,
@@ -100,27 +110,66 @@ async function handleRequest(request: Request) {
             '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
           search: found.search,
           ...(simulations ? { simulations } : {}),
+          ...(selectedSimulation ? { selectedSimulation } : {}),
         })
         return
       }
-      const selectedSolution =
+      let selectedSolution =
         Number.isInteger(solutionIndex) && solutionIndex! >= 0
-          ? Math.min(solutionIndex!, found.solutions.length - 1)
+          ? Math.min(solutionIndex!, Math.max(0, found.solutions.length - 1))
           : 0
-      const result = found.solutions[selectedSolution]
+      if (selectedSimulation?.result) {
+        const current = selectedSimulation.result
+        const matching = found.solutions.findIndex(
+          (candidate) =>
+            candidate.variables.join('\0') === current.variables.join('\0') &&
+            candidate.values.every(
+              (value, i) =>
+                Math.abs(value - current.values[i]) <=
+                2e-7 *
+                  Math.max(
+                    Number.MIN_VALUE,
+                    Math.abs(value),
+                    Math.abs(current.values[i]),
+                  ),
+            ),
+        )
+        if (matching >= 0) selectedSolution = matching
+      }
+      const globalResult = found.solutions[selectedSolution]
+      const result = selectedSimulation?.result ?? globalResult
+      // Without a UI-selected anchor the first solve still needs a graph.
+      // Its origin will be captured by the UI for subsequent parameter edits.
+      const single =
+        selectedSimulation ??
+        (sweep
+          ? computePanels(
+              source,
+              parameters,
+              sweep,
+              [
+                {
+                  id: '__selected__',
+                  label: `해 ${selectedSolution + 1}`,
+                  variables: [...result.variables],
+                  values: [...result.values],
+                  parameters: { ...parameters },
+                },
+              ],
+              conditionNorm,
+            )[0]
+          : { sweep: [], dataset: [], sweepName: '', datasetError: undefined })
       const payload: SolvePayload = {
         result,
         solutions: found.solutions,
         selectedSolution,
         search: found.search,
         ...(simulations ? { simulations } : {}),
-        ...computeBranchSweeps(
-          search.solveNear,
-          source,
-          parameters,
-          sweep ? { ...sweep, maxPoints: 500 } : null,
-          result,
-        ),
+        ...(selectedSimulation ? { selectedSimulation } : {}),
+        sweep: single.sweep,
+        dataset: single.dataset,
+        ...(single.datasetError ? { datasetError: single.datasetError } : {}),
+        sweepName: single.sweepName,
       }
       self.postMessage({ id, ok: true, payload })
       return

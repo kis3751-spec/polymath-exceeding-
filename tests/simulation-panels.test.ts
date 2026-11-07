@@ -80,6 +80,98 @@ describe('independent pinned-root simulations', () => {
     expect(returned[1].result?.values[0]).toBeCloseTo(1, 8)
   })
 
+  it('keeps the exact same curve and table when only the swept parameter moves', () => {
+    const compute = createSimulationPanelComputer(search.solveNear)
+    const source = 'f(x)=x^2+y*z-a+8\nf(y)=sin(y)+x^2-z-3\nf(z)=exp(z)+x*y-a'
+    const origin = search.solveNear(source, { a: 64 }, [-2.9, 10.46, 4.54])
+    const selected: SimulationAnchor[] = [
+      {
+        id: 'system',
+        label: 'system',
+        variables: origin.variables,
+        values: origin.values,
+        parameters: { a: 64 },
+      },
+    ]
+    const sweep = { name: 'a', min: 0, max: 800, step: 10, steps: 81 }
+    const first = compute(source, { a: 64 }, sweep, selected)[0]
+    const second = compute(source, { a: 199 }, sweep, selected)[0]
+    expect(first.error).toBeUndefined()
+    expect(second.error).toBeUndefined()
+    expect(second.result?.values[0]).toBeCloseTo(-2.8100771016, 8)
+    expect(second.result?.values[1]).toBeCloseTo(32.2987367662, 8)
+    expect(second.sweep).toBe(first.sweep)
+    expect(second.dataset).toBe(first.dataset)
+    expect(second.sweep.filter((point) => point.values)).toHaveLength(80)
+    const independent = createSimulationPanelComputer(search.solveNear)(
+      source,
+      { a: 199 },
+      sweep,
+      selected,
+    )[0]
+    expect(independent.sweep).toEqual(first.sweep)
+    expect(independent.dataset).toEqual(first.dataset)
+    for (const point of second.sweep) {
+      if (!point.values) continue
+      const [x, y, z] = point.values
+      expect(Math.abs(x * x + y * z - point.parameter + 8)).toBeLessThan(1e-6)
+      expect(Math.abs(Math.sin(y) + x * x - z - 3)).toBeLessThan(1e-6)
+      expect(Math.abs(Math.exp(z) + x * y - point.parameter)).toBeLessThan(1e-6)
+    }
+  })
+
+  it('changes a cached curve only when another parameter or the range changes', () => {
+    const compute = createSimulationPanelComputer(search.solveNear)
+    const selected = [anchor('positive', 1, { p: 1, q: 0 })]
+    const sweep = { name: 'p', min: 0, max: 4, step: 0.5, steps: 17 }
+    const first = compute('x^2=p+q', { p: 1, q: 0 }, sweep, selected)[0]
+    const moved = compute('x^2=p+q', { p: 3, q: 0 }, sweep, selected)[0]
+    expect(moved.sweep).toBe(first.sweep)
+    const changed = compute('x^2=p+q', { p: 3, q: 1 }, sweep, selected)[0]
+    expect(changed.sweep).not.toBe(first.sweep)
+    for (const point of changed.sweep)
+      expect(point.values?.[0]).toBeCloseTo(Math.sqrt(point.parameter + 1), 6)
+    const ranged = compute(
+      'x^2=p+q',
+      { p: 3, q: 1 },
+      { ...sweep, max: 5 },
+      selected,
+    )[0]
+    expect(ranged.sweep).not.toBe(changed.sweep)
+    expect(ranged.sweep.at(-1)?.parameter).toBe(5)
+  })
+
+  it('retains an identical periodic curve through current branch loss and recovery', () => {
+    const compute = createSimulationPanelComputer(search.solveNear)
+    const selected = [anchor('far', -13 * Math.PI, { target: 0 })]
+    const sweep = { name: 'target', min: 0, max: 1, step: 0.05, steps: 81 }
+    const first = compute(
+      'sin(x)*cos(x)=target',
+      { target: 0.2 },
+      sweep,
+      selected,
+    )[0]
+    const lost = compute(
+      'sin(x)*cos(x)=target',
+      { target: 0.8 },
+      sweep,
+      selected,
+    )[0]
+    const restored = compute(
+      'sin(x)*cos(x)=target',
+      { target: 0.4 },
+      sweep,
+      selected,
+    )[0]
+    expect(lost.result).toBeNull()
+    expect(lost.sweep).toBe(first.sweep)
+    expect(restored.sweep).toBe(first.sweep)
+    expect(restored.result?.values[0]).toBeCloseTo(
+      -13 * Math.PI + Math.asin(0.8) / 2,
+      7,
+    )
+  })
+
   it('interpolates several changed parameters from the pinned state', () => {
     const compute = createSimulationPanelComputer(search.solveNear)
     const panels = compute(
@@ -434,6 +526,57 @@ describe('pinned simulation worker responses', () => {
     expect(second.payload.result.values).toEqual([2])
     expect(near).toHaveBeenCalledTimes(calls)
     expect(automatic).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the explicitly anchored current root instead of a changing discovery index', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const response = await send({ selectedAnchor, solutionIndex: 0 })
+    expect(response.ok).toBe(true)
+    expect(response.payload.result.values).toEqual([2])
+    expect(response.payload.selectedSolution).toBe(1)
+    expect(response.payload.selectedSimulation.result.values).toEqual([2])
+    expect(
+      response.payload.solutions.map(
+        (solution: SolveResult) => solution.values[0],
+      ),
+    ).toEqual([-2, 2])
+  })
+
+  it('keeps an anchored root and stable graph after it leaves global discovery coverage', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: 1, max: 16, step: 1, steps: 31 }
+    const first = await send({ selectedAnchor, sweep })
+    const response = await send({
+      id: 2,
+      parameters: { p: 9 },
+      selectedAnchor,
+      sweep,
+    })
+    expect(response.ok).toBe(true)
+    expect(response.payload.result.values[0]).toBeCloseTo(3, 8)
+    expect(response.payload.solutions).toEqual([])
+    expect(response.payload.selectedSimulation.sweep).toEqual(
+      first.payload.selectedSimulation.sweep,
+    )
+    expect(response.payload.sweep).toEqual(first.payload.sweep)
+  })
+
+  it('returns a lost selected branch with its unchanged curve rather than switching to another root', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: 1, max: 9, step: 1, steps: 17 }
+    const first = await send({ selectedAnchor, sweep })
+    const response = await send({
+      id: 2,
+      parameters: { p: -1 },
+      selectedAnchor,
+      sweep,
+    })
+    expect(response.ok).toBe(false)
+    expect(response.selectedSimulation.result).toBeNull()
+    expect(response.selectedSimulation.error).toContain('분기')
+    expect(response.selectedSimulation.sweep).toEqual(
+      first.payload.selectedSimulation.sweep,
+    )
   })
 
   it('returns valid pinned panels outside global coverage even when no current global root was found', async () => {

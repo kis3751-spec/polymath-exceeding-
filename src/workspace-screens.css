@@ -1,0 +1,179 @@
+[hidden] {
+  display: none !important;
+}
+
+.workspace-nav-container {
+  max-width: 1510px;
+  margin: 0 auto;
+  padding: 22px 38px 0;
+}
+.workspace-nav-container .workspace-navigation {
+  margin-bottom: 0;
+}
+.workspace-content {
+  padding-top: 18px;
+}
+.workspace-content .page-heading {
+  margin-block: 20px 25px;
+}
+.workspace-content .page-heading h1 {
+  font-size: 29px;
+}
+.sectioned-workspace.studio-grid {
+  display: block;
+}
+.sectioned-workspace .model-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  align-items: start;
+  gap: 20px;
+}
+.sectioned-workspace .model-panel {
+  grid-row: 1 / 3;
+}
+.sectioned-workspace .model-column > .tip-card,
+.sectioned-workspace .insight-card {
+  display: none;
+}
+.model-next-step {
+  padding: 18px;
+  border: 1px solid #e1e8dc;
+  border-radius: 9px;
+  background: #f3f7ed;
+}
+.model-next-step p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #7c8c75;
+  margin-bottom: 15px;
+  overflow-wrap: anywhere;
+}
+.model-next-step button {
+  width: 100%;
+  justify-content: center;
+}
+.sectioned-workspace .results-column {
+  max-width: none;
+}
+.sectioned-workspace .solutions-section {
+  padding: 0;
+}
+.sectioned-workspace .solutions-title {
+  list-style: none;
+  margin: 0;
+  padding: 20px 24px;
+  cursor: pointer;
+}
+.sectioned-workspace .solutions-title::-webkit-details-marker {
+  display: none;
+}
+.sectioned-workspace .solutions-title > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.sectioned-workspace .solutions-section[open] .solutions-title > span svg {
+  transform: rotate(180deg);
+}
+.sectioned-workspace .solutions-section .solution-list {
+  margin: 0 24px 12px;
+  max-height: 260px;
+}
+.sectioned-workspace .solutions-section .search-summary {
+  padding: 0 24px 18px;
+  margin-top: 10px;
+}
+.sectioned-workspace .automatic-simulation-view > .solution-summary,
+.sectioned-workspace .automatic-simulation-view > .nonlinear-status,
+.sectioned-workspace .automatic-simulation-view > .warning-box,
+.sectioned-workspace .automatic-simulation-view > .auxiliary-values,
+.sectioned-workspace .automatic-simulation-view > .result-footer {
+  display: none;
+}
+.selected-simulation-workspace {
+  padding: 20px 24px 24px;
+  background: #f7f9f3;
+}
+.selected-simulation-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #85957a;
+  font-size: 11px;
+}
+.selected-simulation-toolbar label,
+.selected-simulation-toolbar select {
+  font-size: 12px;
+}
+.selected-simulation-toolbar select {
+  margin-left: 8px;
+  padding: 8px 12px;
+  border: 1px solid #dce6d3;
+  border-radius: 6px;
+  background: #fff;
+  color: #64815b;
+}
+.sectioned-workspace .selected-simulation-workspace .solution-chart {
+  max-width: 100%;
+}
+.sectioned-workspace .simulation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sectioned-workspace .simulation-panel-sweep-label {
+  margin-block: 15px;
+}
+.results-expanded .selected-simulation-workspace {
+  padding-bottom: 30px;
+}
+.workspace-screen-report .result-footer {
+  border-top: 1px solid #edf0e7;
+}
+@media (max-width: 900px) {
+  .workspace-nav-container {
+    padding-inline: 20px;
+  }
+  .sectioned-workspace .model-column,
+  .sectioned-workspace .simulation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sectioned-workspace .model-panel {
+    grid-row: auto;
+  }
+}
+@media (max-width: 600px) {
+  .workspace-nav-container {
+    padding: 14px 13px 0;
+  }
+  .workspace-content,
+  .module-home-page {
+    padding-inline: 13px;
+  }
+  .workspace-content .page-heading h1 {
+    font-size: 24px;
+  }
+  .workspace-content .page-heading {
+    margin-bottom: 20px;
+  }
+  .workspace-content .breadcrumbs {
+    font-size: 10px;
+  }
+  .selected-simulation-workspace {
+    padding: 16px 12px;
+  }
+  .selected-simulation-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .sectioned-workspace .solutions-title {
+    padding-inline: 16px;
+    gap: 12px;
+  }
+  .sectioned-workspace .solutions-title > span {
+    font-size: 9px;
+  }
+  .sectioned-workspace .solutions-section .solution-list {
+    margin-inline: 16px;
+  }
+}

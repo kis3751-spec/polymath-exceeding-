@@ -20,6 +20,7 @@ export type Project = {
   nonlinearSearch?: 'auto' | 'manual'
   searchBounds?: { min: number; max: number }
   selectedSolution?: number
+  selectedAnchor?: SimulationAnchor
   simulations?: SimulationAnchor[]
 }
 

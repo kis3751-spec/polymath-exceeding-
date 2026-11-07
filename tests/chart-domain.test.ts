@@ -97,33 +97,41 @@ describe('chart markers and missing solve points', () => {
     expect(path).not.toContain('L')
   })
 
-  it('fits an exact current solution that lies between graph samples', () => {
-    const markup = renderChart({ currentParameter: 0.25, currentValues: [-42] })
-    const coordinate = Number(
-      markup.match(/cy="([^"]+)" r="4.5"[^>]+sc-current-dot/)?.[1],
-    )
-    expect(coordinate).toBeGreaterThanOrEqual(24)
-    expect(coordinate).toBeLessThanOrEqual(253)
-    expect(markup).not.toMatch(/NaN|Infinity/)
+  it('keeps the curve and axes fixed when the current solution changes', () => {
+    const ordinary = renderChart({ currentParameter: 0, currentValues: [-40] })
+    const changed = renderChart({
+      currentParameter: 0.25,
+      currentValues: [-42],
+    })
+    const geometry = (markup: string) => ({
+      curve: markup.match(/d="([^"]+)" stroke="#[^"]+" class="sc-curve"/)?.[1],
+      labels: [...markup.matchAll(/class="sc-axis-label">([^<]+)</g)].map(
+        (match) => match[1],
+      ),
+    })
+    expect(geometry(changed)).toEqual(geometry(ordinary))
+    expect(changed).toContain('clip-path=')
+    expect(changed).not.toMatch(/NaN|Infinity/)
   })
 
-  it('fits a selected dataset solution without including a hidden current marker', () => {
+  it('keeps axes fixed when inspecting an exact dataset result', () => {
     const markup = renderChart({
       selectionPoints: [{ parameter: 0.25, values: [-42] }],
       selectedIndex: 0,
       currentValues: [1000],
     })
-    const coordinate = Number(
-      markup.match(/cy="([^"]+)" r="4.5"[^>]+sc-active-dot/)?.[1],
-    )
-    expect(coordinate).toBeGreaterThanOrEqual(24)
-    expect(coordinate).toBeLessThanOrEqual(253)
     expect(markup).not.toContain('sc-current-dot')
     expect(markup).not.toContain('>1,000<')
     const yLabels = [
       ...markup.matchAll(/text-anchor="end" class="sc-axis-label">([^<]+)</g),
     ]
     expect(yLabels.every((match) => Number(match[1]) < 0)).toBe(true)
+    const baselineLabels = [
+      ...renderChart().matchAll(
+        /text-anchor="end" class="sc-axis-label">([^<]+)</g,
+      ),
+    ].map((match) => match[1])
+    expect(yLabels.map((match) => match[1])).toEqual(baselineLabels)
   })
 
   it('keeps masked null points out of the extent and shows their failure', () => {

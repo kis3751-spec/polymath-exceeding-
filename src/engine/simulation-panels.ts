@@ -70,11 +70,25 @@ function matchesAnchor(result: SolveResult, anchor: SimulationAnchor) {
   )
 }
 
-/** Each panel owns an immutable root and parameter snapshot. Following that
- * snapshot, rather than a global result index, keeps its identity when roots
- * change order or leave the global search window. */
+type ReferenceCurve = Pick<
+  SimulationPanel,
+  'sweep' | 'dataset' | 'datasetError' | 'sweepName'
+> & {
+  reference: SolveResult
+  parameters: Record<string, number>
+}
+
+/** The reference point and sampled curve are immutable while the swept
+ * parameter moves. Only the exact current root is recomputed. Other parameter
+ * changes intentionally define a new curve, reached from the saved anchor. */
 export function createSimulationPanelComputer(solveNear: NearSolver) {
   const cache = new Map<string, SimulationPanel>()
+  const curves = new Map<string, ReferenceCurve>()
+
+  function remember<T>(map: Map<string, T>, key: string, value: T) {
+    if (map.size >= MAX_CACHED_PANELS) map.delete(map.keys().next().value!)
+    map.set(key, value)
+  }
 
   return (
     source: string,
@@ -106,24 +120,30 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
       }
       try {
         validateAnchor(anchor, parameters)
-        const key = JSON.stringify([
+        if (sweep && !Object.hasOwn(anchor.parameters, sweep.name))
+          throw new ModelError('탐색할 파라미터를 확인해 주세요.')
+        const anchorKey = [
           source,
           anchor.id,
           anchor.label,
           anchor.variables,
           anchor.values,
           sortedParameters(anchor.parameters),
+        ]
+        const sweepKey = sweep
+          ? [
+              sweep.name,
+              sweep.min,
+              sweep.max,
+              sweep.steps,
+              sweep.step,
+              sweep.maxPoints ?? 500,
+            ]
+          : null
+        const key = JSON.stringify([
+          ...anchorKey,
           sortedParameters(parameters),
-          sweep
-            ? [
-                sweep.name,
-                sweep.min,
-                sweep.max,
-                sweep.steps,
-                sweep.step,
-                sweep.maxPoints ?? 500,
-              ]
-            : null,
+          sweepKey,
           conditionNorm,
         ])
         const cached = cache.get(key)
@@ -133,89 +153,85 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
           return cached
         }
 
-        let panel: SimulationPanel
-        let verifiedOrigin: SolveResult | undefined
-        try {
-          // Re-evaluate the pinned state first so an obsolete model cannot
-          // silently turn a saved root into an unrelated starting point.
+        // Hold the sweep coordinate at its saved value. Re-seeding from the
+        // moving current point changes continuation paths and visible gaps.
+        const referenceParameters = sweep
+          ? { ...parameters, [sweep.name]: anchor.parameters[sweep.name] }
+          : { ...anchor.parameters }
+        const curveKey = JSON.stringify([
+          ...anchorKey,
+          sortedParameters(referenceParameters),
+          sweepKey,
+        ])
+        let curve = curves.get(curveKey)
+        if (curve) {
+          curves.delete(curveKey)
+          curves.set(curveKey, curve)
+        } else {
           const origin = solveNear(
             source,
             anchor.parameters,
             [...anchor.values],
-            {
-              computeCondition: false,
-            },
+            { computeCondition: false },
           )
           if (!matchesAnchor(origin, anchor))
             throw new ModelError(
               '저장한 해가 현재 수식과 다릅니다. 해를 다시 선택해 주세요.',
             )
-          verifiedOrigin = origin
-          const result = continueRoot(
-            solveNear,
-            source,
-            anchor.parameters,
-            parameters,
-            origin,
-            { conditionNorm },
-          )
-          panel = {
-            id: anchor.id,
-            label: anchor.label,
-            result,
+          let reference: SolveResult
+          try {
+            reference = continueRoot(
+              solveNear,
+              source,
+              anchor.parameters,
+              referenceParameters,
+              origin,
+              { computeCondition: false },
+            )
+          } catch (cause) {
+            throw new ModelError(
+              `선택한 해의 분기를 기준점까지 추적할 수 없습니다. ${cause instanceof Error ? cause.message : '계산 실패'}`,
+            )
+          }
+          curve = {
+            reference,
+            parameters: referenceParameters,
             ...computeBranchSweeps(
               solveNear,
               source,
-              parameters,
+              referenceParameters,
               sweep ? { ...sweep, maxPoints: 500 } : null,
-              result,
+              reference,
             ),
           }
-        } catch (error) {
-          panel = {
-            ...empty,
-            error: `선택한 해의 분기를 현재 설정까지 추적할 수 없습니다. ${error instanceof Error ? error.message : '계산 실패'}`,
-          }
-          if (
-            verifiedOrigin &&
-            sweep &&
-            Object.hasOwn(anchor.parameters, sweep.name)
-          ) {
-            try {
-              // The current sweep value may lie beyond a fold. Keep the
-              // reachable part of this same branch visible, with every other
-              // parameter at its current value and no fabricated current root.
-              const referenceParameters = {
-                ...parameters,
-                [sweep.name]: anchor.parameters[sweep.name],
-              }
-              const reference = continueRoot(
-                solveNear,
-                source,
-                anchor.parameters,
-                referenceParameters,
-                verifiedOrigin,
-                { conditionNorm, computeCondition: false },
-              )
-              panel = {
-                ...panel,
-                ...computeBranchSweeps(
-                  solveNear,
-                  source,
-                  referenceParameters,
-                  { ...sweep, maxPoints: 500 },
-                  reference,
-                ),
-              }
-            } catch {
-              // If the anchor cannot reach the other current parameters,
-              // there is no safe reference from which to show this branch.
-            }
-          }
+          remember(curves, curveKey, curve)
         }
-        if (cache.size >= MAX_CACHED_PANELS)
-          cache.delete(cache.keys().next().value!)
-        cache.set(key, panel)
+
+        let result: SolveResult | null = null
+        let error: string | undefined
+        try {
+          result = continueRoot(
+            solveNear,
+            source,
+            curve.parameters,
+            parameters,
+            curve.reference,
+            { conditionNorm },
+          )
+        } catch (cause) {
+          error = `선택한 해의 분기를 현재 설정까지 추적할 수 없습니다. ${cause instanceof Error ? cause.message : '계산 실패'}`
+        }
+        const panel: SimulationPanel = {
+          id: anchor.id,
+          label: anchor.label,
+          result,
+          ...(error ? { error } : {}),
+          sweep: curve.sweep,
+          dataset: curve.dataset,
+          ...(curve.datasetError ? { datasetError: curve.datasetError } : {}),
+          sweepName: curve.sweepName,
+        }
+        remember(cache, key, panel)
         return panel
       } catch (error) {
         return {

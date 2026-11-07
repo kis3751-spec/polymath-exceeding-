@@ -225,6 +225,81 @@ describe('selected real-root continuation', () => {
     },
   )
 
+  it.each([40, 1e9, 1e10])(
+    'rejects a whole-period jump even at a distant coordinate %s',
+    (offset) => {
+      const near: NearSolver = (_source, parameters) =>
+        root(offset + (parameters.p < 0.5 ? 0 : Math.PI))
+      const result = computeBranchSweeps(
+        near,
+        'periodic model',
+        { p: 1 },
+        { name: 'p', min: 0, max: 1, step: 0.25, steps: 5 },
+        root(offset + Math.PI),
+      )
+      expect(result.dataset.map((point) => point.values?.[0] ?? null)).toEqual([
+        null,
+        null,
+        offset + Math.PI,
+        offset + Math.PI,
+        offset + Math.PI,
+      ])
+    },
+  )
+
+  it('tracks the reported coupled system through stationary components without artificial coverage loss', () => {
+    const source = 'f(x)=x^2+y*z-a+8\nf(y)=sin(y)+x^2-z-3\nf(z)=exp(z)+x*y-a'
+    const origin = { a: 64 }
+    const selected = search.solveNear(
+      source,
+      origin,
+      [-2.900022, 10.46614, 4.547033],
+    )
+    const continued = continueRoot(
+      search.solveNear,
+      source,
+      origin,
+      { a: 199 },
+      selected,
+    )
+    expect(continued.values[0]).toBeCloseTo(-2.8100771016, 8)
+    expect(continued.values[1]).toBeCloseTo(32.2987367662, 8)
+    expect(continued.values[2]).toBeCloseTo(5.6690596914, 8)
+
+    const settings = { name: 'a', min: 0, max: 800, step: 1, steps: 81 }
+    const curves = [
+      computeBranchSweeps(search.solveNear, source, origin, settings, selected),
+      computeBranchSweeps(
+        search.solveNear,
+        source,
+        { a: 199 },
+        settings,
+        continued,
+      ),
+    ]
+    for (const curve of curves) {
+      expect(curve.sweep).toHaveLength(81)
+      for (const point of curve.sweep.filter(
+        (sample) => sample.parameter >= 10,
+      )) {
+        expect(point.error).toBeUndefined()
+        expect(point.values).not.toBeNull()
+        const [x, y, z] = point.values!
+        const residuals = [
+          x * x + y * z - point.parameter + 8,
+          Math.sin(y) + x * x - z - 3,
+          Math.exp(z) + x * y - point.parameter,
+        ]
+        expect(Math.max(...residuals.map(Math.abs))).toBeLessThan(1e-7)
+      }
+    }
+    for (let i = 1; i < curves[0].sweep.length; i++) {
+      const first = curves[0].sweep[i].values!
+      const second = curves[1].sweep[i].values!
+      first.forEach((value, j) => expect(value).toBeCloseTo(second[j], 6))
+    }
+  })
+
   it('does not reconnect a branch after a pole or a region without real roots', () => {
     for (const source of ['x=1/p', 'x^2=p*(p-1)']) {
       const parameters = { p: 2 }

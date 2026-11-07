@@ -8,6 +8,7 @@
     "build:wasm": "node scripts/build-wasm.mjs",
     "build": "npm run build:wasm && tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
+    "docs:core": "node scripts/export-core.mjs",
     "test": "npm run build:wasm && vitest run",
     "test:e2e": "playwright test",
     "format": "prettier --write src scripts tests *.json *.ts *.md index.html"

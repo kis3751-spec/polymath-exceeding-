@@ -10,6 +10,8 @@ export type SimulationPanelViewProps = {
   parameters: Parameter[]
   expanded: boolean
   onClose: () => void
+  closable?: boolean
+  onParameterChange?: (value: number) => void
   onReport?: () => void
   pending?: boolean
 }
@@ -37,6 +39,8 @@ export default function SimulationPanelView({
   parameters,
   expanded,
   onClose,
+  closable = true,
+  onParameterChange,
   onReport,
   pending = false,
 }: SimulationPanelViewProps) {
@@ -117,15 +121,17 @@ export default function SimulationPanelView({
             </span>
           </p>
         </div>
-        <button
-          type="button"
-          className="simulation-panel-close"
-          onClick={onClose}
-          aria-label={`${panel.label} 시뮬레이션 닫기`}
-          title="시뮬레이션 닫기"
-        >
-          <X size={17} aria-hidden="true" />
-        </button>
+        {closable && (
+          <button
+            type="button"
+            className="simulation-panel-close"
+            onClick={onClose}
+            aria-label={`${panel.label} 시뮬레이션 닫기`}
+            title="시뮬레이션 닫기"
+          >
+            <X size={17} aria-hidden="true" />
+          </button>
+        )}
       </header>
 
       <div className="simulation-panel-current">
@@ -159,6 +165,7 @@ export default function SimulationPanelView({
             parameterName={panel.sweepName}
             currentParameter={parameter?.value ?? 0}
             currentValues={panel.result?.values}
+            onParameterChange={onParameterChange}
             selectedIndex={selectedIndex}
             onSelectIndex={setSelectedIndex}
             visibleVariables={visibleVariables}

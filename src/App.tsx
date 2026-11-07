@@ -31,6 +31,11 @@ import SolutionChart, { SERIES_COLORS } from './components/SolutionChart'
 import Guide from './components/Guide'
 import SimulationPanelView from './components/SimulationPanelView'
 import {
+  LandingModules,
+  WorkspaceNavigation,
+  type WorkspaceScreen,
+} from './components/WorkspaceNavigation'
+import {
   DEFAULT_PROJECT,
   DEFAULT_NONLINEAR_PROJECT,
   NONLINEAR_EXAMPLES,
@@ -101,6 +106,7 @@ function isProject(value: unknown): value is Project {
     typeof p.source === 'string' &&
     p.source.length <= 30000 &&
     typeof p.sweepName === 'string' &&
+    (p.selectedAnchor === undefined || validAnchor(p.selectedAnchor)) &&
     (p.simulations === undefined ||
       (Array.isArray(p.simulations) &&
         p.simulations.length <= 6 &&
@@ -162,8 +168,10 @@ function downloadFile(name: string, data: string, type: string) {
 }
 export default function App() {
   const [project, setProject] = useState<Project>(initialProject)
-  const [payload, setPayload] = useState<SolvePayload | null>(null)
-  const [error, setError] = useState('')
+  const [basePayload, setPayload] = useState<SolvePayload | null>(null)
+  const [computeError, setError] = useState('')
+  const [selectedSimulation, setSelectedSimulation] =
+    useState<SimulationPanel | null>(null)
   const [simulationResults, setSimulationResults] = useState<SimulationPanel[]>(
     [],
   )
@@ -171,7 +179,8 @@ export default function App() {
   const [pending, setPending] = useState(false)
   const [workerReady, setWorkerReady] = useState(false)
   const [revision, setRevision] = useState(0)
-  const [view, setView] = useState<'simulation' | 'report'>('simulation')
+  const [screen, setScreen] = useState<WorkspaceScreen>('home')
+  const view = screen === 'report' ? 'report' : 'simulation'
   const [guide, setGuide] = useState(false)
   const [examplesOpen, setExamplesOpen] = useState(false)
   const [paramOpen, setParamOpen] = useState(false)
@@ -191,14 +200,51 @@ export default function App() {
   const importRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const examplesRef = useRef<HTMLDivElement>(null)
-  const result = payload?.result
+  const projectRef = useRef(project)
+  projectRef.current = project
   const mode = project.mode ?? 'linear'
   const nonlinear = mode === 'nonlinear'
   const nonlinearSearch = project.nonlinearSearch ?? 'auto'
   const automatic = nonlinear && nonlinearSearch === 'auto'
+  const selectedBranch =
+    automatic && project.selectedAnchor?.id === selectedSimulation?.id
+      ? selectedSimulation
+      : null
+  const payload =
+    basePayload && selectedBranch
+      ? {
+          ...basePayload,
+          sweep: selectedBranch.sweep,
+          dataset: selectedBranch.dataset,
+          datasetError: selectedBranch.datasetError,
+          sweepName: selectedBranch.sweepName,
+        }
+      : basePayload
+  const result = selectedBranch
+    ? (selectedBranch.result ?? undefined)
+    : payload?.result
+  const error = selectedBranch?.error || computeError
   const solutionIndex = project.selectedSolution ?? 0
   const anchors = project.simulations ?? []
-  const solutions = payload?.solutions ?? (result ? [result] : [])
+  const solutions = basePayload?.solutions ?? (result ? [result] : [])
+  const highlightedSolution = selectedBranch
+    ? solutions.findIndex(
+        (item) =>
+          selectedBranch.result &&
+          item.variables.join('|') ===
+            selectedBranch.result.variables.join('|') &&
+          item.values.every(
+            (value, i) =>
+              Math.abs(value - selectedBranch.result!.values[i]) <=
+              2e-7 *
+                Math.max(
+                  Number.MIN_VALUE,
+                  Math.abs(value),
+                  Math.abs(selectedBranch.result!.values[i]),
+                ),
+          ),
+      )
+    : (basePayload?.selectedSolution ?? solutionIndex)
   const evaluation = result?.kind === 'evaluation'
   const displayWarnings =
     result?.warnings.filter(
@@ -235,6 +281,7 @@ export default function App() {
       setPending(false)
       if (data.ok) {
         setPayload(data.payload)
+        setSelectedSimulation(data.payload.selectedSimulation ?? null)
         setSimulationResults(data.payload.simulations ?? [])
         setSearchInfo(data.payload.search ?? null)
         if (data.payload.selectedSolution !== undefined)
@@ -244,10 +291,37 @@ export default function App() {
               : { ...p, selectedSolution: data.payload.selectedSolution },
           )
         setError('')
+        const latest = projectRef.current
+        if (
+          latest.mode === 'nonlinear' &&
+          latest.nonlinearSearch !== 'manual' &&
+          !latest.selectedAnchor &&
+          data.payload.solutions?.length
+        ) {
+          const index = data.payload.selectedSolution ?? 0
+          const selected = data.payload.solutions[index]
+          setProject((p) =>
+            p.selectedAnchor
+              ? p
+              : {
+                  ...p,
+                  selectedAnchor: {
+                    id: crypto.randomUUID(),
+                    label: `해 ${index + 1}`,
+                    variables: [...selected.variables],
+                    values: [...selected.values],
+                    parameters: Object.fromEntries(
+                      p.parameters.map((v) => [v.name, v.value]),
+                    ),
+                  },
+                },
+          )
+        }
       } else {
         setError(data.line ? `${data.line}행 · ${data.error}` : data.error)
         setPayload(null)
         setSimulationResults(data.simulations ?? [])
+        setSelectedSimulation(data.selectedSimulation ?? null)
         setSearchInfo(data.search ?? null)
       }
     }
@@ -270,6 +344,7 @@ export default function App() {
       setError('')
       setSearchInfo(null)
       setSimulationResults([])
+      setSelectedSimulation(null)
       return
     }
     setPending(true)
@@ -286,6 +361,7 @@ export default function App() {
         searchBounds: project.searchBounds,
         solutionIndex,
         simulationAnchors: project.simulations,
+        selectedAnchor: project.selectedAnchor,
         parameters: Object.fromEntries(
           project.parameters.map((p) => [p.name, p.value]),
         ),
@@ -311,6 +387,7 @@ export default function App() {
     project.searchBounds,
     solutionIndex,
     project.simulations,
+    project.selectedAnchor,
     revision,
     workerReady,
   ])
@@ -435,6 +512,31 @@ export default function App() {
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
   }, [examplesOpen])
+  function navigate(next: WorkspaceScreen) {
+    setScreen(next)
+    setExpanded(false)
+    setExamplesOpen(false)
+    setParamOpen(false)
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: 0, behavior: 'instant' }),
+    )
+  }
+  function selectRoot(item: SolveResult, index: number) {
+    setProject((p) => ({
+      ...p,
+      selectedSolution: index,
+      selectedAnchor: {
+        id: crypto.randomUUID(),
+        label: `해 ${index + 1}`,
+        variables: [...item.variables],
+        values: [...item.values],
+        parameters: Object.fromEntries(
+          p.parameters.map((v) => [v.name, v.value]),
+        ),
+      },
+    }))
+    setSelectedIndex(null)
+  }
   function switchMode(nextMode: 'linear' | 'nonlinear') {
     if (nextMode === mode) return
     drafts.current[mode] = structuredClone(project)
@@ -455,6 +557,7 @@ export default function App() {
       ),
     )
     setPayload(null)
+    setSelectedSimulation(null)
     setSelectedIndex(null)
     setError('')
     setExamplesOpen(false)
@@ -462,6 +565,7 @@ export default function App() {
     setRangeEditor(false)
   }
   function newModel() {
+    navigate('model')
     setUndoProject(structuredClone(project))
     setProject(
       structuredClone(nonlinear ? DEFAULT_NONLINEAR_PROJECT : DEFAULT_PROJECT),
@@ -477,7 +581,6 @@ export default function App() {
     setProject(structuredClone(p))
     setExamplesOpen(false)
     setSelectedIndex(null)
-    setView('simulation')
     setToast('예제 모델을 불러왔습니다.')
   }
   function rootAlreadyOpen(item: SolveResult) {
@@ -513,7 +616,7 @@ export default function App() {
       ...p,
       simulations: [...(p.simulations ?? []), anchor],
     }))
-    setView('simulation')
+    navigate('simulation')
     setToast(`${label} 시뮬레이션을 추가했습니다.`)
   }
   function closeSimulation(id: string) {
@@ -522,14 +625,9 @@ export default function App() {
       simulations: (p.simulations ?? []).filter((a) => a.id !== id),
     }))
   }
-  function exportSimulationReport(panel: SimulationPanel) {
-    if (!panel.result || pending) return
-    downloadFile(
-      `polymath-simulation-${panel.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-report.md`,
-      buildReport(panel.result, undefined, null) +
-        `\n\n시뮬레이션: ${panel.label}\n\n추가 시점의 해를 기준으로 이어서 계산한 결과입니다. 전역 자동 탐색의 해 번호와 별개이며, 분기점에서는 가지 구분이 어려울 수 있습니다.\n`,
-      'text/markdown;charset=utf-8',
-    )
+  function openSimulationReport(anchor: SimulationAnchor) {
+    setProject((p) => ({ ...p, selectedAnchor: anchor }))
+    navigate('report')
   }
   function updateParameter(id: string, value: number) {
     setProject((p) => ({
@@ -592,6 +690,8 @@ export default function App() {
     }
     setProject((p) => ({
       ...p,
+      selectedAnchor: undefined,
+      simulations: [],
       parameters: [
         ...p.parameters,
         { id: crypto.randomUUID(), name: paramName, value, min, max, step },
@@ -607,11 +707,12 @@ export default function App() {
     target: SolveResult,
     index?: number,
     coverage: SearchSummary | null = searchInfo,
+    branchLabel?: string,
   ) {
     const isEvaluation = target.kind === 'evaluation'
     return (
       [
-        `# ${project.title}${index === undefined ? '' : ` · 해 ${index + 1}`}`,
+        `# ${project.title}${branchLabel ? ` · ${branchLabel}` : index === undefined ? '' : ` · 해 ${index + 1}`}`,
         project.description,
         `유형: ${nonlinear ? 'Nonlinear' : 'Linear'}`,
         coverage
@@ -649,7 +750,9 @@ export default function App() {
       'polymath-report.md',
       buildReport(
         result,
-        automatic ? (payload?.selectedSolution ?? solutionIndex) : undefined,
+        automatic && !selectedBranch ? solutionIndex : undefined,
+        selectedBranch ? null : searchInfo,
+        selectedBranch ? project.selectedAnchor?.label : undefined,
       ),
       'text/markdown;charset=utf-8',
     )
@@ -682,7 +785,9 @@ export default function App() {
         ].join('\n')
     downloadFile(
       automatic
-        ? `polymath-solution-${(payload?.selectedSolution ?? solutionIndex) + 1}-data.csv`
+        ? project.selectedAnchor
+          ? `polymath-${project.selectedAnchor.label.replaceAll(' ', '-')}-data.csv`
+          : `polymath-solution-${solutionIndex + 1}-data.csv`
         : 'polymath-data.csv',
       '\uFEFF' + csv,
       'text/csv;charset=utf-8',
@@ -701,6 +806,8 @@ export default function App() {
       drafts.current[mode] = structuredClone(project)
       setProject(p)
       setPayload(null)
+      setSelectedSimulation(null)
+      if (screen === 'home') navigate('model')
       setToast('프로젝트를 불러왔습니다.')
     } catch {
       setToast('올바른 Polymath 프로젝트 JSON 파일이 아닙니다.')
@@ -715,8 +822,7 @@ export default function App() {
           aria-label="Polymath Studio 홈"
           onClick={(e) => {
             e.preventDefault()
-            setExpanded(false)
-            setView('simulation')
+            navigate('home')
           }}
         >
           <span>p</span>
@@ -728,8 +834,7 @@ export default function App() {
             aria-label="Equation Solver"
             title="Equation Solver"
             onClick={() => {
-              setExpanded(false)
-              editorRef.current?.focus()
+              navigate('model')
             }}
           >
             <Sigma size={23} />
@@ -787,7 +892,21 @@ export default function App() {
             </a>
           </div>
         </header>
-        <main>
+        {screen === 'home' && (
+          <main className="module-home-page" data-screen="home">
+            <LandingModules onOpenEquationSolver={() => navigate('model')} />
+          </main>
+        )}
+        {screen !== 'home' && (
+          <div className="workspace-nav-container">
+            <WorkspaceNavigation screen={screen} onNavigate={navigate} />
+          </div>
+        )}
+        <main
+          hidden={screen === 'home'}
+          data-screen={screen}
+          className={`workspace-content workspace-screen-${screen}`}
+        >
           <div className="breadcrumbs">
             <span>계산 도구</span>
             <ChevronRight size={13} />
@@ -804,7 +923,11 @@ export default function App() {
                 Equation <span>Solver</span>
               </h1>
               <p>
-                방정식을 직접 입력하고, 파라미터 변화에 따른 해를 탐색하세요.
+                {screen === 'model'
+                  ? '수식과 파라미터를 정의하세요.'
+                  : screen === 'simulation'
+                    ? '같은 해의 변화를 그래프로 살펴보세요.'
+                    : '계산 결과와 수치 검증을 확인하세요.'}
               </p>
             </div>
             <div className="heading-actions">
@@ -850,6 +973,7 @@ export default function App() {
           </section>
           <div
             className="problem-tabs"
+            hidden={screen !== 'model'}
             role="tablist"
             aria-label="Equation Solver 유형"
           >
@@ -878,12 +1002,13 @@ export default function App() {
             </div>
           </div>
           <div
-            className={`studio-grid ${expanded ? 'results-expanded' : ''}`}
+            className={`studio-grid sectioned-workspace ${expanded ? 'results-expanded' : ''}`}
+            data-screen={screen}
             role={expanded ? 'dialog' : undefined}
             aria-modal={expanded ? true : undefined}
             aria-label={expanded ? '결과 탐색 전체화면' : undefined}
           >
-            <div className="model-column">
+            <div className="model-column" hidden={screen !== 'model'}>
               <section className="panel model-panel">
                 <div className="panel-heading">
                   <div className="section-label">
@@ -971,6 +1096,7 @@ export default function App() {
                         ...p,
                         source: e.target.value,
                         selectedSolution: 0,
+                        selectedAnchor: undefined,
                         simulations: [],
                       }))
                     }
@@ -994,6 +1120,7 @@ export default function App() {
                             '  ' +
                             p.source.slice(end),
                           selectedSolution: 0,
+                          selectedAnchor: undefined,
                           simulations: [],
                         }))
                         requestAnimationFrame(() => {
@@ -1040,6 +1167,7 @@ export default function App() {
                               | 'auto'
                               | 'manual',
                             selectedSolution: 0,
+                            selectedAnchor: undefined,
                             simulations: [],
                           }))
                         }
@@ -1084,7 +1212,10 @@ export default function App() {
                   </span>
                   <button
                     className="primary-button"
-                    onClick={() => setRevision((v) => v + 1)}
+                    onClick={() => {
+                      setRevision((v) => v + 1)
+                      navigate('simulation')
+                    }}
                     disabled={pending || !hasSource}
                   >
                     {pending ? (
@@ -1116,7 +1247,7 @@ export default function App() {
                   </button>
                 </div>
                 <p className="section-description">
-                  범위와 간격을 설정하세요. 값은 결과 탐색에서 조절합니다.
+                  범위와 간격을 설정하세요. 값은 시뮬레이션 화면에서 조절합니다.
                 </p>
                 <div className="parameter-list">
                   {project.parameters.map((p, i) => (
@@ -1147,6 +1278,8 @@ export default function App() {
                               onClick={() =>
                                 setProject((prev) => ({
                                   ...prev,
+                                  selectedAnchor: undefined,
+                                  simulations: [],
                                   parameters: prev.parameters.filter(
                                     (v) => v.id !== p.id,
                                   ),
@@ -1207,10 +1340,28 @@ export default function App() {
                   파라미터 추가
                 </button>
                 <div className="live-note">
-                  <span className="live-dot" />값 조절은 오른쪽 결과 탐색에서 할
-                  수 있습니다.
+                  <span className="live-dot" />
+                  시뮬레이션 화면에서 슬라이더와 그래프를 조작할 수 있습니다.
                 </div>
               </section>
+              <div className="model-next-step">
+                <p role="status">
+                  {pending
+                    ? '수식을 확인하고 있습니다.'
+                    : computeError
+                      ? computeError
+                      : hasSource
+                        ? '설정을 마쳤다면 시뮬레이션으로 이동하세요.'
+                        : '한 줄에 방정식을 하나씩 입력해 시작하세요.'}
+                </p>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => navigate('simulation')}
+                >
+                  시뮬레이션 열기 <ArrowRight size={15} />
+                </button>
+              </div>
               <div className="tip-card">
                 <div className="tip-icon">
                   <Sparkles size={17} />
@@ -1228,14 +1379,19 @@ export default function App() {
                 <ArrowRight size={16} />
               </div>
             </div>
-            <div className={`results-column ${pending ? 'is-computing' : ''}`}>
+            <div
+              className={`results-column ${pending ? 'is-computing' : ''}`}
+              hidden={screen !== 'simulation' && screen !== 'report'}
+            >
               <section
-                className={`panel results-panel ${automatic && anchors.length > 0 && view === 'simulation' ? 'multi-simulation-view' : ''}`}
+                className={`panel results-panel ${automatic && view === 'simulation' ? 'automatic-simulation-view' : ''} ${automatic && anchors.length > 0 && view === 'simulation' ? 'multi-simulation-view' : ''}`}
               >
                 <div className="results-heading">
                   <div className="section-label">
                     <span className="step-number">03</span>
-                    <h2>결과 탐색</h2>
+                    <h2>
+                      {view === 'simulation' ? '시뮬레이션' : '해석 리포트'}
+                    </h2>
                   </div>
                   <div className="results-heading-right">
                     <span
@@ -1268,29 +1424,66 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                {project.parameters.length > 0 && (
+                {view === 'simulation' && project.parameters.length > 0 && (
                   <ResultParameters
                     parameters={project.parameters}
                     onChange={updateParameter}
                   />
                 )}
-                <div className="result-mode-tabs">
-                  <button
-                    className={view === 'simulation' ? 'active' : ''}
-                    onClick={() => setView('simulation')}
-                  >
-                    <Activity size={15} />
-                    인터랙티브 시뮬레이션<span className="new-badge">LIVE</span>
-                  </button>
-                  <button
-                    className={view === 'report' ? 'active' : ''}
-                    onClick={() => setView('report')}
-                  >
-                    <FileText size={15} />
-                    해석 리포트
-                  </button>
-                </div>
-                {error ? (
+                {automatic && solutions.length > 0 && (
+                  <details className="solutions-section">
+                    <summary className="solutions-title">
+                      <h3 className="solution-count">
+                        발견한 실수 해 {solutions.length}개
+                      </h3>
+                      <span>
+                        해 선택 · 시뮬레이션 추가 <ChevronDown size={14} />
+                      </span>
+                    </summary>
+                    <div className="solution-list" aria-label="발견한 실수 해">
+                      {solutions.map((item, i) => (
+                        <div className="solution-item" key={i}>
+                          <button
+                            className={`solution-choice ${highlightedSolution === i ? 'selected' : ''}`}
+                            aria-pressed={highlightedSolution === i}
+                            aria-label={`해 ${i + 1} ${item.variables.map((name, j) => `${name} ${fmt(item.values[j], 10)}`).join(' ')}`}
+                            disabled={pending}
+                            onClick={() => selectRoot(item, i)}
+                          >
+                            <span>해 {i + 1}</span>
+                            <strong>
+                              {item.variables
+                                .map(
+                                  (name, j) =>
+                                    `${name} = ${fmt(item.values[j], 10)}`,
+                                )
+                                .join(' · ')}
+                            </strong>
+                          </button>
+                          <button
+                            className="add-simulation-button"
+                            aria-label={`해 ${i + 1} 시뮬레이션 추가`}
+                            disabled={
+                              pending ||
+                              anchors.length >= 6 ||
+                              rootAlreadyOpen(item)
+                            }
+                            onClick={() => addSimulation(item, i)}
+                          >
+                            <Plus size={12} />
+                            {rootAlreadyOpen(item)
+                              ? '열린 시뮬레이션'
+                              : '시뮬레이션 추가'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {searchInfo && <SearchCoverage search={searchInfo} />}
+                  </details>
+                )}
+                {automatic &&
+                view === 'simulation' &&
+                selectedBranch ? null : error ? (
                   <div className="error-state" role="alert">
                     <div className="error-icon">
                       <Sigma size={24} />
@@ -1348,66 +1541,6 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    {automatic && (
-                      <section className="solutions-section">
-                        <div className="solutions-title">
-                          <h3 className="solution-count">
-                            발견한 실수 해 {solutions.length}개
-                          </h3>
-                          <span>해를 선택해 결과를 비교하세요</span>
-                        </div>
-                        <div
-                          className="solution-list"
-                          aria-label="발견한 실수 해"
-                        >
-                          {solutions.map((item, i) => (
-                            <div className="solution-item" key={i}>
-                              <button
-                                className={`solution-choice ${(payload?.selectedSolution ?? solutionIndex) === i ? 'selected' : ''}`}
-                                aria-pressed={
-                                  (payload?.selectedSolution ??
-                                    solutionIndex) === i
-                                }
-                                aria-label={`해 ${i + 1} ${item.variables.map((name, j) => `${name} ${fmt(item.values[j], 10)}`).join(' ')}`}
-                                disabled={pending}
-                                onClick={() =>
-                                  setProject((p) => ({
-                                    ...p,
-                                    selectedSolution: i,
-                                  }))
-                                }
-                              >
-                                <span>해 {i + 1}</span>
-                                <strong>
-                                  {item.variables
-                                    .map(
-                                      (name, j) =>
-                                        `${name} = ${fmt(item.values[j], 10)}`,
-                                    )
-                                    .join(' · ')}
-                                </strong>
-                              </button>
-                              <button
-                                className="add-simulation-button"
-                                aria-label={`해 ${i + 1} 시뮬레이션 추가`}
-                                disabled={
-                                  pending ||
-                                  anchors.length >= 6 ||
-                                  rootAlreadyOpen(item)
-                                }
-                                onClick={() => addSimulation(item, i)}
-                              >
-                                <Plus size={12} />
-                                {rootAlreadyOpen(item)
-                                  ? '열린 시뮬레이션'
-                                  : '시뮬레이션 추가'}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        {searchInfo && <SearchCoverage search={searchInfo} />}
-                      </section>
-                    )}
                     <div className="solution-summary">
                       <div className="summary-label">
                         <span className="found-badge">
@@ -1416,7 +1549,8 @@ export default function App() {
                             ? evaluation
                               ? '계산 완료'
                               : automatic
-                                ? `해 ${(payload?.selectedSolution ?? solutionIndex) + 1}`
+                                ? (project.selectedAnchor?.label ??
+                                  `해 ${solutionIndex + 1}`)
                                 : '수렴'
                             : '유일해'}
                         </span>
@@ -1485,7 +1619,7 @@ export default function App() {
                       )}
                     {view === 'simulation' ? (
                       <>
-                        {(!automatic || anchors.length === 0) && (
+                        {!automatic && (
                           <>
                             <div className="chart-section">
                               <div className="chart-heading">
@@ -1542,6 +1676,15 @@ export default function App() {
                                     parameterName={project.sweepName}
                                     currentParameter={sweepParam.value}
                                     currentValues={result.values}
+                                    onParameterChange={
+                                      payload?.sweepName === project.sweepName
+                                        ? (value) =>
+                                            updateParameter(
+                                              sweepParam.id,
+                                              value,
+                                            )
+                                        : undefined
+                                    }
                                     selectedIndex={selectedIndex}
                                     onSelectIndex={setSelectedIndex}
                                     visibleVariables={visibleVariables}
@@ -1896,6 +2039,54 @@ export default function App() {
                     </div>
                   </>
                 )}
+                {automatic &&
+                  view === 'simulation' &&
+                  anchors.length === 0 &&
+                  selectedBranch &&
+                  project.selectedAnchor && (
+                    <div className="selected-simulation-workspace">
+                      <div className="selected-simulation-toolbar">
+                        <span>선택한 해의 고정된 곡선</span>
+                        {project.parameters.length > 0 && (
+                          <label>
+                            탐색 변수{' '}
+                            <select
+                              aria-label="탐색 변수"
+                              value={project.sweepName}
+                              onChange={(e) =>
+                                setProject((p) => ({
+                                  ...p,
+                                  sweepName: e.target.value,
+                                }))
+                              }
+                            >
+                              {project.parameters.map((p) => (
+                                <option key={p.id} value={p.name}>
+                                  {p.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                      </div>
+                      <SimulationPanelView
+                        panel={selectedBranch}
+                        anchor={project.selectedAnchor}
+                        parameters={project.parameters}
+                        expanded={expanded}
+                        pending={pending}
+                        closable={false}
+                        onClose={() => {}}
+                        onParameterChange={
+                          sweepParam &&
+                          selectedBranch.sweepName === project.sweepName
+                            ? (value) => updateParameter(sweepParam.id, value)
+                            : undefined
+                        }
+                        onReport={() => navigate('report')}
+                      />
+                    </div>
+                  )}
                 {automatic && view === 'simulation' && anchors.length > 0 && (
                   <div className="multi-simulation-workspace">
                     <div className="multi-simulation-toolbar">
@@ -1952,7 +2143,14 @@ export default function App() {
                             expanded={expanded}
                             pending={pending}
                             onClose={() => closeSimulation(anchor.id)}
-                            onReport={() => exportSimulationReport(panel)}
+                            onParameterChange={
+                              sweepParam &&
+                              panel.sweepName === project.sweepName
+                                ? (value) =>
+                                    updateParameter(sweepParam.id, value)
+                                : undefined
+                            }
+                            onReport={() => openSimulationReport(anchor)}
                           />
                         )
                       })}

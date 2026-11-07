@@ -21,6 +21,15 @@ type Sweeps = Pick<
 type State = { parameter: number; values: number[] }
 type Path = { current: State; previous?: State }
 
+function continuationPrecision(...values: number[]) {
+  const scale = Math.max(Number.MIN_VALUE, ...values.map(Math.abs))
+  // Newton correctors stop at finite precision. A small component near a
+  // turning point may move less than that precision even while the branch
+  // continues. Preserve tiny scales, and cap solver noise so distant roots
+  // do not gain an allowance large enough to hide a whole-period jump.
+  return Math.max(4096 * Number.EPSILON * scale, 5e-10 * Math.min(scale, 1))
+}
+
 function createContinuation(
   solveNear: NearSolver,
   source: string,
@@ -63,15 +72,11 @@ function createContinuation(
     const result = solve(target, predictor)
     for (let i = 0; i < result.values.length; i++) {
       const motion = Math.abs(predictor[i] - current.values[i])
-      const rounding =
-        4096 *
-        Number.EPSILON *
-        Math.max(
-          Number.MIN_VALUE,
-          Math.abs(current.values[i]),
-          Math.abs(predictor[i]),
-          Math.abs(result.values[i]),
-        )
+      const rounding = continuationPrecision(
+        current.values[i],
+        predictor[i],
+        result.values[i],
+      )
       // Trust the local motion, not the distance of a root from zero. The
       // old |x|-scaled allowance accepted much larger period jumps at x=80
       // than at x=0. Tiny branches need a correspondingly tiny allowance.
@@ -93,14 +98,7 @@ function createContinuation(
     const reverse = solve(current.parameter, reverseSeed)
     if (
       reverse.values.some((value, i) => {
-        const rounding =
-          4096 *
-          Number.EPSILON *
-          Math.max(
-            Number.MIN_VALUE,
-            Math.abs(value),
-            Math.abs(current.values[i]),
-          )
+        const rounding = continuationPrecision(value, current.values[i])
         const motion = Math.max(
           Math.abs(result.values[i] - current.values[i]),
           Math.abs(predictor[i] - current.values[i]),

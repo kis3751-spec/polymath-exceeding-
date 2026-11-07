@@ -91,6 +91,29 @@ export default function Guide({
           <section className="guide-section">
             <span className="guide-step">01</span>
             <div>
+              <h3>필요한 화면부터 열어보세요</h3>
+              <p>
+                첫 화면의 <strong>Equation Solver</strong> 카드를 누르면
+                계산기를 엽니다. 준비 중인 모듈은 아직 계산할 수 없습니다.
+              </p>
+              <p>
+                <strong>수식·파라미터</strong>에서 식과 범위·간격을 설정하고,{' '}
+                <strong>시뮬레이션</strong>에서 해와 그래프를 탐색하세요.{' '}
+                <strong>해석 리포트</strong>에서는 수치 검증과 상세 결과를
+                확인합니다. 화면 이동은 작성한 모델과 선택한 해를 지우지
+                않습니다.
+              </p>
+              <p className="guide-small">
+                상단의 화면 이동 버튼으로 작업을 바꾸고, 모듈 홈으로 돌아갈 수
+                있습니다. Linear와 Nonlinear 유형은 수식·파라미터 화면에서
+                선택합니다.
+              </p>
+            </div>
+          </section>
+
+          <section className="guide-section">
+            <span className="guide-step">02</span>
+            <div>
               <h3>
                 {nonlinear
                   ? '방정식을 그대로 입력하세요'
@@ -142,7 +165,7 @@ export default function Guide({
           </section>
 
           <section className="guide-section">
-            <span className="guide-step">02</span>
+            <span className="guide-step">03</span>
             <div>
               {nonlinear ? (
                 <>
@@ -150,8 +173,9 @@ export default function Guide({
                   <p>
                     연립식도 한 줄에 등식 하나씩 작성합니다. 미지수 수와
                     독립적인 식 수를 맞추면 여러 시작점을 자동으로 시도합니다.
-                    발견한 해 목록에서 선택해 해별 리포트를 보고, 시뮬레이션
-                    추가로 여러 창을 열어 비교하세요.
+                    시뮬레이션 화면의 발견한 해 목록에서 해를 선택하고,
+                    시뮬레이션 추가로 여러 창을 열어 비교하세요. 선택한 해의
+                    자세한 계산 결과는 해석 리포트에서 볼 수 있습니다.
                   </p>
                   <pre className="guide-code">
                     <span># 원과 직선의 교점을 자동으로 탐색합니다</span>
@@ -198,7 +222,7 @@ export default function Guide({
 
           {nonlinear && (
             <section className="guide-section">
-              <span className="guide-step">03</span>
+              <span className="guide-step">04</span>
               <div>
                 <h3>파라미터와 보조식으로 모델을 나누세요</h3>
                 <p>
@@ -235,22 +259,48 @@ export default function Guide({
           )}
 
           <section className="guide-section">
-            <span className="guide-step">{nonlinear ? '04' : '03'}</span>
+            <span className="guide-step">{nonlinear ? '05' : '04'}</span>
             <div>
-              <h3>슬라이더로 질문하고, 그래프로 확인하세요</h3>
+              <h3>슬라이더와 그래프로 값을 선택하세요</h3>
               <p>
-                범위와 간격은 왼쪽 파라미터 설정에서, 실제 값은 오른쪽 결과
-                탐색에서 조절합니다. 결과 탐색을 확대하면 더 큰 그래프와 값
-                조절을 함께 사용할 수 있습니다.
+                범위와 간격은 수식·파라미터 화면에서, 실제 값은 시뮬레이션
+                화면의 슬라이더나 숫자 입력으로 조절합니다. 화면 확대 버튼을
+                누르면 더 큰 그래프와 값 조절을 함께 사용할 수 있습니다.
               </p>
               <p>
-                파라미터 값을 바꾸면 해가 다시 계산됩니다. 그래프는 선택한
-                파라미터의 범위를 훑으며 해가 어떻게 달라지는지 보여줍니다.
+                그래프는 선택한 탐색 변수의 범위에서 해가 어떻게 달라지는지
+                보여줍니다. 같은 기준 해와 설정에서 탐색 변수의 현재값만 바꾸면
+                곡선은 유지되고 현재 점만 이동합니다. 다른 고정 파라미터나
+                선택한 해, 범위를 바꾸면 곡선도 달라질 수 있습니다.
+              </p>
+              <p>
+                마우스를 움직이면 표시한 곡선을 따라 탐색 점이 부드럽게
+                이동합니다.{' '}
+                <strong>
+                  그래프를 클릭하면 해당 가로축 값을 실제 파라미터로 적용
+                </strong>
+                합니다. 마우스를 치워도 선택한 현재값은 유지되며, 해는 그 값으로
+                다시 계산합니다.
               </p>
               <p className="guide-small">
                 데이터 표와 CSV는 설정한 간격을 따릅니다. 예를 들어 0.2~0.8,
-                간격 0.01이면 61행입니다. 그래프를 탐색하면 같은 데이터 행이
-                선택되며, 곡선을 그리는 계산 지점은 별도로 유지합니다.
+                간격 0.01이면 61행입니다. 마우스 탐색 점의 곡선 보간값과 표의
+                직접 계산값은 다를 수 있습니다. 표에서는 가장 가까운 계산 행을
+                표시하며, 표의 간격을 화면 움직임에 맞춰 바꾸지는 않습니다.
+                유효하지 않은 구간을 가로질러 선을 연결하지도 않습니다.
+              </p>
+              <p className="guide-small">
+                그래프를 클릭하여 초점을 둔 뒤 휠을 움직이면 축을 점진적으로
+                확대·축소합니다. <strong>그래프 확대 축</strong>에서
+                양축·X축·Y축을 선택하고 <strong>축 초기화</strong>로 원래 범위를
+                복원하세요. 축 조정은 표시 비율만 바꾸며 계산한 해나 표는 바꾸지
+                않습니다. 초점이 없는 그래프 위에서는 일반 페이지 스크롤을
+                유지합니다.
+              </p>
+              <p className="guide-small">
+                키보드로는 좌우 방향키와 Home/End로 표의 지점을 탐색하고,
+                Enter/Space로 값을 적용합니다. +/−는 확대·축소, 0은 축
+                초기화입니다.
               </p>
               <p className="guide-small">
                 최댓값은 항상 마지막 행에 포함하므로 마지막 구간만 짧을 수
@@ -273,7 +323,7 @@ export default function Guide({
           </section>
 
           <section className="guide-section">
-            <span className="guide-step">{nonlinear ? '05' : '04'}</span>
+            <span className="guide-step">{nonlinear ? '06' : '05'}</span>
             <div>
               <h3>조건수로 해의 민감도를 살펴보세요</h3>
               <p>
@@ -326,7 +376,7 @@ export default function Guide({
         </div>
         <footer className="guide-footer">
           <button onClick={onClose}>
-            모델 만들러 가기 <ArrowRight size={16} />
+            작업으로 돌아가기 <ArrowRight size={16} />
           </button>
         </footer>
       </div>

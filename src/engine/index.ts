@@ -69,6 +69,7 @@ export type SimulationPanel = {
   sweepName: string
 }
 export type SolvePayload = {
+  selectedSimulation?: SimulationPanel
   simulations?: SimulationPanel[]
   solutions?: SolveResult[]
   selectedSolution?: number
