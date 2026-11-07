@@ -1,3 +1,4 @@
+import { tangencyLabel } from '../engine/tangency'
 import {
   useEffect,
   useId,
@@ -537,7 +538,7 @@ export default function SolutionChart({
       multiBranchSeries.forEach((branch) => {
         if (!visibleVariables.includes(branch.id)) return
         for (const ev of branch.events ?? []) {
-          const key = `${ev.kind}|${ev.direction}|${ev.parameter.toPrecision(5)}|${ev.values[activeVariableIndex]?.toPrecision(4)}`
+          const key = `${ev.kind}|${ev.direction}|${ev.parameter.toPrecision(5)}|${(ev.tangency?.verified ? ev.tangency.valuesStar : ev.values)[activeVariableIndex]?.toPrecision(4)}`
           if (!seen.has(key)) {
             seen.add(key)
             list.push(ev)
@@ -818,11 +819,19 @@ export default function SolutionChart({
                 >
                   {allBifurcationEvents.map((ev, eIdx) => {
                     const val = isMultiBranch
-                      ? ev.values[activeVariableIndex]
-                      : ev.values[visible[0]?.index ?? 0]
+                      ? (ev.tangency?.verified
+                          ? ev.tangency.valuesStar
+                          : ev.values)[activeVariableIndex]
+                      : (ev.tangency?.verified
+                          ? ev.tangency.valuesStar
+                          : ev.values)[visible[0]?.index ?? 0]
                     if (typeof val !== 'number' || !Number.isFinite(val))
                       return null
-                    const cx = x(ev.parameter)
+                    const cx = x(
+                      ev.tangency?.verified
+                        ? ev.tangency.parameterStar
+                        : ev.parameter,
+                    )
                     const cy = y(val)
                     const isMerge = ev.kind === 'merge'
                     return (
@@ -1037,10 +1046,22 @@ export default function SolutionChart({
               type="button"
               key={idx}
               className={`sc-bifurcation-chip is-${ev.kind}`}
-              onClick={() => onParameterChange?.(ev.parameter)}
-              title="클릭하여 해당 분기점 파라미터로 이동"
+              onClick={() =>
+                onParameterChange?.(
+                  ev.tangency?.verified
+                    ? ev.tangency.parameterStar
+                    : ev.parameter,
+                )
+              }
+              title={ev.tangency?.geometricSummary ?? ev.description}
             >
-              <b>{ev.kind === 'merge' ? '● 병합·소멸 후보' : '○ 추적 경계'}</b>{' '}
+              <b>
+                {ev.tangency?.verified
+                  ? tangencyLabel(ev.tangency)
+                  : ev.kind === 'merge'
+                    ? '● 병합·소멸 후보'
+                    : '○ 추적 경계'}
+              </b>{' '}
               {ev.description}
             </button>
           ))}

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `22197f3448e4a22c573b4449f4237cd0ae1e1e85639bed794805eabebb3cfe22`
+소스 묶음 SHA-256: `12f2c2bcf4778c7db29ae763ef3c0f05155a67ce9b43a5a1b89e115f2d0086db`
 
 ## 다른 코드 묶음
 
@@ -29,17 +29,19 @@
 - [src/engine/preprocessor.ts](#source-3) · [저장소 원본](../../src/engine/preprocessor.ts)
 - [src/engine/nonlinear.ts](#source-4) · [저장소 원본](../../src/engine/nonlinear.ts)
 - [src/engine/automatic-polynomial.ts](#source-5) · [저장소 원본](../../src/engine/automatic-polynomial.ts)
-- [src/engine/automatic.ts](#source-6) · [저장소 원본](../../src/engine/automatic.ts)
-- [src/engine/root-isolation.ts](#source-7) · [저장소 원본](../../src/engine/root-isolation.ts)
-- [src/engine/conditioning.ts](#source-8) · [저장소 원본](../../src/engine/conditioning.ts)
-- [src/engine/solver.wat](#source-9) · [저장소 원본](../../src/engine/solver.wat)
-- [scripts/build-wasm.mjs](#source-10) · [저장소 원본](../../scripts/build-wasm.mjs)
+- [src/engine/parameter-path.ts](#source-6) · [저장소 원본](../../src/engine/parameter-path.ts)
+- [src/engine/tangency.ts](#source-7) · [저장소 원본](../../src/engine/tangency.ts)
+- [src/engine/automatic.ts](#source-8) · [저장소 원본](../../src/engine/automatic.ts)
+- [src/engine/root-isolation.ts](#source-9) · [저장소 원본](../../src/engine/root-isolation.ts)
+- [src/engine/conditioning.ts](#source-10) · [저장소 원본](../../src/engine/conditioning.ts)
+- [src/engine/solver.wat](#source-11) · [저장소 원본](../../src/engine/solver.wat)
+- [scripts/build-wasm.mjs](#source-12) · [저장소 원본](../../scripts/build-wasm.mjs)
 
 <a id="source-1"></a>
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 557줄 · SHA-256: `b7270cc31ce498af6a8d6ed4059beaea626d34726088ef0916f86d7516a859a4`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 592줄 · SHA-256: `d905a96c2e4f80c742ace2999ddc617f5ff39eca1f6f08ad7a6c38e7eb5bb3a5`
 
 ```typescript
 import { preprocessSolverSource } from './preprocessor'
@@ -114,8 +116,43 @@ export type SimulationPanel = {
   datasetError?: string
   sweepName: string
 }
+export type TangencyVerification = {
+  /** Whether local derivative and curvature re-verification confirmed a fold/tangency bifurcation (∂f/∂x = 0) */
+  verified: boolean
+  bifurcationOrder: 2 | 3 | 4 | 'boundary'
+  curvatureFxxx?: number
+  curvatureFxxxx?: number
+  isCusp?: boolean
+  /** Refined tangency parameter coordinate p* */
+  parameterStar: number
+  /** Refined tangency solution vector x* */
+  valuesStar: number[]
+  /** Terminal Jacobian derivative ∂f/∂x on this branch */
+  terminalSlope: number
+  /** Terminal Jacobian derivative ∂f/∂x on the partner branch (when two branches merge) */
+  partnerSlope?: number
+  /** Whether the two converging branches have opposite-signed derivatives ∂f/∂x -> 0 */
+  oppositeSlopeSigns: boolean
+  /** Estimated 2nd derivative ∂²f/∂x² (relative curvature at tangency) */
+  curvatureFxx: number
+  /** Estimated parameter sensitivity ∂f/∂p at tangency */
+  sensitivityFp?: number
+  /** Local parabolic normal-form coefficient c2 in (p - p*) ≈ c2 * (x - x*)^2 */
+  parabolaCoeff?: number
+  /** Residual |f(x*, p*)| at the refined tangency point (when directly evaluated) */
+  residualAtStar?: number
+  /** Slope |∂f/∂x(x*, p*)| at the refined tangency point */
+  slopeAtStar?: number
+  /** Concise Korean summary of the verified geometric property */
+  geometricSummary: string
+}
 export type BranchTerminalEvent = {
-  kind: 'disappear' | 'merge' | 'unresolved'
+  tangency?: TangencyVerification
+  previousParameter?: number
+  previousValues?: number[]
+  terminalSlope?: number
+  previousSlope?: number
+  kind: 'disappear' | 'merge' | 'unresolved' | 'contact'
   direction: -1 | 1
   parameter: number
   values: number[]
@@ -1180,13 +1217,14 @@ export function compileNonlinear(
 
 ## src/engine/preprocessor.ts
 
-원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 613줄 · SHA-256: `42e7ef9b9f0b3c5f2932bacf501de031e7932fe69d8817be85c38f0f0b5c0962`
+원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 629줄 · SHA-256: `eaaf2e14df9d02aaa324760233b9ea4288347ee7628b769ce6f94a6dbf6eda81`
 
 ```typescript
 import { ModelError } from './index'
 
 export type DefinedFunction = {
   /** Key in definition map: either `f(x)` (when named `f` with variable `x`) or `f1`, `f2`, etc. */
+  parameterNames?: ReadonlySet<string>
   key: string
   name: string // e.g., 'f', 'f1', 'f2', 'g1'
   param: string | null // e.g., 'x' for f1(x), or null for f1 = ...
@@ -1307,6 +1345,14 @@ function expandExpression(
           line,
         )
       }
+      const foreign = extractVariableReferences(expandedArg).find(
+        (ref) => ref !== def.param && !def.parameterNames?.has(ref),
+      )
+      if (foreign)
+        throw new ModelError(
+          `'${fnName}(${def.param})' 호출에 다른 변수 '${foreign}'를 넣을 수 없습니다. 혼합식은 f1 = ... 형식으로 정의하세요.`,
+          line,
+        )
       if (!expandedArg)
         throw new ModelError(
           `함수 '${fnName}(${def.param})' 호출 시 인수를 입력해 주세요.`,
@@ -1617,6 +1663,12 @@ export function preprocessModelSource(
           `정의 '${item.name}'이 중복되었습니다. 다른 번호를 사용하세요.`,
           item.line,
         )
+      const prior = defsByName.get(item.name)
+      if (item.name !== 'f' && prior?.param && prior.param !== item.param)
+        throw new ModelError(
+          `'${item.name}(${prior.param})'를 다른 변수 '${item.param}'로 중복 정의할 수 없습니다. 다른 번호를 사용하세요.`,
+          item.line,
+        )
       const sigKey = `${item.name}(${item.param})`
       // First check if the RHS uses any foreign variable `ref !== item.param`!
       const rawRefs = extractVariableReferences(item.rhs)
@@ -1636,6 +1688,7 @@ export function preprocessModelSource(
       }
       const def: DefinedFunction = {
         key: sigKey,
+        parameterNames: paramSet,
         name: item.name,
         param: item.param,
         rhsText: item.rhs,
@@ -2236,7 +2289,7 @@ export async function createNonlinearSolver(
 
 ## src/engine/automatic-polynomial.ts
 
-원본: [src/engine/automatic-polynomial.ts](../../src/engine/automatic-polynomial.ts) · 295줄 · SHA-256: `0126420adadfa7c98ad754c08456f0aebb472556a63fe3c0eee28928626330c9`
+원본: [src/engine/automatic-polynomial.ts](../../src/engine/automatic-polynomial.ts) · 448줄 · SHA-256: `56fb55cbdfa4fcb85c28f1219595c5c09cb8be937a823d653edc925e77c3477b`
 
 ```typescript
 import {
@@ -2245,6 +2298,159 @@ import {
 } from './nonlinear-parser'
 
 const MAX_DEGREE = 12
+
+/** Conservative classification used only for relaxing a continuation gate.
+ * With polynomial parameter coefficients and a fixed nonzero leading term,
+ * finite parameter paths cannot send a root through a hidden rational pole.
+ * Instantiating a polynomial at one parameter value alone cannot establish
+ * this: x=1/p and p*x=1 are unsafe families despite being linear in x. */
+export function isRegularPolynomialFamily(
+  node: NonlinearNode,
+  variable: string,
+  parameterNames: Set<string>,
+  helpers: Map<string, NonlinearNode>,
+): boolean {
+  type Family = { degree: number; leading: number | null }
+  const active = new Set<string>()
+  const memo = new Map<string, Family | null>()
+  const constant = (value: number): Family | null =>
+    Number.isFinite(value) ? { degree: 0, leading: value } : null
+  const power = (base: Family, exponent: Family): Family | null => {
+    const value = exponent.leading
+    if (
+      exponent.degree !== 0 ||
+      value === null ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > MAX_DEGREE
+    )
+      return null
+    const degree = base.degree * value
+    if (degree > MAX_DEGREE) return null
+    if (value === 0) return constant(1)
+    const leading = base.leading === null ? null : base.leading ** value
+    return leading === null || Number.isFinite(leading)
+      ? { degree, leading }
+      : null
+  }
+  const visit = (current: NonlinearNode, depth = 0): Family | null => {
+    if (depth > 256) return null
+    if (current.kind === 'number') return constant(current.value)
+    if (current.kind === 'name') {
+      if (current.name === variable) return { degree: 1, leading: 1 }
+      if (parameterNames.has(current.name)) return { degree: 0, leading: null }
+      if (current.name === 'pi') return constant(Math.PI)
+      if (current.name === 'e') return constant(Math.E)
+      if (memo.has(current.name)) return memo.get(current.name)!
+      const helper = helpers.get(current.name)
+      if (!helper || active.has(current.name)) return null
+      active.add(current.name)
+      const family = visit(helper, depth + 1)
+      active.delete(current.name)
+      memo.set(current.name, family)
+      return family
+    }
+    if (current.kind === 'unary') {
+      const child = visit(current.child, depth + 1)
+      return (
+        child && {
+          degree: child.degree,
+          leading:
+            child.leading === null
+              ? null
+              : current.sign === '-'
+                ? -child.leading
+                : child.leading,
+        }
+      )
+    }
+    if (current.kind === 'binary') {
+      const left = visit(current.left, depth + 1)
+      const right = visit(current.right, depth + 1)
+      if (!left || !right) return null
+      if (current.operator === '+' || current.operator === '-') {
+        if (left.degree !== right.degree)
+          return left.degree > right.degree
+            ? left
+            : {
+                degree: right.degree,
+                leading:
+                  right.leading === null
+                    ? null
+                    : current.operator === '-'
+                      ? -right.leading
+                      : right.leading,
+              }
+        const leading =
+          left.leading === null || right.leading === null
+            ? null
+            : left.leading +
+              (current.operator === '-' ? -right.leading : right.leading)
+        if (leading !== null && !Number.isFinite(leading)) return null
+        return {
+          degree: left.degree,
+          leading: left.degree > 0 && leading === 0 ? null : leading,
+        }
+      }
+      if (current.operator === '*') {
+        const degree = left.degree + right.degree
+        if (degree > MAX_DEGREE) return null
+        if (
+          (left.degree === 0 && left.leading === 0) ||
+          (right.degree === 0 && right.leading === 0)
+        )
+          return constant(0)
+        const leading =
+          left.leading === null || right.leading === null
+            ? null
+            : left.leading * right.leading
+        return leading === null || Number.isFinite(leading)
+          ? { degree, leading }
+          : null
+      }
+      if (current.operator === '/') {
+        if (right.degree !== 0 || right.leading === null || right.leading === 0)
+          return null
+        const leading =
+          left.leading === null ? null : left.leading / right.leading
+        return leading === null || Number.isFinite(leading)
+          ? { degree: left.degree, leading }
+          : null
+      }
+      if (current.operator === '^') return power(left, right)
+      return null
+    }
+    const args = current.args.map((argument) => visit(argument, depth + 1))
+    if (args.some((argument) => argument === null)) return null
+    if (current.name === 'pow') return power(args[0]!, args[1]!)
+    if (
+      args.some(
+        (argument) => argument!.degree !== 0 || argument!.leading === null,
+      )
+    )
+      return null
+    try {
+      return constant(
+        evaluateNonlinearExpression(
+          { node: current, line: 1, references: new Set() },
+          new Map([
+            ['pi', Math.PI],
+            ['e', Math.E],
+          ]),
+        ),
+      )
+    } catch {
+      return null
+    }
+  }
+  const family = visit(node)
+  return Boolean(
+    family &&
+      family.degree > 0 &&
+      family.leading !== null &&
+      family.leading !== 0,
+  )
+}
 
 /** Return ascending coefficients only for algebraic operations that preserve a
  * polynomial's domain. No source code is executed during classification. */
@@ -2538,9 +2744,502 @@ function twoProductError(a: number, b: number, product: number) {
 
 <a id="source-6"></a>
 
+## src/engine/parameter-path.ts
+
+원본: [src/engine/parameter-path.ts](../../src/engine/parameter-path.ts) · 257줄 · SHA-256: `04bb2159e6f4de8cfb8734414507358a4dc4a72de2fe40095b5d8fe70500a952`
+
+```typescript
+import type { NonlinearNode } from './nonlinear-parser'
+
+type Node = NonlinearNode
+type Interval = [number, number] | null
+type PolyCoeffs = Node[] // ascending degree: [c_0(p), c_1(p), ..., c_d(p)]
+
+const MAX_DEGREE = 12
+const number = (value: number): Node => ({ kind: 'number', value })
+const zero = (node: Node) => node.kind === 'number' && node.value === 0
+const binary = (
+  operator: '+' | '-' | '*' | '/' | '^',
+  left: Node,
+  right: Node,
+): Node => {
+  if (left.kind === 'number' && right.kind === 'number') {
+    const value =
+      operator === '+'
+        ? left.value + right.value
+        : operator === '-'
+          ? left.value - right.value
+          : operator === '*'
+            ? left.value * right.value
+            : operator === '/'
+              ? left.value / right.value
+              : left.value ** right.value
+    if (Number.isFinite(value)) return number(value)
+  }
+  if (operator === '*' && (zero(left) || zero(right))) return number(0)
+  if ((operator === '+' || operator === '-') && zero(right)) return left
+  if (operator === '+' && zero(left)) return right
+  return { kind: 'binary', operator, left, right }
+}
+const containsZero = (value: [number, number]) => value[0] <= 0 && value[1] >= 0
+
+function trimPoly(coeffs: Node[]): PolyCoeffs {
+  const out = [...coeffs]
+  while (out.length > 1 && zero(out.at(-1)!)) out.pop()
+  return out
+}
+
+function addPoly(a: PolyCoeffs, b: PolyCoeffs, sign: 1 | -1): PolyCoeffs {
+  const len = Math.max(a.length, b.length)
+  const out: Node[] = []
+  for (let i = 0; i < len; i++) {
+    const ca = a[i] ?? number(0)
+    const cb = b[i] ?? number(0)
+    out.push(sign === 1 ? binary('+', ca, cb) : binary('-', ca, cb))
+  }
+  return trimPoly(out)
+}
+
+function mulPoly(a: PolyCoeffs, b: PolyCoeffs): PolyCoeffs | null {
+  const degA = a.length - 1
+  const degB = b.length - 1
+  if (degA + degB > MAX_DEGREE) return null
+  const out: Node[] = Array.from({ length: degA + degB + 1 }, () => number(0))
+  for (let i = 0; i <= degA; i++) {
+    if (zero(a[i])) continue
+    for (let j = 0; j <= degB; j++) {
+      if (zero(b[j])) continue
+      out[i + j] = binary('+', out[i + j], binary('*', a[i], b[j]))
+    }
+  }
+  return trimPoly(out)
+}
+
+/** Domain checks for algebraic parameter denominators and degenerate parameter
+ * poles (such as x = 1/p, x = 1/(p-0.1)^2, p*x = 1, or (p*x - 1)^3 = 0).
+ * Higher-order polynomials with a surviving lower-degree term (such as
+ * p*x^3 + x = 1 at p = 0) are NOT blocked because c_1(0) = 1 != 0. */
+export function createParameterPathValidator(
+  expression: Node,
+  variable: string,
+  helpers: Map<string, Node>,
+) {
+  const denominators: Node[] = []
+  const visited = new Set<Node>()
+  const collect = (node: Node, depth = 0) => {
+    if (depth > 256 || visited.has(node)) return
+    visited.add(node)
+    if (node.kind === 'name') {
+      const helper = helpers.get(node.name)
+      if (helper) collect(helper, depth + 1)
+    } else if (node.kind === 'unary') collect(node.child, depth + 1)
+    else if (node.kind === 'binary') {
+      if (node.operator === '/') denominators.push(node.right)
+      if (
+        node.operator === '^' &&
+        node.right.kind === 'number' &&
+        node.right.value < 0
+      )
+        denominators.push(node.left)
+      collect(node.left, depth + 1)
+      collect(node.right, depth + 1)
+    } else if (node.kind === 'call') {
+      if (
+        node.name === 'pow' &&
+        node.args[1]?.kind === 'number' &&
+        node.args[1].value < 0
+      )
+        denominators.push(node.args[0])
+      node.args.forEach((child) => collect(child, depth + 1))
+    }
+  }
+  collect(expression)
+
+  const polyActive = new Set<string>()
+  const asPolyInVar = (node: Node, depth = 0): PolyCoeffs | null => {
+    if (depth > 256) return null
+    if (node.kind === 'number') return [node]
+    if (node.kind === 'name') {
+      if (node.name === variable) return [number(0), number(1)]
+      const helper = helpers.get(node.name)
+      if (!helper) return [node]
+      if (polyActive.has(node.name)) return null
+      polyActive.add(node.name)
+      const result = asPolyInVar(helper, depth + 1)
+      polyActive.delete(node.name)
+      return result
+    }
+    if (node.kind === 'unary') {
+      const child = asPolyInVar(node.child, depth + 1)
+      if (!child) return null
+      return node.sign === '+'
+        ? child
+        : child.map((c) => binary('*', number(-1), c))
+    }
+    if (node.kind === 'binary') {
+      const left = asPolyInVar(node.left, depth + 1)
+      const right = asPolyInVar(node.right, depth + 1)
+      if (!left || !right) return null
+      if (node.operator === '+') return addPoly(left, right, 1)
+      if (node.operator === '-') return addPoly(left, right, -1)
+      if (node.operator === '*') return mulPoly(left, right)
+      if (node.operator === '/') {
+        if (right.length !== 1) return null
+        return left.map((c) => binary('/', c, right[0]))
+      }
+      if (
+        node.operator === '^' &&
+        right.length === 1 &&
+        right[0].kind === 'number'
+      ) {
+        const exp = right[0].value
+        if (exp === 0) return [number(1)]
+        if (exp === 1) return left
+        if (left.length === 1) return [node]
+        if (Number.isInteger(exp) && exp > 1 && exp <= MAX_DEGREE) {
+          let acc: PolyCoeffs | null = [number(1)]
+          for (let i = 0; i < exp && acc; i++) acc = mulPoly(acc, left)
+          return acc
+        }
+      }
+      return null
+    }
+    if (node.kind === 'call') {
+      const args = node.args.map((child) => asPolyInVar(child, depth + 1))
+      return args.every((child) => child && child.length === 1) ? [node] : null
+    }
+    return null
+  }
+  const poly = asPolyInVar(expression)
+
+  return (
+    from: Record<string, number>,
+    to: Record<string, number>,
+  ): boolean => {
+    const active = new Set<string>()
+    const interval = (node: Node, depth = 0): Interval => {
+      if (depth > 256) return null
+      const finite = (values: number[]): Interval =>
+        values.every(Number.isFinite)
+          ? [Math.min(...values), Math.max(...values)]
+          : null
+      if (node.kind === 'number') return finite([node.value])
+      if (node.kind === 'name') {
+        if (node.name === variable) return null
+        if (Object.hasOwn(from, node.name) && Object.hasOwn(to, node.name))
+          return finite([from[node.name], to[node.name]])
+        if (node.name === 'pi') return [Math.PI, Math.PI]
+        if (node.name === 'e') return [Math.E, Math.E]
+        const helper = helpers.get(node.name)
+        if (!helper || active.has(node.name)) return null
+        active.add(node.name)
+        const result = interval(helper, depth + 1)
+        active.delete(node.name)
+        return result
+      }
+      if (node.kind === 'unary') {
+        const child = interval(node.child, depth + 1)
+        return child && (node.sign === '+' ? child : [-child[1], -child[0]])
+      }
+      const power = (
+        base: [number, number],
+        exponent: [number, number],
+      ): Interval => {
+        const n = exponent[0]
+        if (n !== exponent[1] || !Number.isInteger(n) || Math.abs(n) > 12)
+          return null
+        if (n < 0 && containsZero(base)) return null
+        const values = [base[0] ** n, base[1] ** n]
+        if (n > 0 && n % 2 === 0 && containsZero(base)) values.push(0)
+        return finite(values)
+      }
+      if (node.kind === 'call') {
+        if (node.name !== 'pow') return null
+        const base = interval(node.args[0], depth + 1)
+        const exponent = interval(node.args[1], depth + 1)
+        return base && exponent ? power(base, exponent) : null
+      }
+      const left = interval(node.left, depth + 1)
+      const right = interval(node.right, depth + 1)
+      if (!left || !right) return null
+      if (node.operator === '+')
+        return finite([left[0] + right[0], left[1] + right[1]])
+      if (node.operator === '-')
+        return finite([left[0] - right[1], left[1] - right[0]])
+      if (node.operator === '*')
+        return finite([
+          left[0] * right[0],
+          left[0] * right[1],
+          left[1] * right[0],
+          left[1] * right[1],
+        ])
+      if (node.operator === '/')
+        return containsZero(right)
+          ? null
+          : finite([
+              left[0] / right[0],
+              left[0] / right[1],
+              left[1] / right[0],
+              left[1] / right[1],
+            ])
+      if (node.operator === '^') return power(left, right)
+      return null
+    }
+    for (const denominator of denominators) {
+      const range = interval(denominator)
+      if (range && containsZero(range)) return false
+    }
+    // Check if ALL non-constant coefficients c_1(p)...c_d(p) can vanish in [from, to]
+    // while the constant term c_0(p) stays strictly non-zero (e.g. p*x = 1, (p*x - 1)^3 = 0).
+    // For p*x^3 + x = 1, c_1(p) = [1, 1] does NOT contain 0, so it remains safe!
+    if (poly && poly.length > 1) {
+      const c0 = interval(poly[0])
+      const higher = poly.slice(1).map((c) => interval(c))
+      if (
+        c0 &&
+        !containsZero(c0) &&
+        higher.every((r) => r !== null && containsZero(r))
+      ) {
+        return false
+      }
+    }
+    return true
+  }
+}
+```
+
+<a id="source-7"></a>
+
+## src/engine/tangency.ts
+
+원본: [src/engine/tangency.ts](../../src/engine/tangency.ts) · 218줄 · SHA-256: `3ec6c4871dae4497930ad6bd6130602bca43850420e52c63f38ab88931d9bcd5`
+
+```typescript
+import type { TangencyVerification } from './index'
+
+export type ScalarEvaluator = (x: number, p: number) => number | undefined
+export type DerivativeEstimate = {
+  value: number
+  error: number
+  oneSided: boolean
+}
+const eps = Number.EPSILON
+const factorial = [1, 1, 2, 6, 24]
+
+// Polynomial-exact finite difference weights. The stencil is dimensionless;
+// Richardson comparison below measures sensitivity to the physical step size.
+function weights(nodes: number[], order: number) {
+  const n = nodes.length
+  const a = Array.from({ length: n }, (_, k) => [
+    ...nodes.map((x) => x ** k),
+    k === order ? factorial[order] : 0,
+  ])
+  for (let k = 0; k < n; k++) {
+    let pivot = k
+    for (let j = k + 1; j < n; j++)
+      if (Math.abs(a[j][k]) > Math.abs(a[pivot][k])) pivot = j
+    ;[a[k], a[pivot]] = [a[pivot], a[k]]
+    const d = a[k][k]
+    for (let j = k; j <= n; j++) a[k][j] /= d
+    for (let i = 0; i < n; i++)
+      if (i !== k) {
+        const f = a[i][k]
+        for (let j = k; j <= n; j++) a[i][j] -= f * a[k][j]
+      }
+  }
+  return a.map((row) => row[n])
+}
+const stencils = [
+  [-3, -2, -1, 0, 1, 2, 3],
+  [0, 1, 2, 3, 4, 5, 6],
+  [0, -1, -2, -3, -4, -5, -6],
+]
+const weightCache = stencils.map((nodes) =>
+  [0, 1, 2, 3, 4].map((order) => weights(nodes, order)),
+)
+export function adaptiveDerivative(
+  evaluate: (x: number) => number | undefined,
+  x: number,
+  order: 1 | 2 | 3 | 4 = 1,
+): DerivativeEstimate | undefined {
+  const initial = eps ** (1 / 7) * Math.max(1, Math.abs(x))
+  const sample = (h: number, stencil: number) => {
+    const nodes = stencils[stencil]
+    const values = nodes.map((n) => evaluate(x + n * h))
+    if (values.some((v) => v === undefined || !Number.isFinite(v)))
+      return undefined
+    const w = weightCache[stencil][order]
+    let sum = 0,
+      magnitude = 0
+    values.forEach((v, i) => {
+      sum += w[i] * v!
+      magnitude += Math.abs(w[i] * v!)
+    })
+    return {
+      value: sum / h ** order,
+      roundoff: (64 * eps * magnitude) / h ** order,
+    }
+  }
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const h = initial / 2 ** attempt
+    for (let stencil = 0; stencil < 3; stencil++) {
+      const coarse = sample(h, stencil),
+        fine = sample(h / 2, stencil)
+      if (coarse && fine)
+        return {
+          value: fine.value,
+          error:
+            Math.abs(coarse.value - fine.value) +
+            coarse.roundoff +
+            fine.roundoff,
+          oneSided: stencil !== 0,
+        }
+    }
+  }
+  return undefined
+}
+
+/** Local numerical verification, not a symbolic proof or a two-parameter cusp certificate. */
+export function verifyScalarTangency(
+  evaluate: ScalarEvaluator,
+  seedX: number,
+  seedP: number,
+): TangencyVerification | undefined {
+  if (!Number.isFinite(seedX) || !Number.isFinite(seedP)) return undefined
+  for (const order of [4, 3, 2] as const) {
+    let x = seedX,
+      p = seedP
+    let failed = false
+    for (let i = 0; i < 14; i++) {
+      const f = evaluate(x, p)
+      const fp = adaptiveDerivative((q) => evaluate(x, q), p)
+      const lower = adaptiveDerivative(
+        (y) => evaluate(y, p),
+        x,
+        (order - 1) as 1 | 2 | 3,
+      )
+      const high = adaptiveDerivative((y) => evaluate(y, p), x, order)
+      if (
+        f === undefined ||
+        !fp ||
+        !lower ||
+        !high ||
+        Math.abs(fp.value) <= fp.error ||
+        Math.abs(high.value) <= high.error
+      ) {
+        failed = true
+        break
+      }
+      const dx = lower.value / high.value
+      if (!Number.isFinite(dx) || Math.abs(dx) > Math.max(1, Math.abs(seedX))) {
+        failed = true
+        break
+      }
+      const nextX = x - dx
+      // A boundary must never be projected outside the actual expression domain.
+      if (evaluate(nextX, p) === undefined) {
+        failed = true
+        break
+      }
+      x = nextX
+      const next = evaluate(x, p)
+      if (next === undefined) {
+        failed = true
+        break
+      }
+      p -= next / fp.value
+      if (
+        Math.abs(x - seedX) > Math.max(1, Math.abs(seedX)) ||
+        Math.abs(p - seedP) > Math.max(1, Math.abs(seedP))
+      ) {
+        failed = true
+        break
+      }
+      if (Math.abs(dx) <= 32 * eps * Math.max(1, Math.abs(x))) break
+    }
+    if (failed) continue
+    const f = evaluate(x, p),
+      fp = adaptiveDerivative((q) => evaluate(x, q), p)
+    const ds = ([1, 2, 3, 4] as const).map((n) =>
+      adaptiveDerivative((y) => evaluate(y, p), x, n),
+    )
+    if (f === undefined || !fp || ds.some((d) => !d)) continue
+    const tolerance =
+      128 *
+      eps *
+      Math.max(
+        Number.MIN_VALUE,
+        Math.abs(fp.value) * Math.max(1, Math.abs(p)),
+        ...ds.map((d) => Math.abs(d!.value)),
+      )
+    if (Math.abs(f) > tolerance || Math.abs(fp.value) <= fp.error) continue
+    if (
+      ds
+        .slice(0, order - 1)
+        .some((d) => Math.abs(d!.value) > 8 * d!.error + tolerance)
+    )
+      continue
+    if (Math.abs(ds[order - 1]!.value) <= 8 * ds[order - 1]!.error + tolerance)
+      continue
+    const boundary = ds[0]!.oneSided
+    const label = boundary
+      ? '정의역 경계 접점'
+      : order === 3
+        ? '3중 접점·변곡 분기'
+        : order === 4
+          ? '고차 평탄 접점 (4차)'
+          : '2차 접점·중근'
+    return {
+      verified: true,
+      bifurcationOrder: boundary ? 'boundary' : order,
+      isCusp: order === 3 && !boundary,
+      parameterStar: p,
+      valuesStar: [x],
+      terminalSlope: ds[0]!.value,
+      oppositeSlopeSigns: false,
+      curvatureFxx: ds[1]!.value,
+      curvatureFxxx: ds[2]!.value,
+      curvatureFxxxx: ds[3]!.value,
+      sensitivityFp: fp.value,
+      residualAtStar: Math.abs(f),
+      slopeAtStar: Math.abs(ds[0]!.value),
+      parabolaCoeff: order === 2 ? -ds[1]!.value / (2 * fp.value) : undefined,
+      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 잔차와 1~4차 도함수를 두 스텝 크기로 비교했습니다.`,
+    }
+  }
+  return undefined
+}
+
+/** Prepared interface for a future corank-one multivariable classification.
+ * det(J)=0 alone is insufficient; callers must establish rank N-1 by SVD.
+ * Higher directional derivatives require left and right null vectors.
+ */
+export interface MultivariableTangencyProbe {
+  jacobian: number[][]
+  rank: number
+  rightNullVector: number[]
+  leftNullVector: number[]
+  directionalSecond: (direction: readonly number[]) => number[]
+  parameterDerivative: number[]
+}
+
+export function tangencyLabel(t: TangencyVerification): string {
+  const order = t.bifurcationOrder
+  return order === 'boundary'
+    ? '◆ 정의역 경계 접점'
+    : order === 3
+      ? '◆ 3중 접점·변곡 분기 확인됨'
+      : order === 4
+        ? '◆ 고차 평탄 접점 확인됨 (4차)'
+        : '◆ 2차 접점·중근 확인됨'
+}
+```
+
+<a id="source-8"></a>
+
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 792줄 · SHA-256: `b106eea96cd2fa05da8c27ba5ea13b053a75239ef1c43f0f8347353d8f9bd472`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 909줄 · SHA-256: `0490cc8e4dfbb88b17a86db22463fa703b8d830157dceffddf6fc836b80a54e3`
 
 ```typescript
 import { preprocessSolverSource } from './preprocessor'
@@ -2556,9 +3255,15 @@ import {
 } from './nonlinear-parser'
 import {
   findPolynomialRealRoots,
+  isRegularPolynomialFamily,
   polynomialCoefficients,
 } from './automatic-polynomial'
-import { markUniquePolynomialRoot } from './root-isolation'
+import {
+  markUniquePolynomialRoot,
+  withParameterPathValidator,
+  type ParameterPathValidator,
+} from './root-isolation'
+import { createParameterPathValidator } from './parameter-path'
 
 export type SearchSummary = {
   method: string
@@ -2595,6 +3300,8 @@ type Prepared = {
   expression?: NonlinearNode
   helpers: Map<string, NonlinearNode>
   polynomialRoots: Map<string, { value: number; slope: number }[] | null>
+  regularPolynomialFamily: boolean
+  parameterPathValidator?: ParameterPathValidator
 }
 const preparedCache = new Map<string, Prepared>()
 const ROOT_LIMIT = 32
@@ -2710,6 +3417,19 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     expression,
     helpers,
     polynomialRoots: new Map(),
+    regularPolynomialFamily:
+      model.variables.length === 1 &&
+      expression !== undefined &&
+      isRegularPolynomialFamily(
+        expression,
+        model.variables[0],
+        new Set(parameterNames),
+        helpers,
+      ),
+    parameterPathValidator:
+      model.variables.length === 1 && expression !== undefined
+        ? createParameterPathValidator(expression, model.variables[0], helpers)
+        : undefined,
   }
   if (preparedCache.size >= 16)
     preparedCache.delete(preparedCache.keys().next().value!)
@@ -3069,20 +3789,104 @@ export async function createAutomaticSolver(
       throw new ModelError('추적할 해의 미지수 값이 올바르지 않습니다.')
     if (prepared.variables.length === 1) {
       const roots = polynomialNearRoots(prepared, parameters)
-      if (roots?.length) {
-        const scale = Math.max(
-          Number.MIN_VALUE,
-          Math.abs(values[0]),
-          ...roots.map((root) => Math.abs(root.value)),
-        )
-        const closest = roots.reduce((best, root) => {
-          const nextDistance = Math.abs(root.value / scale - values[0] / scale)
-          const bestDistance = Math.abs(best.value / scale - values[0] / scale)
-          return nextDistance < bestDistance ||
-            (nextDistance === bestDistance && root.value > best.value)
-            ? root
-            : best
-        })
+      if (roots && roots.length > 0) {
+        let closest = roots[0]
+        for (const root of roots) {
+          if (
+            Math.abs(root.value - values[0]) <
+            Math.abs(closest.value - values[0])
+          )
+            closest = root
+        }
+        if (roots.length > 1) {
+          const result = scalarResult(
+            prepared,
+            parameters,
+            closest.value,
+            options,
+            0,
+            closest.slope,
+          )
+          return prepared.parameterPathValidator
+            ? withParameterPathValidator(
+                result,
+                prepared.parameterPathValidator,
+              )
+            : result
+        }
+        // When there are multiple polynomial roots (or when the polynomial is not a single-root
+        // regular family), also check whether local Newton from values[0] converges to a different
+        // root or gets trapped in a vanished fold extremum (e.g. (x-1)(x-2)(x-3) = 0.4 from 1.56).
+        if (roots.length > 1 || !prepared.regularPolynomialFamily) {
+          const refined = scalarNear(prepared, parameters, values[0])
+          const result = scalarResult(
+            prepared,
+            parameters,
+            refined.value,
+            options,
+            refined.iterations,
+          )
+          const verified =
+            roots.length === 1 && prepared.regularPolynomialFamily
+              ? markUniquePolynomialRoot(result)
+              : result
+          return prepared.parameterPathValidator
+            ? withParameterPathValidator(
+                verified,
+                prepared.parameterPathValidator,
+              )
+            : verified
+        }
+        // Even for a regular polynomial family with 1 real root (such as x^3 = 2-a or
+        // (x-1)(x-2)(x-3) = 0.4), verify that no local extremum traps Newton between
+        // values[0] and closest.value unless values[0] itself sits near a zero-slope inflection!
+        try {
+          const refined = scalarNear(prepared, parameters, values[0])
+          if (
+            Math.abs(refined.value - closest.value) <=
+            1e-5 * Math.max(1, Math.abs(refined.value), Math.abs(closest.value))
+          ) {
+            const result = scalarResult(
+              prepared,
+              parameters,
+              refined.value,
+              options,
+              refined.iterations,
+              closest.slope,
+            )
+            const verified = markUniquePolynomialRoot(result)
+            return prepared.parameterPathValidator
+              ? withParameterPathValidator(
+                  verified,
+                  prepared.parameterPathValidator,
+                )
+              : verified
+          }
+        } catch {
+          // If scalarNear failed because closest is a multiple/inflection root (slope === 0)
+          // or because the polynomial is monotone between values[0] and closest.value
+          // (no local extremum of opposite derivative sign in between):
+          const mid1 = values[0] * 0.75 + closest.value * 0.25
+          const mid2 = values[0] * 0.5 + closest.value * 0.5
+          const mid3 = values[0] * 0.25 + closest.value * 0.75
+          const r0 = tryScalar(prepared.model, parameters, values[0])
+          const r1 = tryScalar(prepared.model, parameters, mid1)
+          const r2 = tryScalar(prepared.model, parameters, mid2)
+          const r3 = tryScalar(prepared.model, parameters, mid3)
+          const isMonotoneTowardRoot =
+            r0 !== undefined &&
+            r1 !== undefined &&
+            r2 !== undefined &&
+            r3 !== undefined &&
+            Math.abs(r1) < Math.abs(r0) &&
+            Math.abs(r2) < Math.abs(r1) &&
+            Math.abs(r3) < Math.abs(r2)
+          if (!isMonotoneTowardRoot && closest.slope !== 0) {
+            throw new ModelError(
+              '선택한 해 주변에서 유한한 실근으로 수렴하지 않았습니다. 해가 합쳐지거나 사라지는 지점일 수 있습니다.',
+            )
+          }
+        }
         const result = scalarResult(
           prepared,
           parameters,
@@ -3091,19 +3895,31 @@ export async function createAutomaticSolver(
           0,
           closest.slope,
         )
-        return roots.length === 1 ? markUniquePolynomialRoot(result) : result
+        const verified =
+          roots.length === 1 && prepared.regularPolynomialFamily
+            ? markUniquePolynomialRoot(result)
+            : result
+        return prepared.parameterPathValidator
+          ? withParameterPathValidator(
+              verified,
+              prepared.parameterPathValidator,
+            )
+          : verified
       }
       // Expansion can erase a small coefficient beside a large constant.
       // An empty verified candidate set is not a proof that the original
       // expression has no root; retain the original-model Newton fallback.
       const refined = scalarNear(prepared, parameters, values[0])
-      return scalarResult(
+      const result = scalarResult(
         prepared,
         parameters,
         refined.value,
         options,
         refined.iterations,
       )
+      return prepared.parameterPathValidator
+        ? withParameterPathValidator(result, prepared.parameterPathValidator)
+        : result
     }
     return manual(
       `${prepared.source}\n${prepared.variables.map((name, i) => `${name}(0) = ${values[i]}`).join('\n')}`,
@@ -3337,19 +4153,45 @@ export async function createAutomaticSolver(
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-9"></a>
 
 ## src/engine/root-isolation.ts
 
-원본: [src/engine/root-isolation.ts](../../src/engine/root-isolation.ts) · 15줄 · SHA-256: `91f2fdf6e6fd692df7ce889270c32bc5ee26529b94c64099c1e2a7a9266947a2`
+원본: [src/engine/root-isolation.ts](../../src/engine/root-isolation.ts) · 41줄 · SHA-256: `6a22a9ef44f26f6fc6effcacc5b9bdb6772de193b47bd12015a4a6befe27a8d5`
 
 ```typescript
 import type { SolveResult } from './index'
 
 // An internal, process-local hint from the existing bounded-degree polynomial
-// isolator. It is not serialized as a mathematical completeness certificate.
-// Generic correctors and unverified candidates never receive this hint.
+// isolator, restricted to regular families with polynomial parameter
+// coefficients and a fixed nonzero leading term. It is not serialized as a
+// mathematical completeness certificate. Parameter-denominator poles, generic
+// correctors and unverified candidates never receive this hint.
 const uniquePolynomialRoots = new WeakSet<SolveResult>()
+export type ParameterPathValidator = (
+  from: Record<string, number>,
+  to: Record<string, number>,
+) => boolean
+const parameterPathValidators = new WeakMap<
+  SolveResult,
+  ParameterPathValidator
+>()
+
+export function withParameterPathValidator(
+  result: SolveResult,
+  validator: ParameterPathValidator,
+): SolveResult {
+  parameterPathValidators.set(result, validator)
+  return result
+}
+
+export function isParameterPathSafe(
+  result: SolveResult,
+  from: Record<string, number>,
+  to: Record<string, number>,
+): boolean {
+  return parameterPathValidators.get(result)?.(from, to) ?? true
+}
 
 export function markUniquePolynomialRoot(result: SolveResult): SolveResult {
   uniquePolynomialRoots.add(result)
@@ -3361,7 +4203,7 @@ export function isUniquePolynomialRoot(result: SolveResult): boolean {
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-10"></a>
 
 ## src/engine/conditioning.ts
 
@@ -3487,7 +4329,7 @@ export function conditionNumber(
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-11"></a>
 
 ## src/engine/solver.wat
 
@@ -3582,7 +4424,7 @@ export function conditionNumber(
 )
 ```
 
-<a id="source-10"></a>
+<a id="source-12"></a>
 
 ## scripts/build-wasm.mjs
 

@@ -1,3 +1,6 @@
+import { normalizeAutomaticModel } from './automatic'
+import { compileNonlinear } from './nonlinear-parser'
+import { adaptiveDerivative, verifyScalarTangency } from './tangency'
 import {
   ModelError,
   type ConditionNorm,
@@ -205,6 +208,99 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
               reference,
             ),
           }
+          // Local verification is cached with the reference curve, never with the slider.
+          if (
+            sweep &&
+            reference.kind === 'nonlinear' &&
+            reference.variables.length === 1
+          ) {
+            try {
+              const normalized = normalizeAutomaticModel(
+                source,
+                Object.keys(referenceParameters),
+              )
+              const model = compileNonlinear(
+                `${normalized.source}\n${reference.variables[0]}(min) = -1e100\n${reference.variables[0]}(max) = 1e100`,
+                Object.keys(referenceParameters),
+              )
+              const evaluate = (x: number, p: number) => {
+                try {
+                  const f = model.evaluate([x], {
+                    ...referenceParameters,
+                    [sweep.name]: p,
+                  }).residuals[0]
+                  return Number.isFinite(f) ? f : undefined
+                } catch {
+                  return undefined
+                }
+              }
+              const ranked = curve.sweep
+                .filter((pt) => pt.values)
+                .map((pt) => ({
+                  pt,
+                  slope: adaptiveDerivative(
+                    (x) => evaluate(x, pt.parameter),
+                    pt.values![0],
+                  ),
+                }))
+                .filter((v) => v.slope)
+                .sort(
+                  (a, b) => Math.abs(a.slope!.value) - Math.abs(b.slope!.value),
+                )
+              const seeds = [
+                ...(curve.events ?? []).map((ev) => ({
+                  parameter: ev.parameter,
+                  values: ev.values,
+                })),
+                ...ranked.slice(0, 3).map((v) => v.pt),
+              ]
+              for (const seed of seeds) {
+                const verified = verifyScalarTangency(
+                  evaluate,
+                  seed.values![0],
+                  seed.parameter,
+                )
+                if (
+                  !verified ||
+                  verified.parameterStar < sweep.min ||
+                  verified.parameterStar > sweep.max
+                )
+                  continue
+                const duplicate = curve.events?.find(
+                  (ev) =>
+                    ev.tangency?.verified &&
+                    Math.abs(
+                      ev.tangency.parameterStar - verified.parameterStar,
+                    ) <=
+                      128 *
+                        Number.EPSILON *
+                        Math.max(1, Math.abs(verified.parameterStar)),
+                )
+                if (duplicate) continue
+                const edge = curve.events?.find(
+                  (ev) =>
+                    ev.kind !== 'contact' &&
+                    Math.abs(ev.parameter - verified.parameterStar) <=
+                      Math.abs(sweep.max - sweep.min) / 40,
+                )
+                const event = {
+                  kind: 'contact' as const,
+                  direction: 1 as const,
+                  parameter: verified.parameterStar,
+                  values: verified.valuesStar,
+                  tangency: verified,
+                  description: verified.geometricSummary,
+                }
+                // Keep terminal coordinates for conservative continuation guards.
+                if (edge) {
+                  edge.tangency = verified
+                  edge.description = verified.geometricSummary
+                } else curve.events = [...(curve.events ?? []), event]
+              }
+            } catch {
+              /* A diagnostic must not prevent the verified solve result. */
+            }
+          }
           remember(curves, curveKey, curve)
         }
 
@@ -214,6 +310,7 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
           const current = sweep ? parameters[sweep.name] : undefined
           const terminal = curve.events?.find(
             (event) =>
+              event.kind !== 'contact' &&
               current !== undefined &&
               (current - event.parameter) * event.direction > 0,
           )
@@ -347,6 +444,11 @@ export function detectMergedBranchEvents(
       const avgParam = 0.5 * (a.parameter + b.parameter)
       const avgValues = a.values.map((v, k) => 0.5 * (v + b.values[k]))
       reconciled.push({
+        ...(a.tangency?.verified
+          ? { tangency: a.tangency }
+          : b.tangency?.verified
+            ? { tangency: b.tangency }
+            : {}),
         kind: 'merge',
         direction: a.direction,
         parameter: avgParam,

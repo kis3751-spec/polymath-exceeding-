@@ -2,6 +2,7 @@ import { ModelError } from './index'
 
 export type DefinedFunction = {
   /** Key in definition map: either `f(x)` (when named `f` with variable `x`) or `f1`, `f2`, etc. */
+  parameterNames?: ReadonlySet<string>
   key: string
   name: string // e.g., 'f', 'f1', 'f2', 'g1'
   param: string | null // e.g., 'x' for f1(x), or null for f1 = ...
@@ -122,6 +123,14 @@ function expandExpression(
           line,
         )
       }
+      const foreign = extractVariableReferences(expandedArg).find(
+        (ref) => ref !== def.param && !def.parameterNames?.has(ref),
+      )
+      if (foreign)
+        throw new ModelError(
+          `'${fnName}(${def.param})' 호출에 다른 변수 '${foreign}'를 넣을 수 없습니다. 혼합식은 f1 = ... 형식으로 정의하세요.`,
+          line,
+        )
       if (!expandedArg)
         throw new ModelError(
           `함수 '${fnName}(${def.param})' 호출 시 인수를 입력해 주세요.`,
@@ -432,6 +441,12 @@ export function preprocessModelSource(
           `정의 '${item.name}'이 중복되었습니다. 다른 번호를 사용하세요.`,
           item.line,
         )
+      const prior = defsByName.get(item.name)
+      if (item.name !== 'f' && prior?.param && prior.param !== item.param)
+        throw new ModelError(
+          `'${item.name}(${prior.param})'를 다른 변수 '${item.param}'로 중복 정의할 수 없습니다. 다른 번호를 사용하세요.`,
+          item.line,
+        )
       const sigKey = `${item.name}(${item.param})`
       // First check if the RHS uses any foreign variable `ref !== item.param`!
       const rawRefs = extractVariableReferences(item.rhs)
@@ -451,6 +466,7 @@ export function preprocessModelSource(
       }
       const def: DefinedFunction = {
         key: sigKey,
+        parameterNames: paramSet,
         name: item.name,
         param: item.param,
         rhsText: item.rhs,

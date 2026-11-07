@@ -1,3 +1,4 @@
+import EquationReference from './EquationReference'
 import { useEffect, useRef } from 'react'
 import { ArrowRight, BookOpen, Check, Lightbulb, X } from 'lucide-react'
 import type { SolverMode } from '../models'
@@ -88,6 +89,7 @@ export default function Guide({
         </header>
 
         <div className="guide-content">
+          <EquationReference />
           <section className="guide-section">
             <span className="guide-step">01</span>
             <div>

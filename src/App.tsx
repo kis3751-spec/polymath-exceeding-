@@ -966,7 +966,7 @@ export default function App() {
               onClick={() => setGuide(true)}
             >
               <CircleHelp size={16} />
-              <span>사용 가이드</span>
+              <span>사용 가이드 · 공식집</span>
             </button>
             <a
               className="github-link"

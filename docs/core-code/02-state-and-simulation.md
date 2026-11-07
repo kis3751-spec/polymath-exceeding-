@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `4ca339c4425f8d5a4685b704fddae50533c68bf4bdb37178e14ec976f6fbd41b`
+소스 묶음 SHA-256: `b0afaceb6343d636923eab09099659f9e0b963bcf883295140beb787648e6138`
 
 ## 다른 코드 묶음
 
@@ -549,19 +549,20 @@ export function computeSweeps(
 
 ## src/engine/branches.ts
 
-원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 362줄 · SHA-256: `ecb73fc147b637f9756725c3ae945d6cc8f1713aa3fd797a4e63c9b7b72e05d6`
+원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 516줄 · SHA-256: `e86587cc04cb46c4313aba9f06aa5981e3305bb9a834e75273e5cacf89b7d84c`
 
 ```typescript
 import {
   ModelError,
+  type BranchTerminalEvent,
   type SolvePayload,
   type SolveResult,
   type SolverOptions,
   type SweepPoint,
-  type BranchTerminalEvent,
+  type TangencyVerification,
 } from './index'
 import { parameterValues, type SweepSettings } from './sweep'
-import { isUniquePolynomialRoot } from './root-isolation'
+import { isUniquePolynomialRoot, isParameterPathSafe } from './root-isolation'
 
 export type NearSolver = (
   source: string,
@@ -570,26 +571,60 @@ export type NearSolver = (
   options?: SolverOptions,
 ) => SolveResult
 
+export type { BranchTerminalEvent, TangencyVerification }
+
 type Sweeps = Pick<
   SolvePayload,
   'sweep' | 'dataset' | 'datasetError' | 'sweepName'
-> & { events?: BranchTerminalEvent[] }
-type State = { parameter: number; values: number[] }
+> & {
+  events?: BranchTerminalEvent[]
+}
+type State = { parameter: number; values: number[]; slope?: number }
 type Path = { current: State; previous?: State }
 
-class PredictorError extends ModelError {
-  constructor(readonly corrected: SolveResult) {
-    super('이전 해에서 멀리 떨어진 해로 이동해 추적 간격을 줄였습니다.')
+class PredictorError extends Error {
+  readonly corrected: SolveResult
+  constructor(message: string, corrected: SolveResult) {
+    super(message)
+    this.corrected = corrected
   }
 }
 
 function continuationPrecision(...values: number[]) {
   const scale = Math.max(Number.MIN_VALUE, ...values.map(Math.abs))
-  // Newton correctors stop at finite precision. A small component near a
-  // turning point may move less than that precision even while the branch
-  // continues. Preserve tiny scales, and cap solver noise so distant roots
-  // do not gain an allowance large enough to hide a whole-period jump.
   return Math.max(4096 * Number.EPSILON * scale, 5e-10 * Math.min(scale, 1))
+}
+
+function extractScalarSlope(result: SolveResult): number | undefined {
+  const s = result.matrix?.[0]?.[0]
+  return typeof s === 'number' && Number.isFinite(s) ? s : undefined
+}
+
+function verifyReverse(
+  solve: (parameter: number, values: number[]) => SolveResult,
+  current: State,
+  predictor: number[],
+  result: SolveResult,
+) {
+  const reverseSeed = result.values.map(
+    (value, i) => value * 0.999 + current.values[i] * 0.001,
+  )
+  const reverse = solve(current.parameter, reverseSeed)
+  if (
+    reverse.values.some((value, i) => {
+      const rounding = continuationPrecision(value, current.values[i])
+      const motion = Math.max(
+        Math.abs(result.values[i] - current.values[i]),
+        Math.abs(predictor[i] - current.values[i]),
+      )
+      return (
+        Math.abs(value - current.values[i]) > Math.max(rounding, motion * 1e-7)
+      )
+    })
+  )
+    throw new ModelError(
+      '다른 해로의 이동이 감지되어 선택한 분기 추적을 중단했습니다.',
+    )
 }
 
 function createContinuation(
@@ -616,11 +651,7 @@ function createContinuation(
       throw new ModelError('추적 중인 해의 미지수가 변경되었습니다.')
     return result
   }
-  const correct = (
-    path: Path,
-    target: number,
-    singularEndpoint = false,
-  ): State => {
+  const correct = (path: Path, target: number): State => {
     const { current, previous } = path
     const ratio = previous
       ? Math.min(
@@ -636,6 +667,16 @@ function createContinuation(
         value + (previous ? ratio * (value - previous.values[i]) : 0),
     )
     const result = solve(target, predictor)
+    if (
+      !isParameterPathSafe(
+        result,
+        parametersAt(current.parameter),
+        parametersAt(target),
+      )
+    )
+      throw new ModelError(
+        '파라미터 구간에서 분모가 0이 되거나 선형식의 유한한 해가 사라질 수 있어 추적을 중단했습니다.',
+      )
     for (let i = 0; i < result.values.length; i++) {
       const motion = Math.abs(predictor[i] - current.values[i])
       const rounding = continuationPrecision(
@@ -643,43 +684,20 @@ function createContinuation(
         predictor[i],
         result.values[i],
       )
-      // Trust the local motion, not the distance of a root from zero. The
-      // old |x|-scaled allowance accepted much larger period jumps at x=80
-      // than at x=0. Tiny branches need a correspondingly tiny allowance.
       const allowance = previous ? Math.max(rounding, motion * 2) : 0.2
-      if (
-        Math.abs(result.values[i] - predictor[i]) > allowance &&
-        !singularEndpoint
-      )
-        throw new PredictorError(result)
+      if (Math.abs(result.values[i] - predictor[i]) > allowance)
+        throw new PredictorError(
+          '이전 해에서 멀리 떨어진 해로 이동해 추적 간격을 줄였습니다.',
+          result,
+        )
     }
 
-    // Check every step, including same-sign roots and tiny-valued roots.
-    // Checking sign changes alone misses jumps to another periodic branch.
-    // At a fold the endpoint can have a zero derivative. A tiny displacement
-    // toward the preceding point permits the reverse solve to leave that
-    // endpoint while keeping the seed close to the newly corrected root.
-    const reverseSeed = result.values.map(
-      (value, i) => value * 0.999 + current.values[i] * 0.001,
-    )
-    const reverse = solve(current.parameter, reverseSeed)
-    if (
-      reverse.values.some((value, i) => {
-        const rounding = continuationPrecision(value, current.values[i])
-        const motion = Math.max(
-          Math.abs(result.values[i] - current.values[i]),
-          Math.abs(predictor[i] - current.values[i]),
-        )
-        return (
-          Math.abs(value - current.values[i]) >
-          Math.max(rounding, motion * 1e-7)
-        )
-      })
-    )
-      throw new ModelError(
-        '다른 해로의 이동이 감지되어 선택한 분기 추적을 중단했습니다.',
-      )
-    return { parameter: target, values: [...result.values] }
+    verifyReverse(solve, current, predictor, result)
+    return {
+      parameter: target,
+      values: [...result.values],
+      slope: extractScalarSlope(result),
+    }
   }
   const advance = (path: Path, target: number, depth = 0): Path => {
     try {
@@ -694,24 +712,29 @@ function createContinuation(
       )
         throw error
       const halfway = advance(path, middle, depth + 1)
-      // At a unique singular polynomial endpoint, such as x^3=p at p=0,
-      // the derivative of x(p) is infinite and a secant-based relative gate
-      // fails at every scale. Relax it only after an ordinary half-step has
-      // actually moved toward the verified endpoint. Checking the half-step
-      // first prevents this exception from leaping over poles or empty real
-      // intervals. The reverse check remains mandatory on the relaxed step.
+      // A unique polynomial branch can have an infinite parameter slope,
+      // such as x^3=p at p=0, either at or between the requested endpoints.
+      // Relax the secant gate only after an ordinary half-step lies inside
+      // their root-value interval and contracts toward the verified target.
+      // A pole's intermediate root instead leaves that interval; empty real
+      // regions still fail the ordinary half-step. Reverse checking remains
+      // mandatory, and generic or multiple-root correctors get no exception.
       if (
         error instanceof PredictorError &&
         isUniquePolynomialRoot(error.corrected) &&
         error.corrected.values.length === 1 &&
-        error.corrected.matrix[0]?.[0] === 0
+        isParameterPathSafe(
+          error.corrected,
+          parametersAt(halfway.current.parameter),
+          parametersAt(target),
+        )
       ) {
         const endpoint = error.corrected.values[0]
         const scale = Math.max(
-          Number.MIN_VALUE,
-          Math.abs(endpoint),
+          1,
           Math.abs(path.current.values[0]),
           Math.abs(halfway.current.values[0]),
+          Math.abs(endpoint),
         )
         const firstDistance = Math.abs(
           endpoint / scale - path.current.values[0] / scale,
@@ -719,14 +742,28 @@ function createContinuation(
         const halfDistance = Math.abs(
           endpoint / scale - halfway.current.values[0] / scale,
         )
-        if (halfDistance < firstDistance * 0.95) {
+        const withinRootInterval =
+          halfway.current.values[0] >
+            Math.min(endpoint, path.current.values[0]) &&
+          halfway.current.values[0] < Math.max(endpoint, path.current.values[0])
+        if (withinRootInterval && halfDistance < firstDistance * 0.95) {
           try {
+            verifyReverse(
+              solve,
+              halfway.current,
+              [...halfway.current.values],
+              error.corrected,
+            )
             return {
               previous: halfway.current,
-              current: correct(halfway, target, true),
+              current: {
+                parameter: target,
+                values: [...error.corrected.values],
+                slope: extractScalarSlope(error.corrected),
+              },
             }
           } catch {
-            // A failed reverse check still requires ordinary subdivision.
+            // Fall through to second-half subdivision if reverse verification fails
           }
         }
       }
@@ -736,9 +773,7 @@ function createContinuation(
   return advance
 }
 
-/** Continue a pinned solution through a straight path in parameter space.
- * The seed remains attached to its immutable origin instead of being matched
- * to an index in a fresh global search. Crossings cannot prove branch identity. */
+/** Continue a pinned solution through a straight path in parameter space. */
 export function continueRoot(
   solveNear: NearSolver,
   source: string,
@@ -760,7 +795,13 @@ export function continueRoot(
     throw new ModelError(
       '추적할 파라미터가 변경되었습니다. 해를 다시 선택해 주세요.',
     )
-  let path: Path = { current: { parameter: 0, values: [...selected.values] } }
+  let path: Path = {
+    current: {
+      parameter: 0,
+      values: [...selected.values],
+      slope: extractScalarSlope(selected),
+    },
+  }
   if (names.some((name) => originParameters[name] !== targetParameters[name])) {
     const advance = createContinuation(
       solveNear,
@@ -777,13 +818,86 @@ export function continueRoot(
     )
     for (let i = 1; i <= 16; i++) path = advance(path, i / 16)
   }
-  // Include condition diagnostics even if the parameters did not change.
   return solveNear(source, targetParameters, path.current.values, options)
 }
 
-/** Follow one selected root, rather than re-running the global search at each
- * parameter. Continuation cannot prove root identity at crossings or folds.
- * Once a direction loses its branch, its remaining rows stay explicit gaps. */
+/**
+ * Check if a single terminating branch exhibits local fold/tangency behavior
+ * (vanishing Jacobian derivative |∂f/∂x| -> 0 and steepening |dx/dp| -> ∞).
+ */
+function analyzeSingleBranchBoundary(
+  paramName: string,
+  direction: -1 | 1,
+  current: State,
+  previous?: State,
+): TangencyVerification | undefined {
+  if (
+    !previous ||
+    current.values.length !== 1 ||
+    previous.values.length !== 1 ||
+    current.slope === undefined ||
+    previous.slope === undefined
+  )
+    return undefined
+  const p1 = previous.parameter
+  const p2 = current.parameter
+  const x1 = previous.values[0]
+  const x2 = current.values[0]
+  const s1 = previous.slope
+  const s2 = current.slope
+  const dx = x2 - x1
+  const dp = p2 - p1
+  if (
+    !Number.isFinite(s1) ||
+    !Number.isFinite(s2) ||
+    Math.abs(dx) <= 1e-12 ||
+    Math.abs(dp) <= 1e-15
+  )
+    return undefined
+
+  // At a fold boundary, |s2| < |s1| (derivative ∂f/∂x is contracting toward 0)
+  // and |dx/dp| is large (curve tangent becomes vertical).
+  const slopeContracting =
+    Math.abs(s2) < Math.abs(s1) * 0.85 && Math.abs(s2) < 0.08
+  const dxdp = Math.abs(dx / dp)
+  if (!slopeContracting || dxdp < 3) return undefined
+
+  const fxx = (s2 - s1) / dx
+  if (!Number.isFinite(fxx) || Math.abs(fxx) < 1e-5) return undefined
+  const xStar = x2 - s2 / fxx
+  const denom = (x2 - xStar) ** 2 - (x1 - xStar) ** 2
+  if (Math.abs(denom) <= 1e-16) return undefined
+  const c2 = dp / denom
+  const pStar = p2 - c2 * (x2 - xStar) ** 2
+  const fp = -fxx / (2 * c2)
+  if (
+    !Number.isFinite(pStar) ||
+    !Number.isFinite(xStar) ||
+    (pStar - p2) * direction < -1e-5
+  )
+    return undefined
+
+  return {
+    verified: false,
+    bifurcationOrder: 2,
+    parameterStar: pStar,
+    valuesStar: [xStar],
+    terminalSlope: s2,
+    oppositeSlopeSigns: false,
+    curvatureFxx: fxx,
+    sensitivityFp: Number.isFinite(fp) ? fp : undefined,
+    parabolaCoeff: Number.isFinite(c2) ? c2 : undefined,
+    geometricSummary: `국소 접점·극값 확인: ${paramName}* ≈ ${Number(pStar.toPrecision(6))}, x* ≈ ${Number(xStar.toPrecision(6))} 부근에서 기울기 차 |∂f/∂x|가 ${Math.abs(s1).toExponential(2)} → ${Math.abs(s2).toExponential(2)}로 0에 수렴하고 곡률 ∂²f/∂x² ≈ ${Number(fxx.toPrecision(4))} ≠ 0으로 확인됩니다.`,
+  }
+}
+
+/**
+ * Follow one selected root across the parameter domain.
+ * - When continuation fails between two coarse grid points, bisects the interval
+ *   to include verified points right up to the boundary.
+ * - Records local Jacobian slopes at the boundary so single-branch and merged-branch
+ *   fold/tangency points can be geometrically re-verified.
+ */
 export function computeBranchSweeps(
   solveNear: NearSolver,
   source: string,
@@ -802,7 +916,7 @@ export function computeBranchSweeps(
     throw new ModelError('시뮬레이션 파라미터와 범위를 확인해 주세요.')
 
   const graphCount = Math.min(201, Math.max(2, Math.round(steps)))
-  const graphParameters = Array.from({ length: graphCount }, (_, i) => {
+  const baseGraphParameters = Array.from({ length: graphCount }, (_, i) => {
     const fraction = i / (graphCount - 1)
     return min * (1 - fraction) + max * fraction
   })
@@ -823,10 +937,14 @@ export function computeBranchSweeps(
   const cache = new Map<number, SweepPoint>([
     [origin, { parameter: origin, values: [...selected.values] }],
   ])
-  const extraPoints: SweepPoint[] = []
+  const extraBoundaryPoints: SweepPoint[] = []
   const events: BranchTerminalEvent[] = []
-  const targets = [...new Set([...graphParameters, ...datasetParameters])]
-  const initial: State = { parameter: origin, values: [...selected.values] }
+  const targets = [...new Set([...baseGraphParameters, ...datasetParameters])]
+  const initial: State = {
+    parameter: origin,
+    values: [...selected.values],
+    slope: extractScalarSlope(selected),
+  }
   const advance = createContinuation(
     solveNear,
     source,
@@ -834,18 +952,16 @@ export function computeBranchSweeps(
     (parameter) => ({ ...parameters, [name]: parameter }),
   )
 
-  for (const direction of [-1, 1]) {
+  for (const direction of [-1, 1] as const) {
     let path: Path = { current: initial }
     let loss: string | undefined
     const ordered = targets
       .filter((value) => (value - origin) * direction > 0)
       .sort((a, b) => direction * (a - b))
+
     for (const parameter of ordered) {
       if (!loss) {
         try {
-          // Graph and table grids can express the same decimal one ULP
-          // apart. Such duplicate samples must not erase useful secant
-          // history and turn the next ordinary step into a large jump.
           const duplicateTolerance =
             64 *
             Number.EPSILON *
@@ -867,29 +983,61 @@ export function computeBranchSweeps(
           cache.set(parameter, { parameter, values: [...path.current.values] })
           continue
         } catch (error) {
-          // Retain verified points between the last success and first failure.
-          // Failure alone is not a proof that a real root disappeared.
-          let edge = path
-          let failed = parameter
+          // Binary Edge Localization: subdivide [path.current.parameter, parameter]
+          // to capture verified points right up to the tracking boundary.
+          let lowParam = path.current.parameter
+          let highParam = parameter
+          let edgePath = path
+          const intermediatePoints: SweepPoint[] = []
           for (let b = 0; b < 18; b++) {
-            const middle = edge.current.parameter / 2 + failed / 2
-            if (middle === edge.current.parameter || middle === failed) break
+            const midParam = 0.5 * (lowParam + highParam)
+            if (midParam === lowParam || midParam === highParam) break
             try {
-              edge = advance(edge, middle, 16)
-              extraPoints.push({
-                parameter: middle,
-                values: [...edge.current.values],
+              const nextPath = advance(edgePath, midParam, 16)
+              edgePath = nextPath
+              lowParam = midParam
+              intermediatePoints.push({
+                parameter: midParam,
+                values: [...nextPath.current.values],
               })
             } catch {
-              failed = middle
+              highParam = midParam
             }
           }
+          if (intermediatePoints.length > 0) {
+            const stride = Math.max(
+              1,
+              Math.floor(intermediatePoints.length / 6),
+            )
+            for (let idx = 0; idx < intermediatePoints.length; idx += stride) {
+              extraBoundaryPoints.push(intermediatePoints[idx])
+            }
+            const lastEdge = intermediatePoints.at(-1)!
+            if (extraBoundaryPoints.at(-1) !== lastEdge) {
+              extraBoundaryPoints.push(lastEdge)
+            }
+          }
+          const singleTangency = analyzeSingleBranchBoundary(
+            name,
+            direction,
+            edgePath.current,
+            edgePath.previous,
+          )
           events.push({
             kind: 'unresolved',
-            direction: direction as -1 | 1,
-            parameter: edge.current.parameter,
-            values: [...edge.current.values],
-            description: `${name} ≈ ${Number(edge.current.parameter.toPrecision(7))}: 추적 경계 (병합·소멸 또는 수치 실패 가능)`,
+            direction,
+            parameter: edgePath.current.parameter,
+            values: [...edgePath.current.values],
+            previousParameter: edgePath.previous?.parameter,
+            previousValues: edgePath.previous
+              ? [...edgePath.previous.values]
+              : undefined,
+            terminalSlope: edgePath.current.slope,
+            previousSlope: edgePath.previous?.slope,
+            ...(singleTangency ? { tangency: singleTangency } : {}),
+            description: singleTangency
+              ? `${name} ≈ ${Number(singleTangency.parameterStar.toPrecision(6))} 부근의 접점 후보입니다. 원래 식의 잔차·도함수 재검증이 필요합니다.`
+              : `${name} ≈ ${Number(edgePath.current.parameter.toPrecision(6))} 지점의 추적 경계입니다.`,
           })
           loss = `선택한 해의 분기를 더 이상 추적할 수 없습니다. ${error instanceof Error ? error.message : '계산 실패'}`
         }
@@ -898,20 +1046,26 @@ export function computeBranchSweeps(
     }
   }
 
+  const allSweepMap = new Map<number, SweepPoint>()
+  for (const p of baseGraphParameters) {
+    const pt = cache.get(p)
+    if (pt) allSweepMap.set(p, pt)
+  }
+  for (const pt of extraBoundaryPoints) {
+    if (pt.parameter >= min && pt.parameter <= max) {
+      allSweepMap.set(pt.parameter, pt)
+    }
+  }
+  const mergedSweep = [...allSweepMap.values()].sort(
+    (a, b) => a.parameter - b.parameter,
+  )
+
   return {
-    sweep: [
-      ...new Map(
-        [...graphParameters, ...datasetParameters].map((value) => [
-          value,
-          cache.get(value)!,
-        ]),
-      ).values(),
-      ...extraPoints,
-    ].sort((a, b) => a.parameter - b.parameter),
-    events,
+    sweep: mergedSweep,
     dataset: datasetParameters.map((value) => cache.get(value)!),
     ...(datasetError ? { datasetError } : {}),
     sweepName: name,
+    events,
   }
 }
 ```
@@ -920,9 +1074,12 @@ export function computeBranchSweeps(
 
 ## src/engine/simulation-panels.ts
 
-원본: [src/engine/simulation-panels.ts](../../src/engine/simulation-panels.ts) · 365줄 · SHA-256: `e7ddbb4a90233a2924246e9bcfea2700cb23d6234212a1b91da8195ec8f86ad3`
+원본: [src/engine/simulation-panels.ts](../../src/engine/simulation-panels.ts) · 467줄 · SHA-256: `470133d81f4570f5d21bf9e4a9cfddfe5c5dd7145c40d52cb9274b4d29d9abdb`
 
 ```typescript
+import { normalizeAutomaticModel } from './automatic'
+import { compileNonlinear } from './nonlinear-parser'
+import { adaptiveDerivative, verifyScalarTangency } from './tangency'
 import {
   ModelError,
   type ConditionNorm,
@@ -1130,6 +1287,99 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
               reference,
             ),
           }
+          // Local verification is cached with the reference curve, never with the slider.
+          if (
+            sweep &&
+            reference.kind === 'nonlinear' &&
+            reference.variables.length === 1
+          ) {
+            try {
+              const normalized = normalizeAutomaticModel(
+                source,
+                Object.keys(referenceParameters),
+              )
+              const model = compileNonlinear(
+                `${normalized.source}\n${reference.variables[0]}(min) = -1e100\n${reference.variables[0]}(max) = 1e100`,
+                Object.keys(referenceParameters),
+              )
+              const evaluate = (x: number, p: number) => {
+                try {
+                  const f = model.evaluate([x], {
+                    ...referenceParameters,
+                    [sweep.name]: p,
+                  }).residuals[0]
+                  return Number.isFinite(f) ? f : undefined
+                } catch {
+                  return undefined
+                }
+              }
+              const ranked = curve.sweep
+                .filter((pt) => pt.values)
+                .map((pt) => ({
+                  pt,
+                  slope: adaptiveDerivative(
+                    (x) => evaluate(x, pt.parameter),
+                    pt.values![0],
+                  ),
+                }))
+                .filter((v) => v.slope)
+                .sort(
+                  (a, b) => Math.abs(a.slope!.value) - Math.abs(b.slope!.value),
+                )
+              const seeds = [
+                ...(curve.events ?? []).map((ev) => ({
+                  parameter: ev.parameter,
+                  values: ev.values,
+                })),
+                ...ranked.slice(0, 3).map((v) => v.pt),
+              ]
+              for (const seed of seeds) {
+                const verified = verifyScalarTangency(
+                  evaluate,
+                  seed.values![0],
+                  seed.parameter,
+                )
+                if (
+                  !verified ||
+                  verified.parameterStar < sweep.min ||
+                  verified.parameterStar > sweep.max
+                )
+                  continue
+                const duplicate = curve.events?.find(
+                  (ev) =>
+                    ev.tangency?.verified &&
+                    Math.abs(
+                      ev.tangency.parameterStar - verified.parameterStar,
+                    ) <=
+                      128 *
+                        Number.EPSILON *
+                        Math.max(1, Math.abs(verified.parameterStar)),
+                )
+                if (duplicate) continue
+                const edge = curve.events?.find(
+                  (ev) =>
+                    ev.kind !== 'contact' &&
+                    Math.abs(ev.parameter - verified.parameterStar) <=
+                      Math.abs(sweep.max - sweep.min) / 40,
+                )
+                const event = {
+                  kind: 'contact' as const,
+                  direction: 1 as const,
+                  parameter: verified.parameterStar,
+                  values: verified.valuesStar,
+                  tangency: verified,
+                  description: verified.geometricSummary,
+                }
+                // Keep terminal coordinates for conservative continuation guards.
+                if (edge) {
+                  edge.tangency = verified
+                  edge.description = verified.geometricSummary
+                } else curve.events = [...(curve.events ?? []), event]
+              }
+            } catch {
+              /* A diagnostic must not prevent the verified solve result. */
+            }
+          }
           remember(curves, curveKey, curve)
         }
 
@@ -1139,6 +1389,7 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
           const current = sweep ? parameters[sweep.name] : undefined
           const terminal = curve.events?.find(
             (event) =>
+              event.kind !== 'contact' &&
               current !== undefined &&
               (current - event.parameter) * event.direction > 0,
           )
@@ -1272,6 +1523,11 @@ export function detectMergedBranchEvents(
       const avgParam = 0.5 * (a.parameter + b.parameter)
       const avgValues = a.values.map((v, k) => 0.5 * (v + b.values[k]))
       reconciled.push({
+        ...(a.tangency?.verified
+          ? { tangency: a.tangency }
+          : b.tangency?.verified
+            ? { tangency: b.tangency }
+            : {}),
         kind: 'merge',
         direction: a.direction,
         parameter: avgParam,
@@ -1645,7 +1901,7 @@ async function handleRequest(work: QueuedRequest) {
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 2,886줄 · SHA-256: `df3507deb12dd0f936edcead60489a808f290d95a4ff6c3a99f053933340c9b1`
+원본: [src/App.tsx](../../src/App.tsx) · 2,886줄 · SHA-256: `eb3b0a47b4ccd2ff8d6ff12c49048ad0dd498f95b23ad3b4427529be81579bc3`
 
 ```tsx
 import { useEffect, useRef, useState } from 'react'
@@ -2616,7 +2872,7 @@ export default function App() {
               onClick={() => setGuide(true)}
             >
               <CircleHelp size={16} />
-              <span>사용 가이드</span>
+              <span>사용 가이드 · 공식집</span>
             </button>
             <a
               className="github-link"

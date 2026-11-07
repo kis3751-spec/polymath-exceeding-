@@ -261,3 +261,23 @@
     padding: 16px 24px 20px;
   }
 }
+.guide-section table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.guide-section th,
+.guide-section td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #e3e9dd;
+  vertical-align: top;
+}
+.guide-section pre {
+  padding: 14px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #f2f6ed;
+  line-height: 1.8;
+}

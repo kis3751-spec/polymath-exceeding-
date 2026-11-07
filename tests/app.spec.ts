@@ -2798,3 +2798,46 @@ test.describe('V2 function algebra and merged simulation sets', () => {
     ).toContainText('x = 3.')
   })
 })
+
+test.describe('V3 tangency diagnostics and reference manual', () => {
+  test('the reference manual exposes actual functions and domain rules', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: '사용 가이드', exact: true }).click()
+    await expect(
+      page.getByText('함수·문법 공식집', { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole('dialog')).toContainText('밑 10')
+    await expect(page.getByRole('dialog')).toContainText('f1(f2(x))')
+    await page.getByRole('button', { name: '사용 가이드 닫기' }).click()
+  })
+  test('cubic contact is annotated and stays fixed while sliding', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      mode: 'nonlinear',
+      title: '3차 접점',
+      description: '',
+      source: 'x^3=p',
+      parameters: [
+        { id: 'p', name: 'p', value: 1, min: -1, max: 1, step: 0.07 },
+      ],
+      sweepName: 'p',
+    })
+    await showSimulation(page)
+    await expect(page.locator('.sc-bifurcation-banner')).toContainText(
+      '3중 접점',
+    )
+    const curve = await page.locator('.sc-curve').first().getAttribute('d')
+    await page
+      .getByRole('slider', { name: 'p 슬라이더', exact: true })
+      .fill('-0.5')
+    await expect(
+      page.locator('.simulation-panel-current strong'),
+    ).toContainText('-0.7937')
+    await expect(page.locator('.sc-curve').first()).toHaveAttribute('d', curve!)
+  })
+})

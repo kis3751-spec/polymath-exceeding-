@@ -70,8 +70,43 @@ export type SimulationPanel = {
   datasetError?: string
   sweepName: string
 }
+export type TangencyVerification = {
+  /** Whether local derivative and curvature re-verification confirmed a fold/tangency bifurcation (∂f/∂x = 0) */
+  verified: boolean
+  bifurcationOrder: 2 | 3 | 4 | 'boundary'
+  curvatureFxxx?: number
+  curvatureFxxxx?: number
+  isCusp?: boolean
+  /** Refined tangency parameter coordinate p* */
+  parameterStar: number
+  /** Refined tangency solution vector x* */
+  valuesStar: number[]
+  /** Terminal Jacobian derivative ∂f/∂x on this branch */
+  terminalSlope: number
+  /** Terminal Jacobian derivative ∂f/∂x on the partner branch (when two branches merge) */
+  partnerSlope?: number
+  /** Whether the two converging branches have opposite-signed derivatives ∂f/∂x -> 0 */
+  oppositeSlopeSigns: boolean
+  /** Estimated 2nd derivative ∂²f/∂x² (relative curvature at tangency) */
+  curvatureFxx: number
+  /** Estimated parameter sensitivity ∂f/∂p at tangency */
+  sensitivityFp?: number
+  /** Local parabolic normal-form coefficient c2 in (p - p*) ≈ c2 * (x - x*)^2 */
+  parabolaCoeff?: number
+  /** Residual |f(x*, p*)| at the refined tangency point (when directly evaluated) */
+  residualAtStar?: number
+  /** Slope |∂f/∂x(x*, p*)| at the refined tangency point */
+  slopeAtStar?: number
+  /** Concise Korean summary of the verified geometric property */
+  geometricSummary: string
+}
 export type BranchTerminalEvent = {
-  kind: 'disappear' | 'merge' | 'unresolved'
+  tangency?: TangencyVerification
+  previousParameter?: number
+  previousValues?: number[]
+  terminalSlope?: number
+  previousSlope?: number
+  kind: 'disappear' | 'merge' | 'unresolved' | 'contact'
   direction: -1 | 1
   parameter: number
   values: number[]

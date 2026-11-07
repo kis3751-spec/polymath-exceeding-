@@ -35,6 +35,8 @@ const books = [
       'src/engine/preprocessor.ts',
       'src/engine/nonlinear.ts',
       'src/engine/automatic-polynomial.ts',
+      'src/engine/parameter-path.ts',
+      'src/engine/tangency.ts',
       'src/engine/automatic.ts',
       'src/engine/root-isolation.ts',
       'src/engine/conditioning.ts',
@@ -77,6 +79,7 @@ const books = [
     files: [
       'src/main.tsx',
       ...chartHelpers,
+      'src/components/EquationReference.tsx',
       'src/components/SolutionChart.tsx',
       'src/components/SolutionChart.css',
       'src/components/SimulationPanelView.tsx',

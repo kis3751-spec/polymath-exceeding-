@@ -214,3 +214,5 @@ npm run test:e2e
 수치·파서·실제 WASM 회귀 테스트와 Chromium 사용자 흐름을 검증합니다. 브라우저 테스트는 시스템 `/usr/bin/chromium` 또는 Playwright Chromium을 사용합니다. 필요하면 `npx playwright install chromium` 또는 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`를 설정합니다.
 
 계산과 저장은 브라우저에서 수행하며 모델을 외부 서버로 보내지 않습니다. 앱·WASM 로드 후 현재 페이지는 네트워크 없이 계산할 수 있지만, 오프라인 새로고침/PWA·클라우드 계정 동기화·단위 자동 검증·최적화·ODE는 구현하지 않았습니다. 로컬 저장은 암호화된 비밀 저장소가 아닙니다.
+
+접점 차수 진단, 정의역 경계 처리, 함수·문법 공식집의 적용 범위는 [V3 통합 기록](docs/V3_INTEGRATION.md)을 참고하세요.

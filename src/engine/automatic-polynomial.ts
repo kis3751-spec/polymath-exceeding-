@@ -5,6 +5,159 @@ import {
 
 const MAX_DEGREE = 12
 
+/** Conservative classification used only for relaxing a continuation gate.
+ * With polynomial parameter coefficients and a fixed nonzero leading term,
+ * finite parameter paths cannot send a root through a hidden rational pole.
+ * Instantiating a polynomial at one parameter value alone cannot establish
+ * this: x=1/p and p*x=1 are unsafe families despite being linear in x. */
+export function isRegularPolynomialFamily(
+  node: NonlinearNode,
+  variable: string,
+  parameterNames: Set<string>,
+  helpers: Map<string, NonlinearNode>,
+): boolean {
+  type Family = { degree: number; leading: number | null }
+  const active = new Set<string>()
+  const memo = new Map<string, Family | null>()
+  const constant = (value: number): Family | null =>
+    Number.isFinite(value) ? { degree: 0, leading: value } : null
+  const power = (base: Family, exponent: Family): Family | null => {
+    const value = exponent.leading
+    if (
+      exponent.degree !== 0 ||
+      value === null ||
+      !Number.isInteger(value) ||
+      value < 0 ||
+      value > MAX_DEGREE
+    )
+      return null
+    const degree = base.degree * value
+    if (degree > MAX_DEGREE) return null
+    if (value === 0) return constant(1)
+    const leading = base.leading === null ? null : base.leading ** value
+    return leading === null || Number.isFinite(leading)
+      ? { degree, leading }
+      : null
+  }
+  const visit = (current: NonlinearNode, depth = 0): Family | null => {
+    if (depth > 256) return null
+    if (current.kind === 'number') return constant(current.value)
+    if (current.kind === 'name') {
+      if (current.name === variable) return { degree: 1, leading: 1 }
+      if (parameterNames.has(current.name)) return { degree: 0, leading: null }
+      if (current.name === 'pi') return constant(Math.PI)
+      if (current.name === 'e') return constant(Math.E)
+      if (memo.has(current.name)) return memo.get(current.name)!
+      const helper = helpers.get(current.name)
+      if (!helper || active.has(current.name)) return null
+      active.add(current.name)
+      const family = visit(helper, depth + 1)
+      active.delete(current.name)
+      memo.set(current.name, family)
+      return family
+    }
+    if (current.kind === 'unary') {
+      const child = visit(current.child, depth + 1)
+      return (
+        child && {
+          degree: child.degree,
+          leading:
+            child.leading === null
+              ? null
+              : current.sign === '-'
+                ? -child.leading
+                : child.leading,
+        }
+      )
+    }
+    if (current.kind === 'binary') {
+      const left = visit(current.left, depth + 1)
+      const right = visit(current.right, depth + 1)
+      if (!left || !right) return null
+      if (current.operator === '+' || current.operator === '-') {
+        if (left.degree !== right.degree)
+          return left.degree > right.degree
+            ? left
+            : {
+                degree: right.degree,
+                leading:
+                  right.leading === null
+                    ? null
+                    : current.operator === '-'
+                      ? -right.leading
+                      : right.leading,
+              }
+        const leading =
+          left.leading === null || right.leading === null
+            ? null
+            : left.leading +
+              (current.operator === '-' ? -right.leading : right.leading)
+        if (leading !== null && !Number.isFinite(leading)) return null
+        return {
+          degree: left.degree,
+          leading: left.degree > 0 && leading === 0 ? null : leading,
+        }
+      }
+      if (current.operator === '*') {
+        const degree = left.degree + right.degree
+        if (degree > MAX_DEGREE) return null
+        if (
+          (left.degree === 0 && left.leading === 0) ||
+          (right.degree === 0 && right.leading === 0)
+        )
+          return constant(0)
+        const leading =
+          left.leading === null || right.leading === null
+            ? null
+            : left.leading * right.leading
+        return leading === null || Number.isFinite(leading)
+          ? { degree, leading }
+          : null
+      }
+      if (current.operator === '/') {
+        if (right.degree !== 0 || right.leading === null || right.leading === 0)
+          return null
+        const leading =
+          left.leading === null ? null : left.leading / right.leading
+        return leading === null || Number.isFinite(leading)
+          ? { degree: left.degree, leading }
+          : null
+      }
+      if (current.operator === '^') return power(left, right)
+      return null
+    }
+    const args = current.args.map((argument) => visit(argument, depth + 1))
+    if (args.some((argument) => argument === null)) return null
+    if (current.name === 'pow') return power(args[0]!, args[1]!)
+    if (
+      args.some(
+        (argument) => argument!.degree !== 0 || argument!.leading === null,
+      )
+    )
+      return null
+    try {
+      return constant(
+        evaluateNonlinearExpression(
+          { node: current, line: 1, references: new Set() },
+          new Map([
+            ['pi', Math.PI],
+            ['e', Math.E],
+          ]),
+        ),
+      )
+    } catch {
+      return null
+    }
+  }
+  const family = visit(node)
+  return Boolean(
+    family &&
+      family.degree > 0 &&
+      family.leading !== null &&
+      family.leading !== 0,
+  )
+}
+
 /** Return ascending coefficients only for algebraic operations that preserve a
  * polynomial's domain. No source code is executed during classification. */
 export function polynomialCoefficients(

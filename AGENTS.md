@@ -11,3 +11,4 @@
 - 핵심 원본 변경 후 `npm run docs:core`를 실행하고 `npm run docs:core -- --check`로 Markdown 코드 묶음을 확인합니다. 생성된 문서는 직접 수정하지 않습니다.
 
 - 현재값은 연속 조절하고 `Parameter.step`은 샘플 포인트 간격으로 유지합니다. 병합 세트·추적 경계의 한계는 `docs/V2_INTEGRATION.md`를 확인합니다.
+- 접점의 `verified`는 원래 식의 잔차와 도함수 오차를 확인한 국소 수치 검증입니다. 열린 정의역의 극한을 함수값으로 대신하지 않고, 3차 변곡 접점을 일반 Cusp 분기의 증명으로 표시하지 않습니다. 현재 남은 범위는 `docs/KNOWN_ISSUES.md`, 적용 판단은 `docs/V3_INTEGRATION.md`를 확인합니다.

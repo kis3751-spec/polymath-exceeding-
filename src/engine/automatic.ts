@@ -11,9 +11,15 @@ import {
 } from './nonlinear-parser'
 import {
   findPolynomialRealRoots,
+  isRegularPolynomialFamily,
   polynomialCoefficients,
 } from './automatic-polynomial'
-import { markUniquePolynomialRoot } from './root-isolation'
+import {
+  markUniquePolynomialRoot,
+  withParameterPathValidator,
+  type ParameterPathValidator,
+} from './root-isolation'
+import { createParameterPathValidator } from './parameter-path'
 
 export type SearchSummary = {
   method: string
@@ -50,6 +56,8 @@ type Prepared = {
   expression?: NonlinearNode
   helpers: Map<string, NonlinearNode>
   polynomialRoots: Map<string, { value: number; slope: number }[] | null>
+  regularPolynomialFamily: boolean
+  parameterPathValidator?: ParameterPathValidator
 }
 const preparedCache = new Map<string, Prepared>()
 const ROOT_LIMIT = 32
@@ -165,6 +173,19 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     expression,
     helpers,
     polynomialRoots: new Map(),
+    regularPolynomialFamily:
+      model.variables.length === 1 &&
+      expression !== undefined &&
+      isRegularPolynomialFamily(
+        expression,
+        model.variables[0],
+        new Set(parameterNames),
+        helpers,
+      ),
+    parameterPathValidator:
+      model.variables.length === 1 && expression !== undefined
+        ? createParameterPathValidator(expression, model.variables[0], helpers)
+        : undefined,
   }
   if (preparedCache.size >= 16)
     preparedCache.delete(preparedCache.keys().next().value!)
@@ -524,20 +545,104 @@ export async function createAutomaticSolver(
       throw new ModelError('추적할 해의 미지수 값이 올바르지 않습니다.')
     if (prepared.variables.length === 1) {
       const roots = polynomialNearRoots(prepared, parameters)
-      if (roots?.length) {
-        const scale = Math.max(
-          Number.MIN_VALUE,
-          Math.abs(values[0]),
-          ...roots.map((root) => Math.abs(root.value)),
-        )
-        const closest = roots.reduce((best, root) => {
-          const nextDistance = Math.abs(root.value / scale - values[0] / scale)
-          const bestDistance = Math.abs(best.value / scale - values[0] / scale)
-          return nextDistance < bestDistance ||
-            (nextDistance === bestDistance && root.value > best.value)
-            ? root
-            : best
-        })
+      if (roots && roots.length > 0) {
+        let closest = roots[0]
+        for (const root of roots) {
+          if (
+            Math.abs(root.value - values[0]) <
+            Math.abs(closest.value - values[0])
+          )
+            closest = root
+        }
+        if (roots.length > 1) {
+          const result = scalarResult(
+            prepared,
+            parameters,
+            closest.value,
+            options,
+            0,
+            closest.slope,
+          )
+          return prepared.parameterPathValidator
+            ? withParameterPathValidator(
+                result,
+                prepared.parameterPathValidator,
+              )
+            : result
+        }
+        // When there are multiple polynomial roots (or when the polynomial is not a single-root
+        // regular family), also check whether local Newton from values[0] converges to a different
+        // root or gets trapped in a vanished fold extremum (e.g. (x-1)(x-2)(x-3) = 0.4 from 1.56).
+        if (roots.length > 1 || !prepared.regularPolynomialFamily) {
+          const refined = scalarNear(prepared, parameters, values[0])
+          const result = scalarResult(
+            prepared,
+            parameters,
+            refined.value,
+            options,
+            refined.iterations,
+          )
+          const verified =
+            roots.length === 1 && prepared.regularPolynomialFamily
+              ? markUniquePolynomialRoot(result)
+              : result
+          return prepared.parameterPathValidator
+            ? withParameterPathValidator(
+                verified,
+                prepared.parameterPathValidator,
+              )
+            : verified
+        }
+        // Even for a regular polynomial family with 1 real root (such as x^3 = 2-a or
+        // (x-1)(x-2)(x-3) = 0.4), verify that no local extremum traps Newton between
+        // values[0] and closest.value unless values[0] itself sits near a zero-slope inflection!
+        try {
+          const refined = scalarNear(prepared, parameters, values[0])
+          if (
+            Math.abs(refined.value - closest.value) <=
+            1e-5 * Math.max(1, Math.abs(refined.value), Math.abs(closest.value))
+          ) {
+            const result = scalarResult(
+              prepared,
+              parameters,
+              refined.value,
+              options,
+              refined.iterations,
+              closest.slope,
+            )
+            const verified = markUniquePolynomialRoot(result)
+            return prepared.parameterPathValidator
+              ? withParameterPathValidator(
+                  verified,
+                  prepared.parameterPathValidator,
+                )
+              : verified
+          }
+        } catch {
+          // If scalarNear failed because closest is a multiple/inflection root (slope === 0)
+          // or because the polynomial is monotone between values[0] and closest.value
+          // (no local extremum of opposite derivative sign in between):
+          const mid1 = values[0] * 0.75 + closest.value * 0.25
+          const mid2 = values[0] * 0.5 + closest.value * 0.5
+          const mid3 = values[0] * 0.25 + closest.value * 0.75
+          const r0 = tryScalar(prepared.model, parameters, values[0])
+          const r1 = tryScalar(prepared.model, parameters, mid1)
+          const r2 = tryScalar(prepared.model, parameters, mid2)
+          const r3 = tryScalar(prepared.model, parameters, mid3)
+          const isMonotoneTowardRoot =
+            r0 !== undefined &&
+            r1 !== undefined &&
+            r2 !== undefined &&
+            r3 !== undefined &&
+            Math.abs(r1) < Math.abs(r0) &&
+            Math.abs(r2) < Math.abs(r1) &&
+            Math.abs(r3) < Math.abs(r2)
+          if (!isMonotoneTowardRoot && closest.slope !== 0) {
+            throw new ModelError(
+              '선택한 해 주변에서 유한한 실근으로 수렴하지 않았습니다. 해가 합쳐지거나 사라지는 지점일 수 있습니다.',
+            )
+          }
+        }
         const result = scalarResult(
           prepared,
           parameters,
@@ -546,19 +651,31 @@ export async function createAutomaticSolver(
           0,
           closest.slope,
         )
-        return roots.length === 1 ? markUniquePolynomialRoot(result) : result
+        const verified =
+          roots.length === 1 && prepared.regularPolynomialFamily
+            ? markUniquePolynomialRoot(result)
+            : result
+        return prepared.parameterPathValidator
+          ? withParameterPathValidator(
+              verified,
+              prepared.parameterPathValidator,
+            )
+          : verified
       }
       // Expansion can erase a small coefficient beside a large constant.
       // An empty verified candidate set is not a proof that the original
       // expression has no root; retain the original-model Newton fallback.
       const refined = scalarNear(prepared, parameters, values[0])
-      return scalarResult(
+      const result = scalarResult(
         prepared,
         parameters,
         refined.value,
         options,
         refined.iterations,
       )
+      return prepared.parameterPathValidator
+        ? withParameterPathValidator(result, prepared.parameterPathValidator)
+        : result
     }
     return manual(
       `${prepared.source}\n${prepared.variables.map((name, i) => `${name}(0) = ${values[i]}`).join('\n')}`,
