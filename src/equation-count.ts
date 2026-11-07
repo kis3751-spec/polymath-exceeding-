@@ -1,7 +1,21 @@
+import { preprocessSolverSource } from './engine/preprocessor'
 import { isNonlinearFunction } from './engine/nonlinear-parser'
 
 /** Count the same equation/metadata roles accepted by the model parser. */
-export function countEquations(source: string, nonlinear: boolean) {
+export function countEquations(
+  source: string,
+  nonlinear: boolean,
+  parameters: string[] = [],
+) {
+  try {
+    source = preprocessSolverSource(
+      source,
+      parameters,
+      nonlinear ? 'nonlinear' : 'linear',
+    )
+  } catch {
+    return 0
+  }
   const lines = source
     .split('\n')
     .map((line) => line.split('#')[0].trim())

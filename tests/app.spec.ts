@@ -559,7 +559,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
       .fill('4')
     await navigate(page, '수식·파라미터')
     await page
-      .getByRole('spinbutton', { name: 'k 간격', exact: true })
+      .getByRole('spinbutton', { name: 'k 샘플 포인트 간격', exact: true })
       .fill('0.5')
     await navigate(page, '수식·파라미터')
     await page.getByRole('button', { name: 'k 범위 적용', exact: true }).click()
@@ -567,7 +567,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
     await showSimulation(page)
     await expect(slider).toHaveAttribute('min', '1')
     await showSimulation(page)
-    await expect(slider).toHaveAttribute('step', '0.5')
+    await expect(slider).toHaveAttribute('step', 'any')
     await showSimulation(page)
     await slider.fill('4')
     await showValues(page)
@@ -629,7 +629,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
       .click()
     await navigate(page, '수식·파라미터')
     await page
-      .getByRole('spinbutton', { name: 'c_T 간격', exact: true })
+      .getByRole('spinbutton', { name: 'c_T 샘플 포인트 간격', exact: true })
       .fill('0.05')
     await navigate(page, '수식·파라미터')
     await page
@@ -736,7 +736,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
     await showSimulation(page)
     await expect(
       page.getByRole('slider', { name: 'p 슬라이더' }),
-    ).toHaveAttribute('step', '0.00001')
+    ).toHaveAttribute('step', 'any')
     await showSimulation(page)
     await expect(
       page.locator(':is(.sweep-table,.simulation-panel-data table) tbody tr'),
@@ -1716,7 +1716,10 @@ test.describe('Equation Solver workspace', () => {
     ).toHaveValue('25')
     await navigate(page, '수식·파라미터')
     await expect(
-      model.getByRole('spinbutton', { name: 'target 간격', exact: true }),
+      model.getByRole('spinbutton', {
+        name: 'target 샘플 포인트 간격',
+        exact: true,
+      }),
     ).toHaveValue('1')
     await showSimulation(page)
     await page
@@ -1881,7 +1884,7 @@ test.describe('Equation Solver workspace', () => {
     await slider.fill('0.75')
     await showSimulation(page)
     await expect(panel.locator('.simulation-panel-current strong')).toHaveText(
-      '해 없음',
+      '현재 분기 추적 불가',
     )
     await showSimulation(page)
     await expect(panel.locator('.simulation-panel-error')).toBeVisible()
@@ -2669,5 +2672,129 @@ test.describe('Audit regressions for current results and persistence', () => {
     await expect(page.locator('.editor-footer')).toContainText('1개 방정식')
     await showSimulation(page)
     await expect(page.locator('.solution-value strong')).toHaveText(['2'])
+  })
+})
+
+test.describe('V2 function algebra and merged simulation sets', () => {
+  test('named function constraints solve in Linear and Nonlinear', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    const source = 'f1(x)=2x+4\nf2(x)=-3x+7\nf1(x)-f2(x)=0'
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill(source)
+    await showSimulation(page)
+    await expect(page.locator('.solution-value strong')).toHaveText(['0.6'])
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill(source)
+    await showSimulation(page)
+    await expect(page.locator('.simulation-panel-current strong')).toHaveText(
+      'x = 0.6',
+    )
+  })
+  test('continuous parameters, sample dots and independent merged sets persist', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      mode: 'nonlinear',
+      title: '병합 검증',
+      description: '',
+      source: 'x^2=p',
+      parameters: [{ id: 'p', name: 'p', value: 4, min: 1, max: 9, step: 4 }],
+      sweepName: 'p',
+    })
+    await showSimulation(page)
+    const slider = page.getByRole('slider', { name: 'p 슬라이더', exact: true })
+    await expect(slider).toHaveAttribute('step', 'any')
+    await expect(page.locator('.sc-sample-dots circle')).toHaveCount(3)
+    await slider.fill('2.25')
+    await expect(page.locator('.simulation-panel-current strong')).toHaveText(
+      'x = 1.5',
+    )
+    const add = page.getByRole('button', {
+      name: '시뮬레이션 병합 세트 추가',
+      exact: true,
+    })
+    await expect(add).toBeEnabled()
+    await add.click()
+    const first = page.getByRole('region', {
+      name: '병합 세트 1 병합 시뮬레이션',
+      exact: true,
+    })
+    await expect(first.locator('.merged-current-card strong')).toHaveText([
+      'x = 1.5',
+      'x = -1.5',
+    ])
+    await expect(first.locator('.sc-curve')).toHaveCount(2)
+    await expect(add).toBeEnabled()
+    await add.click()
+    await expect(page.locator('.merged-simulation-panel')).toHaveCount(2)
+    await first.locator('.merged-branch-chip').last().click()
+    await expect(first.locator('.sc-curve')).toHaveCount(1)
+    await expect(
+      page
+        .getByRole('region', {
+          name: '병합 세트 2 병합 시뮬레이션',
+          exact: true,
+        })
+        .locator('.sc-curve'),
+    ).toHaveCount(2)
+    await page.reload()
+    await showSimulation(page)
+    await expect(page.locator('.merged-simulation-panel')).toHaveCount(2)
+    await expect(first.locator('.sc-curve')).toHaveCount(1)
+    await page.screenshot({
+      path: '/tmp/polymath-v2-merged-sets.png',
+      fullPage: true,
+    })
+    await first
+      .getByRole('button', { name: '병합 세트 1 삭제', exact: true })
+      .click()
+    await expect(page.locator('.merged-simulation-panel')).toHaveCount(1)
+  })
+  test('fold-near current values remain on the graph and boundaries are visible', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      mode: 'nonlinear',
+      title: '끝점 검증',
+      description: '',
+      source: '(x-1)*(x-2)*(x-3)=tr',
+      parameters: [
+        { id: 'tr', name: 'tr', value: 0, min: -2, max: 2, step: 0.1 },
+      ],
+      sweepName: 'tr',
+    })
+    await showSimulation(page)
+    const add = page.getByRole('button', {
+      name: '시뮬레이션 병합 세트 추가',
+      exact: true,
+    })
+    await expect(add).toBeEnabled()
+    await add.click()
+    const merged = page.locator('.merged-simulation-panel')
+    await expect(merged.locator('.sc-curve')).toHaveCount(3)
+    const slider = page.getByRole('slider', {
+      name: 'tr 슬라이더',
+      exact: true,
+    })
+    await slider.fill('0.38')
+    await expect(
+      merged.locator('.merged-current-card strong').nth(1),
+    ).toContainText('1.476')
+    await expect(merged.locator('.sc-bifurcation-banner')).toContainText('병합')
+    await page.screenshot({ path: '/tmp/polymath-v2-fold.png', fullPage: true })
+    await slider.fill('0.5')
+    await expect(
+      merged.locator('.merged-current-card strong').first(),
+    ).toContainText('추적 불가')
+    await expect(
+      merged.locator('.merged-current-card strong').last(),
+    ).toContainText('x = 3.')
   })
 })

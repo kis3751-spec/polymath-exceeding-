@@ -1,6 +1,96 @@
 [hidden] {
   display: none !important;
 }
+.merge-actions,
+.merged-set-Chips,
+.merged-variable-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+}
+.merge-actions > span {
+  font-size: 11px;
+  color: #84927b;
+}
+.merged-sets-grid {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+  background: #f7f9f3;
+}
+.merged-branch-chip {
+  border: 1px solid #dae3d5;
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.merged-branch-chip.is-active {
+  background: #edf6e9;
+  color: #3a6856;
+}
+.merged-branch-chip i,
+.merged-card-label i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+.merged-variable-selector button {
+  padding: 6px 14px;
+  border-radius: 5px;
+  border: 1px solid #dce5d5;
+}
+.merged-variable-selector .is-selected {
+  background: #e9f4e7;
+}
+.merged-current-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 0 20px 16px;
+}
+.merged-current-card {
+  background: #f3f7ef;
+  border: 1px solid #e1e8dc;
+  border-radius: 7px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.merged-card-label {
+  font-size: 11px;
+  color: #809178;
+}
+.merged-current-card strong {
+  font-size: 15px;
+  color: #4d7461;
+}
+.sc-sample-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sc-sample-toggle input {
+  width: 13px;
+  height: 13px;
+  accent-color: #087f74;
+}
+.sc-bifurcation-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0;
+}
+.sc-bifurcation-chip {
+  border: 1px solid #ecd3b4;
+  background: #fffbf3;
+  border-radius: 5px;
+  padding: 8px;
+  font-size: 11px;
+}
 
 .workspace {
   margin-left: 0;

@@ -1,4 +1,8 @@
-import type { ConditionNorm, SimulationAnchor } from './engine'
+import type {
+  ConditionNorm,
+  SimulationAnchor,
+  MergedSimulationSet,
+} from './engine'
 
 export type SolverMode = 'linear' | 'nonlinear'
 
@@ -22,6 +26,8 @@ export type Project = {
   selectedSolution?: number
   selectedAnchor?: SimulationAnchor
   simulations?: SimulationAnchor[]
+  individualIds?: string[]
+  mergedSets?: MergedSimulationSet[]
 }
 
 export const DEFAULT_PROJECT: Project = {

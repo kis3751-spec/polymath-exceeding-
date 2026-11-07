@@ -220,6 +220,26 @@ export default function Guide({
             </div>
           </section>
 
+          <section className="guide-section">
+            <span className="guide-step">함수</span>
+            <div>
+              <h3>번호를 붙인 함수를 정의하고 조합하세요</h3>
+              <pre>{'f1(x) = 2x + 4\nf2(x) = -3x + 7\nf1(x) - f2(x) = 0'}</pre>
+              <p>
+                x에 대한 함수는 f1(x), f2(x)처럼 적습니다. 등록한 파라미터 외의
+                다른 미지수를 혼합하려면 <code>f1 = 2x + y - 10</code>처럼 괄호
+                없이 정의하고, <code>f1 + f2 = 0</code>처럼 식을 만드세요.
+                기존의 단독 f(x) 잔차 표기는 호환성을 위해 유지합니다.
+              </p>
+              <p>
+                파라미터 값은 연속적으로 조절합니다. <b>샘플 포인트 간격</b>은
+                표와 그래프의 샘플 마커 간격이며 슬라이더의 이동 폭을 제한하지
+                않습니다. 여러 해를 함께 보려면 시뮬레이션 화면의 병합 세트
+                추가를 누르세요. 각 세트의 해는 칩으로 선택하며, 경계·병합
+                표시는 수치적 추정입니다.
+              </p>
+            </div>
+          </section>
           {nonlinear && (
             <section className="guide-section">
               <span className="guide-step">04</span>

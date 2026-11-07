@@ -8,7 +8,13 @@ import {
 } from './index'
 import { computeSweeps, type SweepSettings } from './sweep'
 import { createNonlinearSolver } from './nonlinear'
-import { createAutomaticSolver, type AutomaticSearchResult } from './automatic'
+import { preprocessSolverSource } from './preprocessor'
+import { isNonlinearFunction } from './nonlinear-parser'
+import {
+  createAutomaticSolver,
+  normalizeAutomaticModel,
+  type AutomaticSearchResult,
+} from './automatic'
 import { createSimulationPanelComputer } from './simulation-panels'
 type Request = {
   id: number
@@ -292,12 +298,31 @@ async function handleRequest(work: QueuedRequest) {
     }
     const solve = await (mode === 'nonlinear' ? nonlinearReady : ready)
     if (work.generation !== generation) return
-    const result = solve(source, parameters, { conditionNorm })
+    let calculationSource = source
+    if (mode === 'nonlinear') {
+      const expanded = preprocessSolverSource(
+        source,
+        Object.keys(parameters),
+        'nonlinear',
+      )
+      if (expanded !== source) {
+        const conditions = expanded.split('\n').filter((line) => {
+          const match =
+            /^\s*([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/.exec(line)
+          return match && !isNonlinearFunction(match[1])
+        })
+        calculationSource =
+          normalizeAutomaticModel(expanded, Object.keys(parameters)).source +
+          '\n' +
+          conditions.join('\n')
+      }
+    }
+    const result = solve(calculationSource, parameters, { conditionNorm })
     const payload: SolvePayload = {
       result,
       ...computeSweeps(
         solve,
-        source,
+        calculationSource,
         parameters,
         mode === 'nonlinear' && sweep ? { ...sweep, maxPoints: 500 } : sweep,
       ),

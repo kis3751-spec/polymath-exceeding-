@@ -1,3 +1,4 @@
+import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber } from './conditioning'
 import { ModelError, type SolveResult, type SolverOptions } from './index'
 import { createNonlinearSolver } from './nonlinear'
@@ -73,6 +74,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
   const key = JSON.stringify([source, [...parameterNames].sort()])
   const cached = preparedCache.get(key)
   if (cached) return cached
+  source = preprocessSolverSource(source, parameterNames, 'nonlinear')
   const lines = source
     .replace(/\r\n?/g, '\n')
     .split('\n')

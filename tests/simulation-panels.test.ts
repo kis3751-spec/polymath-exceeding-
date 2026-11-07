@@ -102,7 +102,9 @@ describe('independent pinned-root simulations', () => {
     expect(second.result?.values[1]).toBeCloseTo(32.2987367662, 8)
     expect(second.sweep).toBe(first.sweep)
     expect(second.dataset).toBe(first.dataset)
-    expect(second.sweep.filter((point) => point.values)).toHaveLength(80)
+    expect(
+      second.sweep.filter((point) => point.values).length,
+    ).toBeGreaterThanOrEqual(80)
     const independent = createSimulationPanelComputer(search.solveNear)(
       source,
       { a: 199 },

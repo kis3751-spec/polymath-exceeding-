@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `2831fda9b85a9ddcbc73755db384a143da430d248c10b39ddc78c7d94d283ef2`
+소스 묶음 SHA-256: `19e0ca39a4fe1c61dc619dbd7d1f27e6ad980cf668a1e5523b921059a0b0b07b`
 
 ## 다른 코드 묶음
 
@@ -32,11 +32,12 @@
 - [src/components/SolutionChart.tsx](#source-4) · [저장소 원본](../../src/components/SolutionChart.tsx)
 - [src/components/SolutionChart.css](#source-5) · [저장소 원본](../../src/components/SolutionChart.css)
 - [src/components/SimulationPanelView.tsx](#source-6) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/SimulationPanelView.css](#source-7) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-8) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-9) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-10) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-11) · [저장소 원본](../../src/workspace-screens.css)
+- [src/components/MergedSimulationSetView.tsx](#source-7) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-8) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-9) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-10) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-11) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-12) · [저장소 원본](../../src/workspace-screens.css)
 
 <a id="source-1"></a>
 
@@ -281,7 +282,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/SolutionChart.tsx
 
-원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 723줄 · SHA-256: `465080654341a3533423d7d8e4e30afe43e7ae2e253861c27e5fbc41cab5b628`
+원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,068줄 · SHA-256: `91f46549ff316dd5b31ec850e9902f9743933185fec732f55c14e05cb4b1cf43`
 
 ```tsx
 import {
@@ -304,6 +305,17 @@ import {
   type CurvePoint,
   type ZoomAxis,
 } from './chart-interaction'
+import type { BranchTerminalEvent } from '../engine'
+
+export type MultiBranchSeries = {
+  id: string
+  label: string
+  color: string
+  points: CurvePoint[]
+  samplePoints?: CurvePoint[]
+  currentValues?: number[]
+  events?: BranchTerminalEvent[]
+}
 
 export interface SolutionChartProps {
   modelKind?: 'linear' | 'nonlinear'
@@ -319,15 +331,21 @@ export interface SolutionChartProps {
   visibleVariables: string[]
   onToggleVariable: (name: string) => void
   onParameterChange?: (value: number) => void
+  /** Terminal / bifurcation events (merge or disappearance) for single-branch view */
+  events?: BranchTerminalEvent[]
+  /** Optional multi-branch series for Merged Simulation Sets (병합 세트) */
+  multiBranchSeries?: MultiBranchSeries[]
+  /** When multiBranchSeries is provided, which variable index is plotted (default 0) */
+  activeVariableIndex?: number
 }
 
 export const SERIES_COLORS = [
   '#087f74',
   '#df9963',
-  '#879ac3',
-  '#b18aa7',
-  '#c0a853',
-  '#639ba9',
+  '#4c6ef5',
+  '#be4bdb',
+  '#e67700',
+  '#2b8a3e',
 ]
 
 const MAX_WIDTH = 680
@@ -367,6 +385,9 @@ export default function SolutionChart({
   visibleVariables,
   onToggleVariable,
   onParameterChange,
+  events = [],
+  multiBranchSeries,
+  activeVariableIndex = 0,
 }: SolutionChartProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -375,20 +396,25 @@ export default function SolutionChart({
   const svgRef = useRef<SVGSVGElement>(null)
   const [width, setWidth] = useState(MAX_WIDTH)
   const [hover, setHover] = useState<CurvePoint | null>(null)
+  const [hoverParameter, setHoverParameter] = useState<number | null>(null)
   const [zoomAxis, setZoomAxis] = useState<ZoomAxis>('both')
   const [window, setWindow] = useState(initialWindow)
   const [zoomActive, setZoomActive] = useState(false)
+  const [showSampleDots, setShowSampleDots] = useState(true)
   const frame = useRef<number | null>(null)
   const pointerParameter = useRef<number | null>(null)
   const selectionRef = useRef(selectedIndex)
   const selectionCallback = useRef(onSelectIndex)
   selectionRef.current = selectedIndex
   selectionCallback.current = onSelectIndex
+
+  const isMultiBranch = Boolean(
+    multiBranchSeries && multiBranchSeries.length > 0,
+  )
   const height = expanded ? Math.min(520, Math.max(420, width * 0.48)) : HEIGHT
   const innerWidth = width - PLOT.left - PLOT.right
   const innerHeight = height - PLOT.top - PLOT.bottom
-  // Hover follows the rendered curve continuously. The table keeps its own
-  // exact solver grid and highlights only the nearest row.
+
   const interactivePoints = selectionPoints?.length ? selectionPoints : points
   const curvePoints = useMemo(
     () =>
@@ -396,6 +422,16 @@ export default function SolutionChart({
         .filter((point) => Number.isFinite(point.parameter))
         .sort((a, b) => a.parameter - b.parameter),
     [points],
+  )
+  const samplePoints = useMemo(
+    () =>
+      (selectionPoints ?? []).filter(
+        (point) =>
+          Number.isFinite(point.parameter) &&
+          point.values &&
+          point.values.some(Number.isFinite),
+      ),
+    [selectionPoints],
   )
   const coordinates = useMemo(
     () =>
@@ -431,7 +467,31 @@ export default function SolutionChart({
   const visible = variables
     .map((name, index) => ({ name, index }))
     .filter(({ name }) => visibleVariables.includes(name))
+
   const baseChart = useMemo(() => {
+    if (isMultiBranch && multiBranchSeries) {
+      const allParams: number[] = []
+      const values: number[] = []
+      multiBranchSeries.forEach((branch) => {
+        if (!visibleVariables.includes(branch.id)) return
+        branch.points.forEach((pt) => {
+          if (Number.isFinite(pt.parameter)) allParams.push(pt.parameter)
+          const v = pt.values?.[activeVariableIndex]
+          if (typeof v === 'number' && Number.isFinite(v)) values.push(v)
+        })
+      })
+      if (!allParams.length) return null
+      let minX = Math.min(...allParams)
+      let maxX = Math.max(...allParams)
+      if (minX === maxX) {
+        const padding = Math.abs(minX) * 0.1 || 0.5
+        minX -= padding
+        maxX += padding
+      }
+      const [minY, maxY, yTicks] = fittedDomain(values)
+      return { minX, maxX, minY, maxY, yTicks, hasData: values.length > 0 }
+    }
+
     if (!curvePoints.length) return null
     let minX = curvePoints[0].parameter
     let maxX = curvePoints.at(-1)!.parameter
@@ -452,11 +512,17 @@ export default function SolutionChart({
           values.push(value)
       })
     })
-    // Current/hover/table markers never change the coordinate system. Moving
-    // the swept parameter must move a point, not resize the same curve.
     const [minY, maxY, yTicks] = fittedDomain(values)
     return { minX, maxX, minY, maxY, yTicks, hasData: values.length > 0 }
-  }, [curvePoints, variables, visibleVariables])
+  }, [
+    isMultiBranch,
+    multiBranchSeries,
+    activeVariableIndex,
+    curvePoints,
+    variables,
+    visibleVariables,
+  ])
+
   const chart = useMemo(() => {
     if (!baseChart) return null
     const minX = interpolate(baseChart.minX, baseChart.maxX, window.x[0])
@@ -486,6 +552,7 @@ export default function SolutionChart({
   useEffect(() => {
     setWindow(initialWindow())
     setHover(null)
+    setHoverParameter(null)
   }, [modelDomainKey])
   useEffect(() => {
     return () => {
@@ -502,7 +569,9 @@ export default function SolutionChart({
   const activePoint =
     hover ??
     (selectedIndex !== null ? interactivePoints[activeIndex] : undefined)
-  const hasSelection = hover !== null || selectedIndex !== null
+  const activeParam = hoverParameter ?? activePoint?.parameter ?? null
+  const hasSelection =
+    hover !== null || hoverParameter !== null || selectedIndex !== null
   const x = (value: number) =>
     PLOT.left + fraction(value, chart!.minX, chart!.maxX) * innerWidth
   const y = (value: number) =>
@@ -516,10 +585,10 @@ export default function SolutionChart({
     currentParameter <= chart.maxX
   const selectedInDomain =
     chart &&
-    activePoint &&
-    Number.isFinite(activePoint.parameter) &&
-    activePoint.parameter >= chart.minX &&
-    activePoint.parameter <= chart.maxX
+    activeParam !== null &&
+    Number.isFinite(activeParam) &&
+    activeParam >= chart.minX &&
+    activeParam <= chart.maxX
 
   function localPointer(svg: SVGSVGElement, clientX: number, clientY: number) {
     const matrix = svg.getScreenCTM()
@@ -567,6 +636,7 @@ export default function SolutionChart({
     if (frame.current !== null) cancelAnimationFrame(frame.current)
     frame.current = null
     setHover(null)
+    setHoverParameter(null)
     if (selectionRef.current !== null) {
       selectionRef.current = null
       selectionCallback.current(null)
@@ -588,13 +658,16 @@ export default function SolutionChart({
       frame.current = null
       const parameter = pointerParameter.current
       if (parameter === null) return
-      setHover(
-        pointOnCurve(curvePoints, parameter) ?? {
-          parameter,
-          values: null,
-          error: '표시된 탐색 범위 밖입니다.',
-        },
-      )
+      setHoverParameter(parameter)
+      if (!isMultiBranch) {
+        setHover(
+          pointOnCurve(curvePoints, parameter) ?? {
+            parameter,
+            values: null,
+            error: '표시된 탐색 범위 밖입니다.',
+          },
+        )
+      }
       selectNearest(parameter)
     })
   }
@@ -611,7 +684,10 @@ export default function SolutionChart({
       baseChart.maxX,
       Math.max(baseChart.minX, point.parameter),
     )
-    setHover(pointOnCurve(curvePoints, parameter))
+    setHoverParameter(parameter)
+    if (!isMultiBranch) {
+      setHover(pointOnCurve(curvePoints, parameter))
+    }
     selectNearest(parameter)
     onParameterChange?.(parameter)
   }
@@ -652,7 +728,7 @@ export default function SolutionChart({
     else if (event.key === 'Home') index = 0
     else if (event.key === 'End') index = interactivePoints.length - 1
     else if (event.key === 'Enter' || event.key === ' ') {
-      if (activePoint) onParameterChange?.(activePoint.parameter)
+      if (activeParam !== null) onParameterChange?.(activeParam)
       event.preventDefault()
       return
     } else if (event.key === '+' || event.key === '=' || event.key === '-') {
@@ -677,13 +753,38 @@ export default function SolutionChart({
     } else return
     event.preventDefault()
     setHover(null)
+    setHoverParameter(null)
     onSelectIndex(index)
   }
 
-  // Paths do not depend on hover/current markers. Avoid rebuilding hundreds
-  // of path segments for every frame when several simulations are open.
   const curvePaths = useMemo(() => {
     if (!chart) return []
+    if (isMultiBranch && multiBranchSeries) {
+      return multiBranchSeries.map((branch) => {
+        let path = ''
+        let connected = false
+        const sortedPts = [...branch.points]
+          .filter((p) => Number.isFinite(p.parameter))
+          .sort((a, b) => a.parameter - b.parameter)
+        sortedPts.forEach((point) => {
+          const value = point.values?.[activeVariableIndex]
+          if (typeof value !== 'number' || !Number.isFinite(value)) {
+            connected = false
+            return
+          }
+          const px =
+            PLOT.left +
+            fraction(point.parameter, chart.minX, chart.maxX) * innerWidth
+          const py =
+            PLOT.top +
+            innerHeight -
+            fraction(value, chart.minY, chart.maxY) * innerHeight
+          path += `${connected ? 'L' : 'M'}${px.toFixed(3)},${py.toFixed(3)} `
+          connected = true
+        })
+        return path
+      })
+    }
     return variables.map((_, variableIndex) => {
       let path = ''
       let connected = false
@@ -705,15 +806,50 @@ export default function SolutionChart({
       })
       return path
     })
-  }, [curvePoints, variables, chart, innerWidth, innerHeight])
+  }, [
+    isMultiBranch,
+    multiBranchSeries,
+    activeVariableIndex,
+    curvePoints,
+    variables,
+    chart,
+    innerWidth,
+    innerHeight,
+  ])
 
-  const emptyMessage = !points.length
-    ? '모델을 계산하면 파라미터에 따른 해의 변화를 볼 수 있어요.'
-    : !visible.length
-      ? '위의 변수 이름을 눌러 그래프에 표시해 보세요.'
-      : modelKind === 'nonlinear'
-        ? '이 범위에는 선택한 해의 유효한 계산 결과가 없어요. 파라미터 범위를 조절해 보세요.'
-        : '이 범위에는 유일한 해가 없어요. 파라미터 범위를 조절해 보세요.'
+  const allBifurcationEvents = useMemo(() => {
+    if (isMultiBranch && multiBranchSeries) {
+      const list: BranchTerminalEvent[] = []
+      const seen = new Set<string>()
+      multiBranchSeries.forEach((branch) => {
+        if (!visibleVariables.includes(branch.id)) return
+        for (const ev of branch.events ?? []) {
+          const key = `${ev.kind}|${ev.direction}|${ev.parameter.toPrecision(5)}|${ev.values[activeVariableIndex]?.toPrecision(4)}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            list.push(ev)
+          }
+        }
+      })
+      return list
+    }
+    return events
+  }, [
+    isMultiBranch,
+    multiBranchSeries,
+    visibleVariables,
+    activeVariableIndex,
+    events,
+  ])
+
+  const emptyMessage =
+    !points.length && !isMultiBranch
+      ? '모델을 계산하면 파라미터에 따른 해의 변화를 볼 수 있어요.'
+      : !visibleVariables.length
+        ? '위의 범례 버튼을 눌러 그래프에 표시할 곡선을 선택해 보세요.'
+        : modelKind === 'nonlinear'
+          ? '이 범위에는 선택한 해의 유효한 계산 결과가 없어요. 파라미터 범위를 조절해 보세요.'
+          : '이 범위에는 유일한 해가 없어요. 파라미터 범위를 조절해 보세요.'
 
   return (
     <div
@@ -721,28 +857,45 @@ export default function SolutionChart({
       ref={containerRef}
     >
       <div className="sc-legend-row">
-        <div className="sc-legend" aria-label="그래프에 표시할 변수">
-          {variables.map((name, index) => (
-            <button
-              key={name}
-              type="button"
-              className={`sc-legend-button ${visibleVariables.includes(name) ? 'is-visible' : ''}`}
-              aria-pressed={visibleVariables.includes(name)}
-              aria-label={`${name} 곡선 표시`}
-              onClick={() => onToggleVariable(name)}
-            >
-              <span
-                className="sc-legend-dot"
-                style={{
-                  background: SERIES_COLORS[index % SERIES_COLORS.length],
-                }}
-              />
-              <span>{name}</span>
-            </button>
-          ))}
+        <div className="sc-legend" aria-label="그래프에 표시할 항목">
+          {isMultiBranch && multiBranchSeries
+            ? multiBranchSeries.map((branch) => (
+                <button
+                  key={branch.id}
+                  type="button"
+                  className={`sc-legend-button ${visibleVariables.includes(branch.id) ? 'is-visible' : ''}`}
+                  aria-pressed={visibleVariables.includes(branch.id)}
+                  aria-label={`${branch.label} 곡선 표시`}
+                  onClick={() => onToggleVariable(branch.id)}
+                >
+                  <span
+                    className="sc-legend-dot"
+                    style={{ background: branch.color }}
+                  />
+                  <span>{branch.label}</span>
+                </button>
+              ))
+            : variables.map((name, index) => (
+                <button
+                  key={name}
+                  type="button"
+                  className={`sc-legend-button ${visibleVariables.includes(name) ? 'is-visible' : ''}`}
+                  aria-pressed={visibleVariables.includes(name)}
+                  aria-label={`${name} 곡선 표시`}
+                  onClick={() => onToggleVariable(name)}
+                >
+                  <span
+                    className="sc-legend-dot"
+                    style={{
+                      background: SERIES_COLORS[index % SERIES_COLORS.length],
+                    }}
+                  />
+                  <span>{name}</span>
+                </button>
+              ))}
         </div>
         <span className="sc-explore-hint">
-          곡선 위에서 탐색 · 클릭으로 값 지정
+          연속 탐색 · 샘플 포인트 마커 표시 · 클릭으로 파라미터 적용
         </span>
       </div>
 
@@ -750,6 +903,14 @@ export default function SolutionChart({
         <span className={`sc-zoom-hint${zoomActive ? ' is-active' : ''}`}>
           {zoomActive ? '휠로 축 확대·축소' : '그래프 클릭 후 휠로 확대·축소'}
         </span>
+        <label className="sc-sample-toggle">
+          <input
+            type="checkbox"
+            checked={showSampleDots}
+            onChange={(e) => setShowSampleDots(e.target.checked)}
+          />
+          샘플 포인트 표시
+        </label>
         <label>
           확대 축
           <select
@@ -792,15 +953,13 @@ export default function SolutionChart({
           }}
           onKeyDown={handleKey}
         >
-          <title
-            id={titleId}
-          >{`${parameterName}에 따른 ${modelKind === 'nonlinear' ? '비선형' : '선형'} 방정식 해의 변화`}</title>
+          <title id={titleId}>
+            {`${parameterName}에 따른 ${modelKind === 'nonlinear' ? '비선형' : '선형'} 방정식 해의 변화`}
+          </title>
           <desc id={descriptionId}>
-            마우스는 곡선을 연속으로 탐색하며, 데이터 표에는 가까운 계산 행이
-            표시됩니다. 클릭하면 해당 파라미터 값을 적용합니다. 그래프에 초점을
-            둔 뒤 휠 또는 더하기·빼기 키로 축을 확대·축소하고 0 키로
-            초기화합니다. 좌우 방향키와 Home, End로 표의 값을 선택하고 Enter로
-            적용할 수 있습니다.
+            파라미터는 연속적으로 움직이며 설정한 샘플 포인트 간격마다 그래프
+            위에 샘플 마커가 표시됩니다. 해가 병합되거나 소멸하는 분기점은 경계
+            마커로 표시됩니다.
           </desc>
           <defs>
             <clipPath id={clipId}>
@@ -816,7 +975,9 @@ export default function SolutionChart({
           {chart && (
             <>
               <text x={PLOT.left} y="12" className="sc-axis-caption">
-                해의 값
+                {isMultiBranch
+                  ? `${variables[activeVariableIndex] ?? '해'}의 값`
+                  : '해의 값'}
               </text>
               {chart.yTicks.map((tick, index) => (
                 <g key={index}>
@@ -862,17 +1023,123 @@ export default function SolutionChart({
                 )
               })}
 
+              {/* 1. Render Continuous Curves */}
               {chart.hasData &&
-                visible.map(({ name, index }) => (
-                  <path
-                    key={name}
-                    d={curvePaths[index]}
-                    stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
-                    className="sc-curve"
-                    clipPath={`url(#${clipId})`}
-                  />
-                ))}
+                (isMultiBranch && multiBranchSeries
+                  ? multiBranchSeries.map((branch, idx) =>
+                      visibleVariables.includes(branch.id) ? (
+                        <path
+                          key={branch.id}
+                          d={curvePaths[idx]}
+                          stroke={branch.color}
+                          className="sc-curve"
+                          clipPath={`url(#${clipId})`}
+                        />
+                      ) : null,
+                    )
+                  : visible.map(({ name, index }) => (
+                      <path
+                        key={name}
+                        d={curvePaths[index]}
+                        stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
+                        className="sc-curve"
+                        clipPath={`url(#${clipId})`}
+                      />
+                    )))}
 
+              {/* 2. Render Sample Point Interval Markers on Curves */}
+              {chart.hasData && showSampleDots && (
+                <g clipPath={`url(#${clipId})`} className="sc-sample-dots">
+                  {isMultiBranch && multiBranchSeries
+                    ? multiBranchSeries.map((branch) =>
+                        visibleVariables.includes(branch.id)
+                          ? (branch.samplePoints ?? []).map((pt, sIdx) => {
+                              const val = pt.values?.[activeVariableIndex]
+                              if (
+                                typeof val !== 'number' ||
+                                !Number.isFinite(val)
+                              )
+                                return null
+                              return (
+                                <circle
+                                  key={`${branch.id}-sample-${sIdx}`}
+                                  cx={x(pt.parameter)}
+                                  cy={y(val)}
+                                  r="2.4"
+                                  fill="#fff"
+                                  stroke={branch.color}
+                                  strokeWidth="1.5"
+                                />
+                              )
+                            })
+                          : null,
+                      )
+                    : samplePoints.map((pt, sIdx) =>
+                        visible.map(({ name, index }) => {
+                          const val = pt.values?.[index]
+                          if (typeof val !== 'number' || !Number.isFinite(val))
+                            return null
+                          return (
+                            <circle
+                              key={`${name}-sample-${sIdx}`}
+                              cx={x(pt.parameter)}
+                              cy={y(val)}
+                              r="2.4"
+                              fill="#fff"
+                              stroke={
+                                SERIES_COLORS[index % SERIES_COLORS.length]
+                              }
+                              strokeWidth="1.5"
+                            />
+                          )
+                        }),
+                      )}
+                </g>
+              )}
+
+              {/* 3. Render Bifurcation / Merge / Disappearance Markers */}
+              {chart.hasData && allBifurcationEvents.length > 0 && (
+                <g
+                  clipPath={`url(#${clipId})`}
+                  className="sc-bifurcation-markers"
+                >
+                  {allBifurcationEvents.map((ev, eIdx) => {
+                    const val = isMultiBranch
+                      ? ev.values[activeVariableIndex]
+                      : ev.values[visible[0]?.index ?? 0]
+                    if (typeof val !== 'number' || !Number.isFinite(val))
+                      return null
+                    const cx = x(ev.parameter)
+                    const cy = y(val)
+                    const isMerge = ev.kind === 'merge'
+                    return (
+                      <g key={`event-${eIdx}`}>
+                        <line
+                          x1={cx}
+                          x2={cx}
+                          y1={PLOT.top}
+                          y2={height - PLOT.bottom}
+                          stroke={isMerge ? '#d9480f' : '#e67700'}
+                          strokeDasharray="2 3"
+                          strokeWidth="1"
+                          opacity="0.65"
+                        />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={isMerge ? '5.5' : '4.5'}
+                          fill={isMerge ? '#fff4e6' : '#fff9db'}
+                          stroke={isMerge ? '#d9480f' : '#e67700'}
+                          strokeWidth="2.2"
+                        />
+                        <title>{ev.description}</title>
+                      </g>
+                    )
+                  })}
+                </g>
+              )}
+
+              {/* 4. Render Current Continuous Parameter Line & Dots */}
               {chart.hasData && currentInDomain && (
                 <g clipPath={`url(#${clipId})`}>
                   <line
@@ -883,21 +1150,42 @@ export default function SolutionChart({
                     className="sc-current-line"
                   />
                   {!hasSelection &&
-                    currentValues &&
-                    visible.map(({ name, index }) => {
-                      const value = currentValues[index]
-                      if (!Number.isFinite(value)) return null
-                      return (
-                        <circle
-                          key={name}
-                          cx={x(currentParameter)}
-                          cy={y(value)}
-                          r="4.5"
-                          fill={SERIES_COLORS[index % SERIES_COLORS.length]}
-                          className="sc-active-dot sc-current-dot"
-                        />
-                      )
-                    })}
+                    (isMultiBranch && multiBranchSeries
+                      ? multiBranchSeries.map((branch) => {
+                          if (!visibleVariables.includes(branch.id)) return null
+                          const value =
+                            branch.currentValues?.[activeVariableIndex]
+                          if (
+                            typeof value !== 'number' ||
+                            !Number.isFinite(value)
+                          )
+                            return null
+                          return (
+                            <circle
+                              key={branch.id}
+                              cx={x(currentParameter)}
+                              cy={y(value)}
+                              r="4.5"
+                              fill={branch.color}
+                              className="sc-active-dot sc-current-dot"
+                            />
+                          )
+                        })
+                      : currentValues &&
+                        visible.map(({ name, index }) => {
+                          const value = currentValues[index]
+                          if (!Number.isFinite(value)) return null
+                          return (
+                            <circle
+                              key={name}
+                              cx={x(currentParameter)}
+                              cy={y(value)}
+                              r="4.5"
+                              fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                              className="sc-active-dot sc-current-dot"
+                            />
+                          )
+                        }))}
                   <circle
                     cx={x(currentParameter)}
                     cy={height - PLOT.bottom}
@@ -907,103 +1195,161 @@ export default function SolutionChart({
                 </g>
               )}
 
-              {chart.hasData && hasSelection && selectedInDomain && (
-                <g clipPath={`url(#${clipId})`}>
-                  <line
-                    x1={x(activePoint.parameter)}
-                    x2={x(activePoint.parameter)}
-                    y1={PLOT.top}
-                    y2={height - PLOT.bottom}
-                    className="sc-crosshair"
-                  />
-                  {visible.map(({ name, index }) => {
-                    const value = activePoint.values?.[index]
-                    if (typeof value !== 'number' || !Number.isFinite(value))
-                      return null
-                    return (
-                      <circle
-                        key={name}
-                        cx={x(activePoint.parameter)}
-                        cy={y(value)}
-                        r="4.5"
-                        fill={SERIES_COLORS[index % SERIES_COLORS.length]}
-                        className="sc-active-dot"
-                      />
-                    )
-                  })}
-                </g>
-              )}
+              {/* 5. Render Hover / Selected Crosshair & Dots */}
+              {chart.hasData &&
+                hasSelection &&
+                selectedInDomain &&
+                activeParam !== null && (
+                  <g clipPath={`url(#${clipId})`}>
+                    <line
+                      x1={x(activeParam)}
+                      x2={x(activeParam)}
+                      y1={PLOT.top}
+                      y2={height - PLOT.bottom}
+                      className="sc-crosshair"
+                    />
+                    {isMultiBranch && multiBranchSeries
+                      ? multiBranchSeries.map((branch) => {
+                          if (!visibleVariables.includes(branch.id)) return null
+                          const pt = pointOnCurve(branch.points, activeParam)
+                          const val = pt?.values?.[activeVariableIndex]
+                          if (typeof val !== 'number' || !Number.isFinite(val))
+                            return null
+                          return (
+                            <circle
+                              key={branch.id}
+                              cx={x(activeParam)}
+                              cy={y(val)}
+                              r="4.5"
+                              fill={branch.color}
+                              className="sc-active-dot"
+                            />
+                          )
+                        })
+                      : activePoint &&
+                        visible.map(({ name, index }) => {
+                          const value = activePoint.values?.[index]
+                          if (
+                            typeof value !== 'number' ||
+                            !Number.isFinite(value)
+                          )
+                            return null
+                          return (
+                            <circle
+                              key={name}
+                              cx={x(activePoint.parameter)}
+                              cy={y(value)}
+                              r="4.5"
+                              fill={SERIES_COLORS[index % SERIES_COLORS.length]}
+                              className="sc-active-dot"
+                            />
+                          )
+                        })}
+                  </g>
+                )}
             </>
           )}
         </svg>
 
-        {(!chart?.hasData || !visible.length) && (
+        {(!chart?.hasData || !visibleVariables.length) && (
           <div className="sc-empty">
             <span>⌁</span>
             <p>{emptyMessage}</p>
           </div>
         )}
 
-        {chart?.hasData && hasSelection && selectedInDomain && (
-          <div
-            className="sc-tooltip"
-            style={{
-              left: `clamp(8px, ${(x(activePoint.parameter) / width) * 100 + 2}%, calc(100% - 160px))`,
-            }}
-          >
-            <div className="sc-tooltip-heading">
-              <span>{parameterName}</span>
-              <strong>{formatNumber(activePoint.parameter)}</strong>
+        {chart?.hasData &&
+          hasSelection &&
+          selectedInDomain &&
+          activeParam !== null && (
+            <div
+              className="sc-tooltip"
+              style={{
+                left: `clamp(8px, ${(x(activeParam) / width) * 100 + 2}%, calc(100% - 175px))`,
+              }}
+            >
+              <div className="sc-tooltip-heading">
+                <span>{parameterName}</span>
+                <strong>{formatNumber(activeParam)}</strong>
+              </div>
+              {isMultiBranch && multiBranchSeries ? (
+                multiBranchSeries
+                  .filter((b) => visibleVariables.includes(b.id))
+                  .map((branch) => {
+                    const pt = pointOnCurve(branch.points, activeParam)
+                    const val = pt?.values?.[activeVariableIndex]
+                    return (
+                      <div className="sc-tooltip-value" key={branch.id}>
+                        <span>
+                          <i style={{ background: branch.color }} />
+                          {branch.label}
+                        </span>
+                        <strong>
+                          {typeof val === 'number' && Number.isFinite(val)
+                            ? formatNumber(val)
+                            : '현재 분기 추적 불가'}
+                        </strong>
+                      </div>
+                    )
+                  })
+              ) : activePoint?.values ? (
+                visible.map(({ name, index }) => (
+                  <div className="sc-tooltip-value" key={name}>
+                    <span>
+                      <i
+                        style={{
+                          background:
+                            SERIES_COLORS[index % SERIES_COLORS.length],
+                        }}
+                      />
+                      {name}
+                    </span>
+                    <strong>{formatNumber(activePoint.values![index])}</strong>
+                  </div>
+                ))
+              ) : (
+                <p className="sc-tooltip-error">
+                  {activePoint?.error ||
+                    '이 구간에는 검증된 분기 데이터가 없습니다.'}
+                </p>
+              )}
             </div>
-            {activePoint.values ? (
-              visible.map(({ name, index }) => (
-                <div className="sc-tooltip-value" key={name}>
-                  <span>
-                    <i
-                      style={{
-                        background: SERIES_COLORS[index % SERIES_COLORS.length],
-                      }}
-                    />
-                    {name}
-                  </span>
-                  <strong>{formatNumber(activePoint.values![index])}</strong>
-                </div>
-              ))
-            ) : (
-              <p className="sc-tooltip-error">
-                {activePoint.error || '유일한 해 없음'}
-              </p>
-            )}
-            {hover?.values && (
-              <p className="sc-tooltip-sample">
-                곡선 보간값 · 표는 가까운 계산값
-              </p>
-            )}
-          </div>
-        )}
+          )}
       </div>
+
+      {allBifurcationEvents.length > 0 && (
+        <div className="sc-bifurcation-banner" role="status">
+          {allBifurcationEvents.map((ev, idx) => (
+            <button
+              type="button"
+              key={idx}
+              className={`sc-bifurcation-chip is-${ev.kind}`}
+              onClick={() => onParameterChange?.(ev.parameter)}
+              title="클릭하여 해당 분기점 파라미터로 이동"
+            >
+              <b>{ev.kind === 'merge' ? '● 병합·소멸 후보' : '○ 추적 경계'}</b>{' '}
+              {ev.description}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="sc-chart-footer">
         <span>
-          파라미터 <strong>{parameterName || '—'}</strong>
+          연속 파라미터 <strong>{parameterName || '—'}</strong>
         </span>
         <span className="sc-current-note">
           <i />
-          {hasSelection ? '탐색 지점' : '현재 설정'}
+          {hasSelection ? '탐색 지점' : '현재 파라미터'}
           <strong>
-            {hasSelection && activePoint
-              ? String(hasSelection ? activePoint.parameter : currentParameter)
+            {hasSelection && activeParam !== null
+              ? formatNumber(activeParam)
               : Number.isFinite(currentParameter)
-                ? String(currentParameter)
+                ? formatNumber(currentParameter)
                 : '—'}
           </strong>
         </span>
       </div>
-      <span className="sc-sr-only" aria-live="polite">
-        {selectedIndex !== null && activePoint && !hover
-          ? `${parameterName}: ${String(activePoint.parameter)}, ${variables.map((name, index) => `${name}: ${activePoint.values ? formatNumber(activePoint.values[index]) : '해 없음'}`).join(', ')}`
-          : ''}
-      </span>
     </div>
   )
 }
@@ -1334,7 +1680,7 @@ export default function SolutionChart({
 
 ## src/components/SimulationPanelView.tsx
 
-원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 301줄 · SHA-256: `8e79a537e41f8f1d7140c14dbdc296ecaa0f02311647824908c3c42f16bca400`
+원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 302줄 · SHA-256: `9fc667c2cd61e9f0351a7f5bc6158055c34622a4357115b606fa512d9e2b7ac9`
 
 ```tsx
 import { useEffect, useRef, useState } from 'react'
@@ -1474,7 +1820,7 @@ export default function SimulationPanelView({
         <strong>
           {panel.result
             ? vectorText(panel.result.variables, panel.result.values)
-            : '해 없음'}
+            : '현재 분기 추적 불가'}
         </strong>
         {pending && <small role="status">계산 중…</small>}
       </div>
@@ -1495,6 +1841,7 @@ export default function SimulationPanelView({
             expanded={expanded}
             modelKind="nonlinear"
             points={panel.sweep}
+            events={panel.events}
             selectionPoints={panel.dataset}
             variables={variables}
             parameterName={panel.sweepName}
@@ -1529,8 +1876,8 @@ export default function SimulationPanelView({
         <details className="simulation-panel-data">
           <summary>데이터 표</summary>
           <p className="simulation-panel-data-note">
-            설정한 파라미터 간격으로 계산한 값입니다. 표와 그래프의 선택 지점을
-            함께 확인할 수 있습니다.
+            설정한 샘플 포인트 간격으로 계산한 값입니다. 표와 그래프의 선택
+            지점을 함께 확인할 수 있습니다.
           </p>
           <div
             className="simulation-panel-table-scroll"
@@ -1641,6 +1988,306 @@ export default function SimulationPanelView({
 ```
 
 <a id="source-7"></a>
+
+## src/components/MergedSimulationSetView.tsx
+
+원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 291줄 · SHA-256: `3ec5be841a5c0c04cbee3063ee54b06f2101c52b8d404eaa33fb50aa6d135ca2`
+
+```tsx
+import { useEffect, useState } from 'react'
+import { Download, Layers3, Trash2, X } from 'lucide-react'
+import type {
+  MergedSimulationSet,
+  Parameter,
+  SimulationAnchor,
+  SimulationPanel,
+} from '../engine'
+import { encodeCsv } from '../csv'
+import { detectMergedBranchEvents } from '../engine/simulation-panels'
+import SolutionChart, {
+  SERIES_COLORS,
+  type MultiBranchSeries,
+} from './SolutionChart'
+
+export type MergedSimulationSetViewProps = {
+  mergedSet: MergedSimulationSet
+  anchors: SimulationAnchor[]
+  panels: SimulationPanel[]
+  parameters: Parameter[]
+  sweepName: string
+  expanded: boolean
+  pending: boolean
+  onRemoveSet: () => void
+  onToggleAnchorInSet: (anchorId: string) => void
+  onParameterChange?: (value: number) => void
+}
+
+function formatNumber(value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) return '—'
+  if (value === 0) return '0'
+  return Number(value.toPrecision(7)).toString()
+}
+
+export default function MergedSimulationSetView({
+  mergedSet,
+  anchors,
+  panels,
+  parameters,
+  sweepName,
+  expanded,
+  pending,
+  onRemoveSet,
+  onToggleAnchorInSet,
+  onParameterChange,
+}: MergedSimulationSetViewProps) {
+  const includedAnchors = anchors.filter((a) =>
+    mergedSet.anchorIds.includes(a.id),
+  )
+  const includedPanels = includedAnchors.map(
+    (anchor) =>
+      panels.find((p) => p.id === anchor.id) ?? {
+        id: anchor.id,
+        label: anchor.label,
+        result: null,
+        sweep: [],
+        dataset: [],
+        sweepName,
+        events: [],
+      },
+  )
+
+  const variables = includedPanels[0]?.result?.variables ??
+    includedAnchors[0]?.variables ?? ['x']
+  const [activeVarIdx, setActiveVarIdx] = useState(0)
+  const [visibleBranchIds, setVisibleBranchIds] = useState<string[]>(
+    mergedSet.anchorIds,
+  )
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    setVisibleBranchIds(mergedSet.anchorIds)
+  }, [mergedSet.anchorIds.join('|')])
+
+  useEffect(() => {
+    setActiveVarIdx(0)
+    setSelectedIndex(null)
+  }, [variables.join('|'), sweepName])
+  const branchColor = (id: string) =>
+    SERIES_COLORS[
+      Math.max(
+        0,
+        anchors.findIndex((a) => a.id === id),
+      ) % SERIES_COLORS.length
+    ]
+  const sweepParam = parameters.find((p) => p.name === sweepName)
+  const mergedEvents = detectMergedBranchEvents(includedPanels)
+
+  const multiBranchSeries: MultiBranchSeries[] = includedPanels.map(
+    (panel, idx) => ({
+      id: panel.id,
+      label: panel.label,
+      color: branchColor(panel.id),
+      points: panel.sweep,
+      samplePoints: panel.dataset,
+      currentValues: panel.result?.values,
+      events: mergedEvents.filter(
+        (event) =>
+          event.branchId === panel.id || event.mergedWithAnchorId === panel.id,
+      ),
+    }),
+  )
+
+  function exportMergedCsv() {
+    if (
+      !sweepParam ||
+      !includedPanels.length ||
+      includedPanels.some((p) => p.datasetError)
+    )
+      return
+    const baseDataset = includedPanels[0].dataset
+    const header = [
+      sweepName,
+      ...includedPanels.map(
+        (p) => `${p.label} (${variables[activeVarIdx] ?? 'x'})`,
+      ),
+    ]
+    const rows = baseDataset.map((pt, rowIdx) => [
+      pt.parameter,
+      ...includedPanels.map(
+        (p) => p.dataset[rowIdx]?.values?.[activeVarIdx] ?? '',
+      ),
+    ])
+    const csv = encodeCsv([header, ...rows])
+    const url = URL.createObjectURL(
+      new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }),
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `polymath-${mergedSet.name.replace(/\s+/g, '-')}-data.csv`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  return (
+    <section
+      className={`simulation-panel merged-simulation-panel${expanded ? ' is-expanded' : ''}`}
+      aria-label={`${mergedSet.name} 병합 시뮬레이션`}
+    >
+      <header className="simulation-panel-header">
+        <div className="simulation-panel-heading">
+          <h3>
+            <Layers3
+              size={15}
+              style={{ verticalAlign: '-2px', marginRight: '6px' }}
+            />
+            {mergedSet.name}
+          </h3>
+          <p className="simulation-panel-anchor">
+            <span>포함된 해 ({includedAnchors.length}개)</span>
+            <span>
+              하나의 좌표계에서 여러 해의 궤적과 병합·소멸 지점을 비교합니다.
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          className="simulation-panel-close"
+          onClick={onRemoveSet}
+          aria-label={`${mergedSet.name} 삭제`}
+          title="병합 세트 삭제"
+        >
+          <X size={17} />
+        </button>
+      </header>
+
+      {/* 해 포함/제외 토글 칩 */}
+      <div className="merged-set-Chips">
+        {anchors.map((anchor, idx) => {
+          const active = mergedSet.anchorIds.includes(anchor.id)
+          return (
+            <button
+              key={anchor.id}
+              type="button"
+              className={`merged-branch-chip${active ? ' is-active' : ''}`}
+              aria-pressed={active}
+              onClick={() => onToggleAnchorInSet(anchor.id)}
+              title={active ? '클릭하여 세트에서 제외' : '클릭하여 세트에 추가'}
+            >
+              <i
+                style={{
+                  background: active ? branchColor(anchor.id) : '#ccc',
+                }}
+              />
+              <span>{anchor.label}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 다변수 연립방정식일 때 비교할 미지수 선택 */}
+      {variables.length > 1 && (
+        <div className="merged-variable-selector">
+          <span>표시할 미지수:</span>
+          {variables.map((v, idx) => (
+            <button
+              key={v}
+              type="button"
+              className={activeVarIdx === idx ? 'is-selected' : ''}
+              onClick={() => setActiveVarIdx(idx)}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 현재 파라미터에서 각 해의 상태 요약 (생존 vs 소멸/병합) */}
+      <div className="merged-current-grid">
+        {includedPanels.map((panel, idx) => {
+          const val = panel.result?.values[activeVarIdx]
+          const color = branchColor(panel.id)
+          return (
+            <div
+              key={panel.id}
+              className={`merged-current-card${!panel.result ? ' is-vanished' : ''}`}
+            >
+              <span className="merged-card-label">
+                <i style={{ background: color }} />
+                {panel.label}
+              </span>
+              <strong>
+                {panel.result
+                  ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
+                  : mergedEvents.some(
+                        (event) =>
+                          event.kind === 'merge' &&
+                          (event.branchId === panel.id ||
+                            event.mergedWithAnchorId === panel.id),
+                      )
+                    ? '병합·소멸 후보 / 추적 불가'
+                    : '현재 분기 추적 불가'}
+              </strong>
+            </div>
+          )
+        })}
+      </div>
+
+      {sweepParam ? (
+        <div className="simulation-panel-chart">
+          <SolutionChart
+            expanded={expanded}
+            modelKind="nonlinear"
+            points={includedPanels[0]?.sweep ?? []}
+            selectionPoints={includedPanels[0]?.dataset ?? []}
+            variables={variables}
+            parameterName={sweepName}
+            currentParameter={sweepParam.value}
+            selectedIndex={selectedIndex}
+            onSelectIndex={setSelectedIndex}
+            visibleVariables={visibleBranchIds}
+            onToggleVariable={(id) =>
+              setVisibleBranchIds((prev) =>
+                prev.includes(id)
+                  ? prev.filter((item) => item !== id)
+                  : [...prev, id],
+              )
+            }
+            onParameterChange={onParameterChange}
+            multiBranchSeries={multiBranchSeries}
+            activeVariableIndex={activeVarIdx}
+            events={mergedEvents}
+          />
+        </div>
+      ) : (
+        <p className="simulation-panel-helper">
+          파라미터를 추가하면 여러 해가 어떻게 만나서 병합·소멸하는지 한
+          그래프에서 볼 수 있습니다.
+        </p>
+      )}
+
+      <footer className="simulation-panel-actions">
+        <button
+          type="button"
+          onClick={exportMergedCsv}
+          disabled={
+            pending ||
+            !sweepParam ||
+            includedPanels.length === 0 ||
+            includedPanels.some((p) => p.datasetError)
+          }
+        >
+          <Download size={14} /> 병합 세트 CSV 저장
+        </button>
+        <button type="button" onClick={onRemoveSet}>
+          <Trash2 size={14} /> 세트 삭제
+        </button>
+      </footer>
+    </section>
+  )
+}
+```
+
+<a id="source-8"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -1919,7 +2566,7 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-9"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
@@ -2152,7 +2799,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-10"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -2527,7 +3174,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-11"></a>
 
 ## src/styles.css
 
@@ -6133,15 +6780,105 @@ h2 {
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-12"></a>
 
 ## src/workspace-screens.css
 
-원본: [src/workspace-screens.css](../../src/workspace-screens.css) · 202줄 · SHA-256: `3bf731e22cddaf872417451f4b4d266badb856dd5df1fa03222bc042bdf6a92a`
+원본: [src/workspace-screens.css](../../src/workspace-screens.css) · 292줄 · SHA-256: `f14e5e6d45b2cbcf3e10803aa2b7a765d6dcc45fa59845d402366eb3cbef3987`
 
 ```css
 [hidden] {
   display: none !important;
+}
+.merge-actions,
+.merged-set-Chips,
+.merged-variable-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+}
+.merge-actions > span {
+  font-size: 11px;
+  color: #84927b;
+}
+.merged-sets-grid {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+  background: #f7f9f3;
+}
+.merged-branch-chip {
+  border: 1px solid #dae3d5;
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+.merged-branch-chip.is-active {
+  background: #edf6e9;
+  color: #3a6856;
+}
+.merged-branch-chip i,
+.merged-card-label i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+.merged-variable-selector button {
+  padding: 6px 14px;
+  border-radius: 5px;
+  border: 1px solid #dce5d5;
+}
+.merged-variable-selector .is-selected {
+  background: #e9f4e7;
+}
+.merged-current-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 0 20px 16px;
+}
+.merged-current-card {
+  background: #f3f7ef;
+  border: 1px solid #e1e8dc;
+  border-radius: 7px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.merged-card-label {
+  font-size: 11px;
+  color: #809178;
+}
+.merged-current-card strong {
+  font-size: 15px;
+  color: #4d7461;
+}
+.sc-sample-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.sc-sample-toggle input {
+  width: 13px;
+  height: 13px;
+  accent-color: #087f74;
+}
+.sc-bifurcation-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0;
+}
+.sc-bifurcation-chip {
+  border: 1px solid #ecd3b4;
+  background: #fffbf3;
+  border-radius: 5px;
+  padding: 8px;
+  font-size: 11px;
 }
 
 .workspace {

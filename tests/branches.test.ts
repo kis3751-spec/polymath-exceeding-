@@ -362,7 +362,7 @@ describe('selected real-root continuation', () => {
       ),
     ]
     for (const curve of curves) {
-      expect(curve.sweep).toHaveLength(81)
+      expect(curve.sweep.length).toBeGreaterThanOrEqual(81)
       for (const point of curve.sweep.filter(
         (sample) => sample.parameter >= 10,
       )) {

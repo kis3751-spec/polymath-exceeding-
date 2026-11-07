@@ -30,6 +30,7 @@ import {
 import SolutionChart, { SERIES_COLORS } from './components/SolutionChart'
 import Guide from './components/Guide'
 import SimulationPanelView from './components/SimulationPanelView'
+import MergedSimulationSetView from './components/MergedSimulationSetView'
 import { createSolverInput, solverInputKey } from './solver-input'
 import { useProjectPersistence } from './use-project-persistence'
 import { countEquations } from './equation-count'
@@ -117,6 +118,34 @@ function isProject(value: unknown): value is Project {
         p.simulations.every(validAnchor) &&
         new Set(p.simulations.map((a) => a.id)).size ===
           p.simulations.length)) &&
+    (p.individualIds === undefined ||
+      (Array.isArray(p.individualIds) &&
+        p.individualIds.length <= 6 &&
+        p.individualIds.every(
+          (id) =>
+            typeof id === 'string' && p.simulations?.some((a) => a.id === id),
+        ))) &&
+    (p.mergedSets === undefined ||
+      (Array.isArray(p.mergedSets) &&
+        p.mergedSets.length <= 6 &&
+        new Set(p.mergedSets.map((set) => set?.id)).size ===
+          p.mergedSets.length &&
+        p.mergedSets.every(
+          (set) =>
+            set &&
+            typeof set.id === 'string' &&
+            set.id.length <= 100 &&
+            typeof set.name === 'string' &&
+            set.name.length <= 100 &&
+            Array.isArray(set.anchorIds) &&
+            set.anchorIds.length <= 6 &&
+            new Set(set.anchorIds).size === set.anchorIds.length &&
+            set.anchorIds.every(
+              (id) =>
+                typeof id === 'string' &&
+                p.simulations?.some((a) => a.id === id),
+            ),
+        ))) &&
     (p.nonlinearSearch === undefined ||
       p.nonlinearSearch === 'auto' ||
       p.nonlinearSearch === 'manual') &&
@@ -243,6 +272,12 @@ export default function App() {
   const error = selectedBranch?.error || computeError
   const solutionIndex = project.selectedSolution ?? 0
   const anchors = project.simulations ?? []
+  const individualAnchors = anchors.filter(
+    (a) =>
+      project.individualIds === undefined ||
+      project.individualIds.includes(a.id),
+  )
+  const mergedSets = project.mergedSets ?? []
   const solutions = basePayload?.solutions ?? (result ? [result] : [])
   const highlightedSolution = selectedBranch
     ? solutions.findIndex(
@@ -281,7 +316,11 @@ export default function App() {
     (p) => p.name === project.sweepName,
   )
   const sourceLines = project.source.split('\n')
-  const equationCount = countEquations(project.source, nonlinear)
+  const equationCount = countEquations(
+    project.source,
+    nonlinear,
+    project.parameters.map((p) => p.name),
+  )
   useEffect(() => {
     const w = new Worker(
       new URL('./engine/solver.worker.ts', import.meta.url),
@@ -586,8 +625,8 @@ export default function App() {
     setSelectedIndex(null)
     setToast('예제 모델을 불러왔습니다.')
   }
-  function rootAlreadyOpen(item: SolveResult) {
-    return simulationResults.some(
+  function matchingPanel(item: SolveResult) {
+    return simulationResults.find(
       (panel) =>
         anchors.some((anchor) => anchor.id === panel.id) &&
         panel.result &&
@@ -600,8 +639,26 @@ export default function App() {
         ),
     )
   }
+  function rootAlreadyOpen(item: SolveResult) {
+    const panel = matchingPanel(item)
+    return Boolean(
+      panel && individualAnchors.some((anchor) => anchor.id === panel.id),
+    )
+  }
   function addSimulation(item: SolveResult, index: number) {
-    if (pending || anchors.length >= 6 || rootAlreadyOpen(item)) return
+    if (pending || rootAlreadyOpen(item)) return
+    const existing = matchingPanel(item)
+    if (existing) {
+      setProject((p) => ({
+        ...p,
+        individualIds: [
+          ...(p.individualIds ?? (p.simulations ?? []).map((a) => a.id)),
+          existing.id,
+        ],
+      }))
+      return
+    }
+    if (anchors.length >= 6) return
     const base = `해 ${index + 1}`
     const label = anchors.some((a) => a.label === base)
       ? `${base} · 비교 ${anchors.length + 1}`
@@ -618,6 +675,10 @@ export default function App() {
     setProject((p) => ({
       ...p,
       simulations: [...(p.simulations ?? []), anchor],
+      individualIds: [
+        ...(p.individualIds ?? (p.simulations ?? []).map((a) => a.id)),
+        anchor.id,
+      ],
     }))
     navigate('simulation')
     setToast(`${label} 시뮬레이션을 추가했습니다.`)
@@ -625,8 +686,72 @@ export default function App() {
   function closeSimulation(id: string) {
     setProject((p) => ({
       ...p,
-      simulations: (p.simulations ?? []).filter((a) => a.id !== id),
+      individualIds: (
+        p.individualIds ?? (p.simulations ?? []).map((a) => a.id)
+      ).filter((value) => value !== id),
+      simulations: (p.simulations ?? []).filter(
+        (a) =>
+          a.id !== id ||
+          p.mergedSets?.some((set) => set.anchorIds.includes(id)),
+      ),
     }))
+  }
+  function createMergedSet() {
+    if (
+      pending ||
+      discoveryPending ||
+      mergedSets.length >= 6 ||
+      !solutions.length
+    )
+      return
+    setProject((p) => {
+      const pool = [...(p.simulations ?? [])]
+      solutions.slice(0, 6).forEach((item, index) => {
+        if (pool.length >= 6 || matchingPanel(item)) return
+        pool.push({
+          id: crypto.randomUUID(),
+          label: `해 ${index + 1}`,
+          variables: [...item.variables],
+          values: [...item.values],
+          parameters: Object.fromEntries(
+            p.parameters.map((v) => [v.name, v.value]),
+          ),
+        })
+      })
+      let number = 1
+      while (p.mergedSets?.some((set) => set.name === `병합 세트 ${number}`))
+        number++
+      return {
+        ...p,
+        simulations: pool,
+        individualIds:
+          p.individualIds ?? (p.simulations ?? []).map((a) => a.id),
+        mergedSets: [
+          ...(p.mergedSets ?? []),
+          {
+            id: crypto.randomUUID(),
+            name: `병합 세트 ${number}`,
+            anchorIds: pool.map((a) => a.id),
+          },
+        ],
+      }
+    })
+  }
+  function removeMergedSet(id: string) {
+    setProject((p) => {
+      const sets = (p.mergedSets ?? []).filter((set) => set.id !== id)
+      const individual =
+        p.individualIds ?? (p.simulations ?? []).map((a) => a.id)
+      return {
+        ...p,
+        mergedSets: sets,
+        simulations: (p.simulations ?? []).filter(
+          (a) =>
+            individual.includes(a.id) ||
+            sets.some((set) => set.anchorIds.includes(a.id)),
+        ),
+      }
+    })
   }
   function openSimulationReport(anchor: SimulationAnchor) {
     setProject((p) => ({ ...p, selectedAnchor: anchor }))
@@ -695,6 +820,8 @@ export default function App() {
       ...p,
       selectedAnchor: undefined,
       simulations: [],
+      mergedSets: [],
+      individualIds: [],
       parameters: [
         ...p.parameters,
         { id: crypto.randomUUID(), name: paramName, value, min, max, step },
@@ -1058,6 +1185,8 @@ export default function App() {
                         selectedSolution: 0,
                         selectedAnchor: undefined,
                         simulations: [],
+                        mergedSets: [],
+                        individualIds: [],
                       }))
                     }
                     placeholder={
@@ -1082,6 +1211,8 @@ export default function App() {
                           selectedSolution: 0,
                           selectedAnchor: undefined,
                           simulations: [],
+                          mergedSets: [],
+                          individualIds: [],
                         }))
                         requestAnimationFrame(() => {
                           el.selectionStart = el.selectionEnd = start + 2
@@ -1129,6 +1260,8 @@ export default function App() {
                             selectedSolution: 0,
                             selectedAnchor: undefined,
                             simulations: [],
+                            mergedSets: [],
+                            individualIds: [],
                           }))
                         }
                       >
@@ -1207,7 +1340,8 @@ export default function App() {
                   </button>
                 </div>
                 <p className="section-description">
-                  범위와 간격을 설정하세요. 값은 시뮬레이션 화면에서 조절합니다.
+                  범위와 샘플 포인트 간격을 설정하세요. 값은 시뮬레이션 화면에서
+                  조절합니다.
                 </p>
                 <div className="parameter-list">
                   {project.parameters.map((p, i) => (
@@ -1240,6 +1374,8 @@ export default function App() {
                                   ...prev,
                                   selectedAnchor: undefined,
                                   simulations: [],
+                                  mergedSets: [],
+                                  individualIds: [],
                                   parameters: prev.parameters.filter(
                                     (v) => v.id !== p.id,
                                   ),
@@ -1259,7 +1395,7 @@ export default function App() {
                       </div>
                       <div className="range-labels">
                         <span>{fmt(p.min)}</span>
-                        <span>간격 {String(p.step)}</span>
+                        <span>샘플 간격 {String(p.step)}</span>
                         <span>{fmt(p.max)}</span>
                       </div>
                       {rangeEditor && (
@@ -1390,6 +1526,23 @@ export default function App() {
                     onChange={updateParameter}
                   />
                 )}
+                {automatic && view === 'simulation' && (
+                  <div className="merge-actions">
+                    <button
+                      className="secondary-button"
+                      disabled={
+                        pending ||
+                        discoveryPending ||
+                        !solutions.length ||
+                        mergedSets.length >= 6
+                      }
+                      onClick={createMergedSet}
+                    >
+                      <Layers3 size={15} /> 시뮬레이션 병합 세트 추가
+                    </button>
+                    <span>최대 6개 세트 · 해별 색상 비교</span>
+                  </div>
+                )}
                 {automatic && discoveryPending && (
                   <p className="discovery-status" role="status">
                     현재 해를 표시하고 있습니다. 전체 해 목록을 갱신하는
@@ -1433,7 +1586,7 @@ export default function App() {
                             aria-label={`해 ${i + 1} 시뮬레이션 추가`}
                             disabled={
                               pending ||
-                              anchors.length >= 6 ||
+                              (anchors.length >= 6 && !matchingPanel(item)) ||
                               rootAlreadyOpen(item)
                             }
                             onClick={() => addSimulation(item, i)}
@@ -2055,81 +2208,126 @@ export default function App() {
                       />
                     </div>
                   )}
-                {automatic && view === 'simulation' && anchors.length > 0 && (
-                  <div className="multi-simulation-workspace">
-                    <div className="multi-simulation-toolbar">
-                      <div>
-                        <h3>
-                          동시 시뮬레이션 <span>{anchors.length} / 6</span>
-                        </h3>
-                        <p>
-                          오른쪽 위 파라미터 조절은 열린 모든 시뮬레이션에 함께
-                          적용됩니다.
-                        </p>
-                      </div>
-                      <label>
-                        탐색 변수
-                        <select
-                          aria-label="동시 시뮬레이션 탐색 변수"
-                          value={project.sweepName}
-                          onChange={(e) =>
+                {automatic &&
+                  view === 'simulation' &&
+                  mergedSets.length > 0 && (
+                    <div className="merged-sets-grid">
+                      {mergedSets.map((set) => (
+                        <MergedSimulationSetView
+                          key={set.id}
+                          mergedSet={set}
+                          anchors={anchors}
+                          panels={simulationResults}
+                          parameters={project.parameters}
+                          sweepName={project.sweepName}
+                          expanded={expanded}
+                          pending={pending}
+                          onRemoveSet={() => removeMergedSet(set.id)}
+                          onToggleAnchorInSet={(id) =>
                             setProject((p) => ({
                               ...p,
-                              sweepName: e.target.value,
+                              mergedSets: p.mergedSets?.map((item) =>
+                                item.id !== set.id
+                                  ? item
+                                  : {
+                                      ...item,
+                                      anchorIds: item.anchorIds.includes(id)
+                                        ? item.anchorIds.filter(
+                                            (value) => value !== id,
+                                          )
+                                        : [...item.anchorIds, id],
+                                    },
+                              ),
                             }))
                           }
-                        >
-                          {project.parameters.map((p) => (
-                            <option key={p.id} value={p.name}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                          onParameterChange={
+                            sweepParam
+                              ? (value) => updateParameter(sweepParam.id, value)
+                              : undefined
+                          }
+                        />
+                      ))}
                     </div>
-                    <div className="simulation-grid">
-                      {anchors.map((anchor) => {
-                        const panel = simulationResults.find(
-                          (p) => p.id === anchor.id,
-                        ) ?? {
-                          id: anchor.id,
-                          label: anchor.label,
-                          result: null,
-                          sweep: [],
-                          dataset: [],
-                          sweepName: project.sweepName,
-                          error: pending
-                            ? '계산 중입니다.'
-                            : '시뮬레이션 결과를 준비하고 있습니다.',
-                        }
-                        return (
-                          <SimulationPanelView
-                            key={anchor.id}
-                            panel={panel}
-                            anchor={anchor}
-                            parameters={project.parameters}
-                            expanded={expanded}
-                            pending={pending}
-                            onClose={() => closeSimulation(anchor.id)}
-                            onParameterChange={
-                              sweepParam &&
-                              panel.sweepName === project.sweepName
-                                ? (value) =>
-                                    updateParameter(sweepParam.id, value)
-                                : undefined
+                  )}
+                {automatic &&
+                  view === 'simulation' &&
+                  individualAnchors.length > 0 && (
+                    <div className="multi-simulation-workspace">
+                      <div className="multi-simulation-toolbar">
+                        <div>
+                          <h3>
+                            동시 시뮬레이션{' '}
+                            <span>{individualAnchors.length} / 6</span>
+                          </h3>
+                          <p>
+                            오른쪽 위 파라미터 조절은 열린 모든 시뮬레이션에
+                            함께 적용됩니다.
+                          </p>
+                        </div>
+                        <label>
+                          탐색 변수
+                          <select
+                            aria-label="동시 시뮬레이션 탐색 변수"
+                            value={project.sweepName}
+                            onChange={(e) =>
+                              setProject((p) => ({
+                                ...p,
+                                sweepName: e.target.value,
+                              }))
                             }
-                            onReport={() => openSimulationReport(anchor)}
-                          />
-                        )
-                      })}
+                          >
+                            {project.parameters.map((p) => (
+                              <option key={p.id} value={p.name}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="simulation-grid">
+                        {individualAnchors.map((anchor) => {
+                          const panel = simulationResults.find(
+                            (p) => p.id === anchor.id,
+                          ) ?? {
+                            id: anchor.id,
+                            label: anchor.label,
+                            result: null,
+                            sweep: [],
+                            dataset: [],
+                            sweepName: project.sweepName,
+                            error: pending
+                              ? '계산 중입니다.'
+                              : '시뮬레이션 결과를 준비하고 있습니다.',
+                          }
+                          return (
+                            <SimulationPanelView
+                              key={anchor.id}
+                              panel={panel}
+                              anchor={anchor}
+                              parameters={project.parameters}
+                              expanded={expanded}
+                              pending={pending}
+                              onClose={() => closeSimulation(anchor.id)}
+                              onParameterChange={
+                                sweepParam &&
+                                panel.sweepName === project.sweepName
+                                  ? (value) =>
+                                      updateParameter(sweepParam.id, value)
+                                  : undefined
+                              }
+                              onReport={() => openSimulationReport(anchor)}
+                            />
+                          )
+                        })}
+                      </div>
+                      <p className="multi-simulation-note">
+                        파라미터는 연속적으로 움직이며 샘플 포인트 간격은
+                        표·그래프 마커에 적용됩니다. 각 창은 추가한 시점의 해를
+                        기준으로 이어서 풉니다. 분기점·교차점에서는 가지 구분이
+                        어려울 수 있으며 추적 실패 구간은 빈 값으로 표시합니다.
+                      </p>
                     </div>
-                    <p className="multi-simulation-note">
-                      각 창은 추가한 시점의 해를 기준으로 이어서 풉니다.
-                      분기점·교차점에서는 가지 구분이 어려울 수 있으며 추적 실패
-                      구간은 빈 값으로 표시합니다.
-                    </p>
-                  </div>
-                )}
+                  )}
               </section>
               {view === 'simulation' && (
                 <div className="insight-card">
@@ -2342,7 +2540,7 @@ function RangeEditor({
           min >= max ||
           step <= 0
         ) {
-          setError('최솟값 < 최댓값, 간격 > 0이어야 합니다.')
+          setError('최솟값 < 최댓값, 샘플 포인트 간격 > 0이어야 합니다.')
           return
         }
         setError('')
@@ -2357,9 +2555,9 @@ function RangeEditor({
     >
       {(['min', 'max', 'step'] as const).map((k, i) => (
         <label key={k}>
-          {['최솟값', '최댓값', '간격'][i]}
+          {['최솟값', '최댓값', '샘플 포인트 간격'][i]}
           <input
-            aria-label={`${p.name} ${['최솟값', '최댓값', '간격'][i]}`}
+            aria-label={`${p.name} ${['최솟값', '최댓값', '샘플 포인트 간격'][i]}`}
             type="number"
             step="any"
             value={range[k]}
@@ -2418,7 +2616,7 @@ function SweepTable({
         <p>{payload.datasetError}</p>
         <span>
           현재 해와 그래프는 계속 확인할 수 있습니다. 파라미터 범위 설정에서
-          간격을 조정해 주세요.
+          샘플 포인트 간격을 조정해 주세요.
         </span>
       </div>
     )
@@ -2426,7 +2624,7 @@ function SweepTable({
     <>
       <div className="sweep-table-caption">
         <span>
-          간격 <b>{String(parameterStep)}</b> ·{' '}
+          샘플 포인트 간격 <b>{String(parameterStep)}</b> ·{' '}
           <b>{points.length.toLocaleString('en-US')}</b>행
           {selectedIndex !== null ? ` · 선택 ${selectedIndex + 1}` : ''}
         </span>
@@ -2667,7 +2865,7 @@ function ResultParameters({
               type="range"
               min={p.min}
               max={p.max}
-              step={p.step}
+              step="any"
               value={p.value}
               style={
                 {

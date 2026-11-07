@@ -4,6 +4,7 @@ import {
   type SimulationAnchor,
   type SimulationPanel,
   type SolveResult,
+  type BranchTerminalEvent,
 } from './index'
 import { computeBranchSweeps, continueRoot, type NearSolver } from './branches'
 import type { SweepSettings } from './sweep'
@@ -72,7 +73,7 @@ function matchesAnchor(result: SolveResult, anchor: SimulationAnchor) {
 
 type ReferenceCurve = Pick<
   SimulationPanel,
-  'sweep' | 'dataset' | 'datasetError' | 'sweepName'
+  'sweep' | 'dataset' | 'datasetError' | 'sweepName' | 'events'
 > & {
   reference: SolveResult
   parameters: Record<string, number>
@@ -210,12 +211,37 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
         let result: SolveResult | null = null
         let error: string | undefined
         try {
+          const current = sweep ? parameters[sweep.name] : undefined
+          const terminal = curve.events?.find(
+            (event) =>
+              current !== undefined &&
+              (current - event.parameter) * event.direction > 0,
+          )
+          if (terminal)
+            throw new ModelError(
+              '현재 값은 검증된 분기 추적 범위 밖입니다. 해 목록에서 현재 해를 새로 선택할 수 있습니다.',
+            )
+          const nearby =
+            current === undefined
+              ? undefined
+              : curve.sweep
+                  .filter((point) => point.values !== null)
+                  .reduce<
+                    (typeof curve.sweep)[number] | undefined
+                  >((best, point) => (!best || Math.abs(point.parameter - current) < Math.abs(best.parameter - current) ? point : best), undefined)
+          const originParameters =
+            nearby && sweep
+              ? { ...curve.parameters, [sweep.name]: nearby.parameter }
+              : curve.parameters
+          const origin = nearby?.values
+            ? { ...curve.reference, values: [...nearby.values] }
+            : curve.reference
           result = continueRoot(
             solveNear,
             source,
-            curve.parameters,
+            originParameters,
             parameters,
-            curve.reference,
+            origin,
             { conditionNorm },
           )
         } catch (cause) {
@@ -230,6 +256,7 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
           dataset: curve.dataset,
           ...(curve.datasetError ? { datasetError: curve.datasetError } : {}),
           sweepName: curve.sweepName,
+          events: curve.events,
         }
         remember(cache, key, panel)
         return panel
@@ -244,4 +271,95 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
       }
     })
   }
+}
+
+export function detectMergedBranchEvents(
+  panels: readonly SimulationPanel[],
+): BranchTerminalEvent[] {
+  const allEvents: BranchTerminalEvent[] = []
+  for (const panel of panels) {
+    for (const ev of panel.events ?? []) {
+      allEvents.push({
+        ...ev,
+        branchId: panel.id,
+        branchLabel: panel.label,
+      })
+    }
+  }
+  const reconciled: BranchTerminalEvent[] = []
+  const used = new Set<number>()
+
+  for (let i = 0; i < allEvents.length; i++) {
+    if (used.has(i)) continue
+    const a = allEvents[i]
+    let matchedIndex = -1
+    for (let j = i + 1; j < allEvents.length; j++) {
+      if (used.has(j)) continue
+      const b = allEvents[j]
+      if (a.branchId === b.branchId || a.direction !== b.direction) continue
+      const paramScale = Math.max(
+        1,
+        Math.abs(a.parameter),
+        Math.abs(b.parameter),
+      )
+      const sameParam = Math.abs(a.parameter - b.parameter) <= 2e-5 * paramScale
+      const sameValues =
+        a.values.length === b.values.length &&
+        a.values.every((val, k) => {
+          const vScale = Math.max(1, Math.abs(val), Math.abs(b.values[k]))
+          return Math.abs(val - b.values[k]) <= 2e-2 * vScale
+        })
+      const panelA = panels.find((panel) => panel.id === a.branchId)
+      const panelB = panels.find((panel) => panel.id === b.branchId)
+      const gap = Math.max(
+        ...a.values.map((value, k) => Math.abs(value - b.values[k])),
+      )
+      // Nearby endpoints alone are insufficient: require clear convergence
+      // from a shared, earlier verified sample before calling it a candidate.
+      const converging = panelA?.sweep.some((point) => {
+        if (
+          !point.values ||
+          (a.parameter - point.parameter) * a.direction < 1e-3 * paramScale
+        )
+          return false
+        const other = panelB?.sweep.find(
+          (sample) => sample.parameter === point.parameter && sample.values,
+        )
+        return (
+          other?.values &&
+          Math.max(
+            ...point.values.map((value, k) =>
+              Math.abs(value - other.values![k]),
+            ),
+          ) >
+            10 * gap
+        )
+      })
+      if (sameParam && sameValues && converging) {
+        matchedIndex = j
+        break
+      }
+    }
+    if (matchedIndex >= 0) {
+      used.add(i)
+      used.add(matchedIndex)
+      const b = allEvents[matchedIndex]
+      const avgParam = 0.5 * (a.parameter + b.parameter)
+      const avgValues = a.values.map((v, k) => 0.5 * (v + b.values[k]))
+      reconciled.push({
+        kind: 'merge',
+        direction: a.direction,
+        parameter: avgParam,
+        values: avgValues,
+        branchId: a.branchId,
+        branchLabel: a.branchLabel,
+        mergedWithAnchorId: b.branchId,
+        mergedWithLabel: b.branchLabel,
+        description: `${a.branchLabel}과(와) ${b.branchLabel}이(가) 파라미터 ≈ ${Number(avgParam.toPrecision(6))}에서 만나는 병합·소멸 후보입니다 (수치 추정).`,
+      })
+    } else {
+      reconciled.push(a)
+    }
+  }
+  return reconciled
 }

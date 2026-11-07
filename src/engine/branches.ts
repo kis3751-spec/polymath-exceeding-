@@ -4,6 +4,7 @@ import {
   type SolveResult,
   type SolverOptions,
   type SweepPoint,
+  type BranchTerminalEvent,
 } from './index'
 import { parameterValues, type SweepSettings } from './sweep'
 import { isUniquePolynomialRoot } from './root-isolation'
@@ -18,7 +19,7 @@ export type NearSolver = (
 type Sweeps = Pick<
   SolvePayload,
   'sweep' | 'dataset' | 'datasetError' | 'sweepName'
->
+> & { events?: BranchTerminalEvent[] }
 type State = { parameter: number; values: number[] }
 type Path = { current: State; previous?: State }
 
@@ -268,6 +269,8 @@ export function computeBranchSweeps(
   const cache = new Map<number, SweepPoint>([
     [origin, { parameter: origin, values: [...selected.values] }],
   ])
+  const extraPoints: SweepPoint[] = []
+  const events: BranchTerminalEvent[] = []
   const targets = [...new Set([...graphParameters, ...datasetParameters])]
   const initial: State = { parameter: origin, values: [...selected.values] }
   const advance = createContinuation(
@@ -310,6 +313,30 @@ export function computeBranchSweeps(
           cache.set(parameter, { parameter, values: [...path.current.values] })
           continue
         } catch (error) {
+          // Retain verified points between the last success and first failure.
+          // Failure alone is not a proof that a real root disappeared.
+          let edge = path
+          let failed = parameter
+          for (let b = 0; b < 18; b++) {
+            const middle = edge.current.parameter / 2 + failed / 2
+            if (middle === edge.current.parameter || middle === failed) break
+            try {
+              edge = advance(edge, middle, 16)
+              extraPoints.push({
+                parameter: middle,
+                values: [...edge.current.values],
+              })
+            } catch {
+              failed = middle
+            }
+          }
+          events.push({
+            kind: 'unresolved',
+            direction: direction as -1 | 1,
+            parameter: edge.current.parameter,
+            values: [...edge.current.values],
+            description: `${name} ≈ ${Number(edge.current.parameter.toPrecision(7))}: 추적 경계 (병합·소멸 또는 수치 실패 가능)`,
+          })
           loss = `선택한 해의 분기를 더 이상 추적할 수 없습니다. ${error instanceof Error ? error.message : '계산 실패'}`
         }
       }
@@ -318,7 +345,16 @@ export function computeBranchSweeps(
   }
 
   return {
-    sweep: graphParameters.map((value) => cache.get(value)!),
+    sweep: [
+      ...new Map(
+        [...graphParameters, ...datasetParameters].map((value) => [
+          value,
+          cache.get(value)!,
+        ]),
+      ).values(),
+      ...extraPoints,
+    ].sort((a, b) => a.parameter - b.parameter),
+    events,
     dataset: datasetParameters.map((value) => cache.get(value)!),
     ...(datasetError ? { datasetError } : {}),
     sweepName: name,

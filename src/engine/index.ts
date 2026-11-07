@@ -1,3 +1,4 @@
+import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber, type ConditionNorm } from './conditioning'
 export {
   classifyCondition,
@@ -59,6 +60,7 @@ export type SimulationAnchor = {
   parameters: Record<string, number>
 }
 export type SimulationPanel = {
+  events?: BranchTerminalEvent[]
   id: string
   label: string
   result: SolveResult | null
@@ -67,6 +69,22 @@ export type SimulationPanel = {
   dataset: SweepPoint[]
   datasetError?: string
   sweepName: string
+}
+export type BranchTerminalEvent = {
+  kind: 'disappear' | 'merge' | 'unresolved'
+  direction: -1 | 1
+  parameter: number
+  values: number[]
+  branchId?: string
+  branchLabel?: string
+  mergedWithAnchorId?: string
+  mergedWithLabel?: string
+  description: string
+}
+export type MergedSimulationSet = {
+  id: string
+  name: string
+  anchorIds: string[]
 }
 export type SolvePayload = {
   selectedSimulation?: SimulationPanel
@@ -457,6 +475,7 @@ export async function createSolver(
     /* Offline browser constraints can use the same pivoted algorithm in JavaScript. */
   }
   return (source, parameters, options = {}) => {
+    source = preprocessSolverSource(source, Object.keys(parameters), 'linear')
     const start = performance.now()
     const conditionNorm = options.conditionNorm ?? 'infinity'
     if (conditionNorm !== 'infinity' && conditionNorm !== '2')

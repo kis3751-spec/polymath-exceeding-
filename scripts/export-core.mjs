@@ -32,6 +32,7 @@ const books = [
     files: [
       'src/engine/index.ts',
       'src/engine/nonlinear-parser.ts',
+      'src/engine/preprocessor.ts',
       'src/engine/nonlinear.ts',
       'src/engine/automatic-polynomial.ts',
       'src/engine/automatic.ts',
@@ -79,6 +80,7 @@ const books = [
       'src/components/SolutionChart.tsx',
       'src/components/SolutionChart.css',
       'src/components/SimulationPanelView.tsx',
+      'src/components/MergedSimulationSetView.tsx',
       'src/components/SimulationPanelView.css',
       'src/components/WorkspaceNavigation.tsx',
       'src/components/WorkspaceNavigation.css',

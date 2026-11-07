@@ -135,7 +135,7 @@ export default function SimulationPanelView({
         <strong>
           {panel.result
             ? vectorText(panel.result.variables, panel.result.values)
-            : '해 없음'}
+            : '현재 분기 추적 불가'}
         </strong>
         {pending && <small role="status">계산 중…</small>}
       </div>
@@ -156,6 +156,7 @@ export default function SimulationPanelView({
             expanded={expanded}
             modelKind="nonlinear"
             points={panel.sweep}
+            events={panel.events}
             selectionPoints={panel.dataset}
             variables={variables}
             parameterName={panel.sweepName}
@@ -190,8 +191,8 @@ export default function SimulationPanelView({
         <details className="simulation-panel-data">
           <summary>데이터 표</summary>
           <p className="simulation-panel-data-note">
-            설정한 파라미터 간격으로 계산한 값입니다. 표와 그래프의 선택 지점을
-            함께 확인할 수 있습니다.
+            설정한 샘플 포인트 간격으로 계산한 값입니다. 표와 그래프의 선택
+            지점을 함께 확인할 수 있습니다.
           </p>
           <div
             className="simulation-panel-table-scroll"
