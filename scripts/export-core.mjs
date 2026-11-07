@@ -35,6 +35,7 @@ const books = [
       'src/engine/nonlinear.ts',
       'src/engine/automatic-polynomial.ts',
       'src/engine/automatic.ts',
+      'src/engine/root-isolation.ts',
       'src/engine/conditioning.ts',
       'src/engine/solver.wat',
       'scripts/build-wasm.mjs',
@@ -51,6 +52,10 @@ const books = [
     ],
     files: [
       'src/models.ts',
+      'src/solver-input.ts',
+      'src/use-project-persistence.ts',
+      'src/equation-count.ts',
+      'src/csv.ts',
       'src/engine/sweep.ts',
       'src/engine/branches.ts',
       'src/engine/simulation-panels.ts',

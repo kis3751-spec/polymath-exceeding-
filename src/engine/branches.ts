@@ -6,6 +6,7 @@ import {
   type SweepPoint,
 } from './index'
 import { parameterValues, type SweepSettings } from './sweep'
+import { isUniquePolynomialRoot } from './root-isolation'
 
 export type NearSolver = (
   source: string,
@@ -20,6 +21,12 @@ type Sweeps = Pick<
 >
 type State = { parameter: number; values: number[] }
 type Path = { current: State; previous?: State }
+
+class PredictorError extends ModelError {
+  constructor(readonly corrected: SolveResult) {
+    super('이전 해에서 멀리 떨어진 해로 이동해 추적 간격을 줄였습니다.')
+  }
+}
 
 function continuationPrecision(...values: number[]) {
   const scale = Math.max(Number.MIN_VALUE, ...values.map(Math.abs))
@@ -54,7 +61,11 @@ function createContinuation(
       throw new ModelError('추적 중인 해의 미지수가 변경되었습니다.')
     return result
   }
-  const correct = (path: Path, target: number): State => {
+  const correct = (
+    path: Path,
+    target: number,
+    singularEndpoint = false,
+  ): State => {
     const { current, previous } = path
     const ratio = previous
       ? Math.min(
@@ -81,10 +92,11 @@ function createContinuation(
       // old |x|-scaled allowance accepted much larger period jumps at x=80
       // than at x=0. Tiny branches need a correspondingly tiny allowance.
       const allowance = previous ? Math.max(rounding, motion * 2) : 0.2
-      if (Math.abs(result.values[i] - predictor[i]) > allowance)
-        throw new ModelError(
-          '이전 해에서 멀리 떨어진 해로 이동해 추적 간격을 줄였습니다.',
-        )
+      if (
+        Math.abs(result.values[i] - predictor[i]) > allowance &&
+        !singularEndpoint
+      )
+        throw new PredictorError(result)
     }
 
     // Check every step, including same-sign roots and tiny-valued roots.
@@ -127,6 +139,42 @@ function createContinuation(
       )
         throw error
       const halfway = advance(path, middle, depth + 1)
+      // At a unique singular polynomial endpoint, such as x^3=p at p=0,
+      // the derivative of x(p) is infinite and a secant-based relative gate
+      // fails at every scale. Relax it only after an ordinary half-step has
+      // actually moved toward the verified endpoint. Checking the half-step
+      // first prevents this exception from leaping over poles or empty real
+      // intervals. The reverse check remains mandatory on the relaxed step.
+      if (
+        error instanceof PredictorError &&
+        isUniquePolynomialRoot(error.corrected) &&
+        error.corrected.values.length === 1 &&
+        error.corrected.matrix[0]?.[0] === 0
+      ) {
+        const endpoint = error.corrected.values[0]
+        const scale = Math.max(
+          Number.MIN_VALUE,
+          Math.abs(endpoint),
+          Math.abs(path.current.values[0]),
+          Math.abs(halfway.current.values[0]),
+        )
+        const firstDistance = Math.abs(
+          endpoint / scale - path.current.values[0] / scale,
+        )
+        const halfDistance = Math.abs(
+          endpoint / scale - halfway.current.values[0] / scale,
+        )
+        if (halfDistance < firstDistance * 0.95) {
+          try {
+            return {
+              previous: halfway.current,
+              current: correct(halfway, target, true),
+            }
+          } catch {
+            // A failed reverse check still requires ordinary subdivision.
+          }
+        }
+      }
       return advance(halfway, target, depth + 1)
     }
   }

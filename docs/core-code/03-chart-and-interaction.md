@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `f41c2ecc470e684299b7d4cc0526cd104d5a6c34e06b9b09d872b563cefcbd5e`
+소스 묶음 SHA-256: `2831fda9b85a9ddcbc73755db384a143da430d248c10b39ddc78c7d94d283ef2`
 
 ## 다른 코드 묶음
 
@@ -156,7 +156,7 @@ export function fittedDomain(values: readonly number[]): ChartDomain {
 
 ## src/components/chart-interaction.ts
 
-원본: [src/components/chart-interaction.ts](../../src/components/chart-interaction.ts) · 114줄 · SHA-256: `84843a8b547dc6acbfe564789f84fa4cbf9a59f46be2772634ab0172c2d632af`
+원본: [src/components/chart-interaction.ts](../../src/components/chart-interaction.ts) · 116줄 · SHA-256: `e479b0f5db5855a4ec7606b34f944659ee0d8c7e544294a554729e7c611fce1c`
 
 ```typescript
 import { fraction, interpolate } from './chart-domain'
@@ -239,19 +239,21 @@ export function zoomAxis(
   anchorRatio: number,
   factor: number,
 ): AxisWindow {
-  if (!Number.isFinite(factor) || factor <= 0) return window
+  if (!Number.isFinite(factor) || factor <= 0 || !Number.isFinite(anchorRatio))
+    return window
   const ratio = Math.min(1, Math.max(0, anchorRatio))
   const span = Math.min(8, Math.max(1 / 128, (window[1] - window[0]) * factor))
+  if (span === 8) return [-3.5, 4.5]
   const anchor = interpolate(window[0], window[1], ratio)
   let min = anchor - ratio * span
   let max = min + span
-  if (min < -4) {
-    max += -4 - min
-    min = -4
+  if (min < -3.5) {
+    max += -3.5 - min
+    min = -3.5
   }
-  if (max > 5) {
-    min -= max - 5
-    max = 5
+  if (max > 4.5) {
+    min -= max - 4.5
+    max = 4.5
   }
   return [min, max]
 }
@@ -1332,7 +1334,7 @@ export default function SolutionChart({
 
 ## src/components/SimulationPanelView.tsx
 
-원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 305줄 · SHA-256: `89e571061e0ce88359ac70eeaf734d4f11572698968fa5c7cff782b3e7add7c6`
+원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 301줄 · SHA-256: `8e79a537e41f8f1d7140c14dbdc296ecaa0f02311647824908c3c42f16bca400`
 
 ```tsx
 import { useEffect, useRef, useState } from 'react'
@@ -1340,6 +1342,7 @@ import { Download, FileText, X } from 'lucide-react'
 import type { Parameter, SimulationAnchor, SimulationPanel } from '../engine'
 import SolutionChart, { SERIES_COLORS } from './SolutionChart'
 import './SimulationPanelView.css'
+import { encodeCsv } from '../csv'
 
 export type SimulationPanelViewProps = {
   panel: SimulationPanel
@@ -1363,11 +1366,6 @@ function vectorText(variables: string[], values: number[]): string {
   return variables
     .map((name, index) => `${name} = ${formatNumber(values[index])}`)
     .join(' · ')
-}
-
-function csvCell(value: string | number): string {
-  const text = String(value)
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
 export default function SimulationPanelView({
@@ -1431,7 +1429,7 @@ export default function SimulationPanelView({
             panel.result?.values[index] ?? '',
           ]),
         ]
-    const text = content.map((row) => row.map(csvCell).join(',')).join('\r\n')
+    const text = encodeCsv(content)
     const url = URL.createObjectURL(
       new Blob(['\uFEFF', text], { type: 'text/csv;charset=utf-8' }),
     )
@@ -1925,7 +1923,7 @@ export default function SimulationPanelView({
 
 ## src/components/WorkspaceNavigation.tsx
 
-원본: [src/components/WorkspaceNavigation.tsx](../../src/components/WorkspaceNavigation.tsx) · 241줄 · SHA-256: `0e72019247ee1a2ec84ec28d97e6c68c91e5b8236834c33c26115cb7efbef18b`
+원본: [src/components/WorkspaceNavigation.tsx](../../src/components/WorkspaceNavigation.tsx) · 224줄 · SHA-256: `5fe0469e275d7ec211daa93d3ea6ecd52170896ba0c39c9b49ceedcbb9a61889`
 
 ```tsx
 import { ArrowRight, Code2, FileText, Home, Activity } from 'lucide-react'
@@ -1945,45 +1943,38 @@ const modules: {
   kind: ModuleKind
   letter: string
   name: string
-  description: string
   available?: boolean
 }[] = [
   {
     kind: 'equation',
     letter: 'E',
     name: 'Equation Solver',
-    description: '선형·비선형 방정식의 해를 구하고 변화를 탐색하세요.',
     available: true,
   },
   {
     kind: 'differential',
     letter: 'D',
     name: 'Differential Equations',
-    description: '미분방정식으로 시간에 따른 변화를 계산합니다.',
   },
   {
     kind: 'curve',
     letter: 'P',
     name: 'Curve Fitting',
-    description: '데이터에 맞는 선형·다항식 모델을 찾습니다.',
   },
   {
     kind: 'nonlinear',
     letter: 'N',
     name: 'Nonlinear Fitting',
-    description: '비선형 모델의 파라미터를 데이터에서 추정합니다.',
   },
   {
     kind: 'optimum',
     letter: 'O',
     name: 'Optimum Finder',
-    description: '조건을 만족하는 최적의 값을 탐색합니다.',
   },
   {
     kind: 'integration',
     letter: 'I',
     name: 'Discrete Integration',
-    description: '측정한 데이터 사이의 면적과 적분값을 구합니다.',
   },
 ]
 
@@ -2082,12 +2073,7 @@ export function LandingModules({
   onOpenEquationSolver: () => void
 }) {
   return (
-    <section className="module-home" aria-labelledby="module-home-title">
-      <header className="module-home-heading">
-        <span className="module-home-eyebrow">YOUR MATHEMATICAL WORKSPACE</span>
-        <h1 id="module-home-title">어떤 계산을 시작할까요?</h1>
-        <p>필요한 도구를 선택하고, 한 화면에서 한 가지 작업에 집중하세요.</p>
-      </header>
+    <section className="module-home" aria-label="계산 도구">
       <div className="module-grid">
         {modules.map((module) => (
           <button
@@ -2102,12 +2088,10 @@ export function LandingModules({
               <span className="module-letter">{module.letter}</span>
               <span>{module.name}</span>
             </span>
-            <span className="module-description">{module.description}</span>
             <ModuleIllustration kind={module.kind} />
             <span className="module-card-footer">
               {module.available ? (
                 <>
-                  <span>계산 시작</span>
                   <ArrowRight size={16} />
                 </>
               ) : (
@@ -2117,9 +2101,6 @@ export function LandingModules({
           </button>
         ))}
       </div>
-      <p className="module-home-note">
-        Equation Solver에서 선형·비선형 계산을 사용할 수 있습니다.
-      </p>
     </section>
   )
 }
@@ -6156,11 +6137,27 @@ h2 {
 
 ## src/workspace-screens.css
 
-원본: [src/workspace-screens.css](../../src/workspace-screens.css) · 179줄 · SHA-256: `c9a38e232620c502542d53b4c0c06e2fed78063fa1224e43dd083e4f9664b787`
+원본: [src/workspace-screens.css](../../src/workspace-screens.css) · 202줄 · SHA-256: `3bf731e22cddaf872417451f4b4d266badb856dd5df1fa03222bc042bdf6a92a`
 
 ```css
 [hidden] {
   display: none !important;
+}
+
+.workspace {
+  margin-left: 0;
+  width: 100%;
+}
+
+.module-home-page {
+  min-height: calc(100dvh - 77px);
+  display: grid;
+  align-items: center;
+}
+
+.module-home-page .module-home {
+  width: 100%;
+  padding-block: 36px;
 }
 
 .workspace-nav-container {
@@ -6254,6 +6251,13 @@ h2 {
 .selected-simulation-workspace {
   padding: 20px 24px 24px;
   background: #f7f9f3;
+}
+.discovery-status {
+  padding: 14px 24px;
+  color: #7c8c75;
+  font-size: 11px;
+  line-height: 1.7;
+  border-bottom: 1px solid #e8ece1;
 }
 .selected-simulation-toolbar {
   display: flex;

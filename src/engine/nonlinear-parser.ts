@@ -70,6 +70,9 @@ const FUNCTIONS: Record<
   min: { arity: 2, compute: Math.min },
   max: { arity: 2, compute: Math.max },
 }
+export function isNonlinearFunction(name: string): boolean {
+  return Object.hasOwn(FUNCTIONS, name.toLowerCase())
+}
 const BUILTINS = new Map([
   ['pi', Math.PI],
   ['e', Math.E],
@@ -163,8 +166,10 @@ export function parseNonlinearExpression(source: string, line = 1): Expression {
       }
       if (token.type === 'name') {
         if (peek() === '(') {
-          const fn = Object.hasOwn(FUNCTIONS, token.text)
-            ? FUNCTIONS[token.text]
+          // Normalize calls only. Ordinary symbols remain case-sensitive.
+          const functionName = token.text.toLowerCase()
+          const fn = Object.hasOwn(FUNCTIONS, functionName)
+            ? FUNCTIONS[functionName]
             : undefined
           if (!fn)
             throw new ModelError(
@@ -188,7 +193,7 @@ export function parseNonlinearExpression(source: string, line = 1): Expression {
               `${token.text} 함수에는 ${fn.arity}개의 인수가 필요합니다.`,
               line,
             )
-          return { kind: 'call', name: token.text, args }
+          return { kind: 'call', name: functionName, args }
         }
         references.add(token.text)
         return { kind: 'name', name: token.text }
@@ -360,10 +365,16 @@ export function compileNonlinear(
     }
     const left = equals[0].trim(),
       right = equals[1].trim()
-    const root = /^f\(\s*([A-Za-z][A-Za-z0-9_]*)\s*\)$/.exec(left)
-    const condition = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)$/.exec(
+    const rawCondition = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)$/.exec(
       left,
     )
+    // f itself is a valid engineering variable (for example a friction
+    // factor). Its f(min)/f(max)/f(0) metadata must precede f(x) residuals.
+    const condition =
+      rawCondition && !RESERVED.has(rawCondition[1]) ? rawCondition : null
+    const root = condition
+      ? null
+      : /^f\(\s*([A-Za-z][A-Za-z0-9_]*)\s*\)$/.exec(left)
     if (root) {
       declare(root[1], line)
       roots.push({ name: root[1], ...parseExpression(right, line) })

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `afd694c742ad132db120415726b68db7b1b503ff240e48aff3de0e94cf116a7c`
+소스 묶음 SHA-256: `f3a85909dce7143b800c54c1e488c73bb8e2877a3142df64fadfe7cf5af40bf5`
 
 ## 다른 코드 묶음
 
@@ -25,11 +25,15 @@
 ## 포함한 원본
 
 - [src/models.ts](#source-1) · [저장소 원본](../../src/models.ts)
-- [src/engine/sweep.ts](#source-2) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-3) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/simulation-panels.ts](#source-4) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/solver.worker.ts](#source-5) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-6) · [저장소 원본](../../src/App.tsx)
+- [src/solver-input.ts](#source-2) · [저장소 원본](../../src/solver-input.ts)
+- [src/use-project-persistence.ts](#source-3) · [저장소 원본](../../src/use-project-persistence.ts)
+- [src/equation-count.ts](#source-4) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-5) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-6) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-7) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/simulation-panels.ts](#source-8) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/solver.worker.ts](#source-9) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-10) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -180,6 +184,159 @@ export const NONLINEAR_EXAMPLES: Array<{
 ```
 
 <a id="source-2"></a>
+
+## src/solver-input.ts
+
+원본: [src/solver-input.ts](../../src/solver-input.ts) · 31줄 · SHA-256: `a7ca8ba0cc2342c9ba5f4ce42feea021204f42ca807bee6a8688ea19fc4ddea9`
+
+```typescript
+import type { Project } from './models'
+
+/** Only inputs that affect a calculation belong in this request. */
+export function createSolverInput(project: Project) {
+  const sweep = project.parameters.find((p) => p.name === project.sweepName)
+  return {
+    source: project.source,
+    conditionNorm: project.conditionNorm ?? 'infinity',
+    mode: project.mode ?? 'linear',
+    nonlinearSearch: project.nonlinearSearch ?? 'auto',
+    searchBounds: project.searchBounds,
+    solutionIndex: project.selectedSolution ?? 0,
+    simulationAnchors: project.simulations,
+    selectedAnchor: project.selectedAnchor,
+    parameters: Object.fromEntries(
+      project.parameters.map((p) => [p.name, p.value]),
+    ),
+    sweep: sweep
+      ? {
+          name: sweep.name,
+          min: sweep.min,
+          max: sweep.max,
+          steps: 81,
+          step: sweep.step,
+        }
+      : null,
+  }
+}
+
+export const solverInputKey = (project: Project, revision: number) =>
+  JSON.stringify([createSolverInput(project), revision])
+```
+
+<a id="source-3"></a>
+
+## src/use-project-persistence.ts
+
+원본: [src/use-project-persistence.ts](../../src/use-project-persistence.ts) · 54줄 · SHA-256: `f7c04347bf5ce7e49117f36e3cf4f3229a8360f98c25337d19e0aacc5502a838`
+
+```typescript
+import { useEffect, useRef } from 'react'
+import type { Project, SolverMode } from './models'
+
+/** Batch synchronous storage writes, flushing committed edits before leaving. */
+export function useProjectPersistence(
+  project: Project,
+  storageKey: string,
+  onStatus: (ok: boolean) => void,
+) {
+  const latest = useRef(project)
+  const dirtyModes = useRef(new Map<SolverMode, Project>())
+  const saved = useRef<Project | null>(null)
+  const flushRef = useRef<() => void>(() => {})
+  latest.current = project
+  flushRef.current = () => {
+    const current = latest.current
+    if (!dirtyModes.current.size && saved.current === current) return
+    dirtyModes.current.set(current.mode ?? 'linear', current)
+    try {
+      let currentJson = ''
+      for (const [mode, draft] of dirtyModes.current) {
+        const json = JSON.stringify(draft)
+        localStorage.setItem(`${storageKey}-${mode}`, json)
+        if (draft === current) currentJson = json
+      }
+      localStorage.setItem(storageKey, currentJson)
+      dirtyModes.current.clear()
+      saved.current = current
+      onStatus(true)
+    } catch {
+      onStatus(false)
+    }
+  }
+  useEffect(() => {
+    dirtyModes.current.set(project.mode ?? 'linear', project)
+    const timer = setTimeout(() => flushRef.current(), 300)
+    return () => clearTimeout(timer)
+  }, [project])
+  useEffect(() => {
+    const flush = () => flushRef.current()
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('beforeunload', flush)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      window.removeEventListener('beforeunload', flush)
+      document.removeEventListener('visibilitychange', onVisibility)
+      flush()
+    }
+  }, [storageKey])
+}
+```
+
+<a id="source-4"></a>
+
+## src/equation-count.ts
+
+원본: [src/equation-count.ts](../../src/equation-count.ts) · 18줄 · SHA-256: `8e1db27cc1e7a2beb72b609565ce37c1ae4e248d24b22cd1e94489a3faa84777`
+
+```typescript
+import { isNonlinearFunction } from './engine/nonlinear-parser'
+
+/** Count the same equation/metadata roles accepted by the model parser. */
+export function countEquations(source: string, nonlinear: boolean) {
+  const lines = source
+    .split('\n')
+    .map((line) => line.split('#')[0].trim())
+    .filter(Boolean)
+  const isCondition = (line: string) => {
+    const match = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/.exec(line)
+    return Boolean(match && !isNonlinearFunction(match[1]))
+  }
+  const isRoot = (line: string) =>
+    !isCondition(line) && /^f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/.test(line)
+  return nonlinear && lines.some(isRoot)
+    ? lines.filter(isRoot).length
+    : lines.filter((line) => !isCondition(line)).length
+}
+```
+
+<a id="source-5"></a>
+
+## src/csv.ts
+
+원본: [src/csv.ts](../../src/csv.ts) · 14줄 · SHA-256: `bb546b391ed7aafb20d55bdf2733ef13de576a4a7a273b299c5385a4d34edfa3`
+
+```typescript
+export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
+  return rows
+    .map((row) =>
+      row
+        .map((value) => {
+          const text = String(value)
+          return /[",\r\n]/.test(text)
+            ? `"${text.replaceAll('"', '""')}"`
+            : text
+        })
+        .join(','),
+    )
+    .join('\r\n')
+}
+```
+
+<a id="source-6"></a>
 
 ## src/engine/sweep.ts
 
@@ -368,11 +525,11 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-3"></a>
+<a id="source-7"></a>
 
 ## src/engine/branches.ts
 
-원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 278줄 · SHA-256: `74dfbb56bbdcd1f3302d2cf64c73562775f5f493cacf43bc1127a120365378e5`
+원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 326줄 · SHA-256: `8d32249f5fd786eea9cce61406136ecea7bb5e8087d5fd3d91a19257f48ca5ba`
 
 ```typescript
 import {
@@ -383,6 +540,7 @@ import {
   type SweepPoint,
 } from './index'
 import { parameterValues, type SweepSettings } from './sweep'
+import { isUniquePolynomialRoot } from './root-isolation'
 
 export type NearSolver = (
   source: string,
@@ -397,6 +555,12 @@ type Sweeps = Pick<
 >
 type State = { parameter: number; values: number[] }
 type Path = { current: State; previous?: State }
+
+class PredictorError extends ModelError {
+  constructor(readonly corrected: SolveResult) {
+    super('이전 해에서 멀리 떨어진 해로 이동해 추적 간격을 줄였습니다.')
+  }
+}
 
 function continuationPrecision(...values: number[]) {
   const scale = Math.max(Number.MIN_VALUE, ...values.map(Math.abs))
@@ -431,7 +595,11 @@ function createContinuation(
       throw new ModelError('추적 중인 해의 미지수가 변경되었습니다.')
     return result
   }
-  const correct = (path: Path, target: number): State => {
+  const correct = (
+    path: Path,
+    target: number,
+    singularEndpoint = false,
+  ): State => {
     const { current, previous } = path
     const ratio = previous
       ? Math.min(
@@ -458,10 +626,11 @@ function createContinuation(
       // old |x|-scaled allowance accepted much larger period jumps at x=80
       // than at x=0. Tiny branches need a correspondingly tiny allowance.
       const allowance = previous ? Math.max(rounding, motion * 2) : 0.2
-      if (Math.abs(result.values[i] - predictor[i]) > allowance)
-        throw new ModelError(
-          '이전 해에서 멀리 떨어진 해로 이동해 추적 간격을 줄였습니다.',
-        )
+      if (
+        Math.abs(result.values[i] - predictor[i]) > allowance &&
+        !singularEndpoint
+      )
+        throw new PredictorError(result)
     }
 
     // Check every step, including same-sign roots and tiny-valued roots.
@@ -504,6 +673,42 @@ function createContinuation(
       )
         throw error
       const halfway = advance(path, middle, depth + 1)
+      // At a unique singular polynomial endpoint, such as x^3=p at p=0,
+      // the derivative of x(p) is infinite and a secant-based relative gate
+      // fails at every scale. Relax it only after an ordinary half-step has
+      // actually moved toward the verified endpoint. Checking the half-step
+      // first prevents this exception from leaping over poles or empty real
+      // intervals. The reverse check remains mandatory on the relaxed step.
+      if (
+        error instanceof PredictorError &&
+        isUniquePolynomialRoot(error.corrected) &&
+        error.corrected.values.length === 1 &&
+        error.corrected.matrix[0]?.[0] === 0
+      ) {
+        const endpoint = error.corrected.values[0]
+        const scale = Math.max(
+          Number.MIN_VALUE,
+          Math.abs(endpoint),
+          Math.abs(path.current.values[0]),
+          Math.abs(halfway.current.values[0]),
+        )
+        const firstDistance = Math.abs(
+          endpoint / scale - path.current.values[0] / scale,
+        )
+        const halfDistance = Math.abs(
+          endpoint / scale - halfway.current.values[0] / scale,
+        )
+        if (halfDistance < firstDistance * 0.95) {
+          try {
+            return {
+              previous: halfway.current,
+              current: correct(halfway, target, true),
+            }
+          } catch {
+            // A failed reverse check still requires ordinary subdivision.
+          }
+        }
+      }
       return advance(halfway, target, depth + 1)
     }
   }
@@ -655,7 +860,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-4"></a>
+<a id="source-8"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -911,11 +1116,11 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
 }
 ```
 
-<a id="source-5"></a>
+<a id="source-9"></a>
 
 ## src/engine/solver.worker.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 199줄 · SHA-256: `ee8bed4371e1a8c22ba88f4cf34d265516c66e8af7031c58ec9a258a30c76241`
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 317줄 · SHA-256: `1bccb0423ac7437ee28faecc7d0c3c9bbfc66c33fab82d45595aeb09b32582df`
 
 ```typescript
 /// <reference lib="webworker" />
@@ -942,37 +1147,95 @@ type Request = {
   solutionIndex?: number
   simulationAnchors?: SimulationAnchor[]
   selectedAnchor?: SimulationAnchor
+  // Interactions may display current anchored values first while the full
+  // discovery list is refreshed after a short quiet period.
+  deferDiscovery?: boolean
+}
+type QueuedRequest = {
+  request: Request
+  generation: number
+  discoveryOnly?: boolean
 }
 const ready = createSolver()
 const nonlinearReady = createNonlinearSolver()
 let automaticReady: ReturnType<typeof createAutomaticSolver> | undefined
 const searches = new Map<string, AutomaticSearchResult>()
 let computePanels: ReturnType<typeof createSimulationPanelComputer> | undefined
-let pendingRequest: Request | undefined
+let pendingRequest: QueuedRequest | undefined
 let processing = false
+let generation = 0
+let deferredDiscovery: ReturnType<typeof setTimeout> | undefined
+let lastDiscoveryContext: string | undefined
+const DISCOVERY_QUIET_MS = 180
 
-// Yield between calculations so queued slider events replace each other rather
-// than starting an expensive global root search for every intermediate value.
-self.onmessage = (event: MessageEvent<Request>) => {
-  pendingRequest = event.data
+const sortedParameters = (parameters: Record<string, number>) =>
+  Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b))
+
+function discoveryKey(request: Request) {
+  return JSON.stringify([
+    request.source,
+    sortedParameters(request.parameters),
+    request.conditionNorm ?? 'infinity',
+    request.searchBounds
+      ? [request.searchBounds.min, request.searchBounds.max]
+      : null,
+  ])
+}
+
+// Only the coordinate of the currently swept parameter may differ. Changed
+// equations, fixed parameters, ranges, diagnostics or bounds require a fresh
+// discovery before the UI presents a new root list.
+function discoveryContext(request: Request) {
+  return JSON.stringify([
+    request.source,
+    sortedParameters(request.parameters).filter(
+      ([name]) => name !== request.sweep?.name,
+    ),
+    request.sweep ?? null,
+    request.conditionNorm ?? 'infinity',
+    request.searchBounds
+      ? [request.searchBounds.min, request.searchBounds.max]
+      : null,
+  ])
+}
+
+function queueLatest(work: QueuedRequest) {
+  pendingRequest = work
   if (!processing) {
     processing = true
     setTimeout(processLatest, 0)
   }
 }
 
+function scheduleDiscovery(work: QueuedRequest) {
+  deferredDiscovery = setTimeout(() => {
+    deferredDiscovery = undefined
+    if (work.generation === generation)
+      queueLatest({ ...work, discoveryOnly: true })
+  }, DISCOVERY_QUIET_MS)
+}
+
+// Yield between calculations so queued slider events replace each other rather
+// than starting an expensive global root search for every intermediate value.
+self.onmessage = (event: MessageEvent<Request>) => {
+  if (deferredDiscovery !== undefined) clearTimeout(deferredDiscovery)
+  deferredDiscovery = undefined
+  queueLatest({ request: event.data, generation: ++generation })
+}
+
 async function processLatest() {
-  const request = pendingRequest!
+  const work = pendingRequest!
   pendingRequest = undefined
   try {
-    await handleRequest(request)
+    await handleRequest(work)
   } finally {
     if (pendingRequest) setTimeout(processLatest, 0)
     else processing = false
   }
 }
 
-async function handleRequest(request: Request) {
+async function handleRequest(work: QueuedRequest) {
+  const { request } = work
   const {
     id,
     source,
@@ -990,20 +1253,72 @@ async function handleRequest(request: Request) {
     if (mode === 'nonlinear' && nonlinearSearch !== 'manual') {
       automaticReady ??= createAutomaticSolver()
       const search = await automaticReady
-      if (pendingRequest) return
-      const key = JSON.stringify([
-        source,
-        Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b)),
-        conditionNorm ?? 'infinity',
-        searchBounds ? [searchBounds.min, searchBounds.max] : null,
-      ])
+      if (work.generation !== generation) return
+      const key = discoveryKey(request)
+      const context = discoveryContext(request)
+      computePanels ??= createSimulationPanelComputer(search.solveNear)
+      if (
+        !work.discoveryOnly &&
+        request.deferDiscovery &&
+        selectedAnchor &&
+        lastDiscoveryContext === context &&
+        !searches.has(key)
+      ) {
+        const simulations = simulationAnchors
+          ? computePanels(
+              source,
+              parameters,
+              sweep,
+              simulationAnchors,
+              conditionNorm,
+            )
+          : undefined
+        const selectedSimulation = computePanels(
+          source,
+          parameters,
+          sweep,
+          [selectedAnchor],
+          conditionNorm,
+        )[0]
+        const result = selectedSimulation.result
+        if (result) {
+          const payload: SolvePayload = {
+            result,
+            solutions: [],
+            selectedSimulation,
+            ...(simulations ? { simulations } : {}),
+            sweep: selectedSimulation.sweep,
+            dataset: selectedSimulation.dataset,
+            ...(selectedSimulation.datasetError
+              ? { datasetError: selectedSimulation.datasetError }
+              : {}),
+            sweepName: selectedSimulation.sweepName,
+          }
+          self.postMessage({ id, ok: true, discoveryPending: true, payload })
+        } else {
+          self.postMessage({
+            id,
+            ok: false,
+            discoveryPending: true,
+            error:
+              selectedSimulation.error ||
+              '선택한 해의 현재값을 계산하지 못했습니다.',
+            selectedSimulation,
+            ...(simulations ? { simulations } : {}),
+          })
+        }
+        // Never label old discovered roots as values at the new parameter.
+        // The staged payload deliberately contains no coverage or root list.
+        scheduleDiscovery(work)
+        return
+      }
       let found = searches.get(key)
       if (!found) {
         found = search(source, parameters, { conditionNorm, searchBounds })
         if (searches.size >= 8) searches.delete(searches.keys().next().value!)
         searches.set(key, found)
       }
-      computePanels ??= createSimulationPanelComputer(search.solveNear)
+      lastDiscoveryContext = context
       const simulations = simulationAnchors
         ? computePanels(
             source,
@@ -1013,7 +1328,7 @@ async function handleRequest(request: Request) {
             conditionNorm,
           )
         : undefined
-      const selectedSimulation = selectedAnchor
+      let selectedSimulation = selectedAnchor
         ? computePanels(
             source,
             parameters,
@@ -1026,6 +1341,7 @@ async function handleRequest(request: Request) {
         self.postMessage({
           id,
           ok: false,
+          discoveryPending: false,
           error:
             '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
           search: found.search,
@@ -1058,27 +1374,26 @@ async function handleRequest(request: Request) {
       }
       const globalResult = found.solutions[selectedSolution]
       const result = selectedSimulation?.result ?? globalResult
-      // Without a UI-selected anchor the first solve still needs a graph.
-      // Its origin will be captured by the UI for subsequent parameter edits.
-      const single =
-        selectedSimulation ??
-        (sweep
-          ? computePanels(
-              source,
-              parameters,
-              sweep,
-              [
-                {
-                  id: '__selected__',
-                  label: `해 ${selectedSolution + 1}`,
-                  variables: [...result.variables],
-                  values: [...result.values],
-                  parameters: { ...parameters },
-                },
-              ],
-              conditionNorm,
-            )[0]
-          : { sweep: [], dataset: [], sweepName: '', datasetError: undefined })
+      // The first response supplies the same immutable anchor used to build
+      // its graph. Adopting it in the UI does not require a second solve.
+      let adoptedAnchor: SimulationAnchor | undefined
+      if (!selectedAnchor) {
+        adoptedAnchor = {
+          id: crypto.randomUUID(),
+          label: `해 ${selectedSolution + 1}`,
+          variables: [...result.variables],
+          values: [...result.values],
+          parameters: { ...parameters },
+        }
+        selectedSimulation = computePanels(
+          source,
+          parameters,
+          sweep,
+          [adoptedAnchor],
+          conditionNorm,
+        )[0]
+      }
+      const single = selectedSimulation!
       const payload: SolvePayload = {
         result,
         solutions: found.solutions,
@@ -1091,11 +1406,17 @@ async function handleRequest(request: Request) {
         ...(single.datasetError ? { datasetError: single.datasetError } : {}),
         sweepName: single.sweepName,
       }
-      self.postMessage({ id, ok: true, payload })
+      self.postMessage({
+        id,
+        ok: true,
+        discoveryPending: false,
+        payload,
+        ...(adoptedAnchor ? { adoptedAnchor } : {}),
+      })
       return
     }
     const solve = await (mode === 'nonlinear' ? nonlinearReady : ready)
-    if (pendingRequest) return
+    if (work.generation !== generation) return
     const result = solve(source, parameters, { conditionNorm })
     const payload: SolvePayload = {
       result,
@@ -1106,11 +1427,13 @@ async function handleRequest(request: Request) {
         mode === 'nonlinear' && sweep ? { ...sweep, maxPoints: 500 } : sweep,
       ),
     }
-    self.postMessage({ id, ok: true, payload })
+    self.postMessage({ id, ok: true, discoveryPending: false, payload })
   } catch (error) {
+    if (work.generation !== generation) return
     self.postMessage({
       id,
       ok: false,
+      discoveryPending: false,
       error:
         error instanceof Error ? error.message : '계산 중 오류가 발생했습니다.',
       line: error instanceof ModelError ? error.line : undefined,
@@ -1119,11 +1442,11 @@ async function handleRequest(request: Request) {
 }
 ```
 
-<a id="source-6"></a>
+<a id="source-10"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 2,720줄 · SHA-256: `190526e681a7ac5cacb0aacec22e00b61a86f52bed86d0b4b7219fd41da206a3`
+원본: [src/App.tsx](../../src/App.tsx) · 2,688줄 · SHA-256: `e418a63dee5873aeb96f6ab4e264fa88c340a8f10bdb8696caf2b9445f6b5d41`
 
 ```tsx
 import { useEffect, useRef, useState } from 'react'
@@ -1158,6 +1481,10 @@ import {
 import SolutionChart, { SERIES_COLORS } from './components/SolutionChart'
 import Guide from './components/Guide'
 import SimulationPanelView from './components/SimulationPanelView'
+import { createSolverInput, solverInputKey } from './solver-input'
+import { useProjectPersistence } from './use-project-persistence'
+import { countEquations } from './equation-count'
+import { encodeCsv } from './csv'
 import {
   LandingModules,
   WorkspaceNavigation,
@@ -1305,6 +1632,7 @@ export default function App() {
   )
   const [searchInfo, setSearchInfo] = useState<SearchSummary | null>(null)
   const [pending, setPending] = useState(false)
+  const [discoveryPending, setDiscoveryPending] = useState(false)
   const [workerReady, setWorkerReady] = useState(false)
   const [revision, setRevision] = useState(0)
   const [screen, setScreen] = useState<WorkspaceScreen>('home')
@@ -1330,6 +1658,18 @@ export default function App() {
   const examplesRef = useRef<HTMLDivElement>(null)
   const projectRef = useRef(project)
   projectRef.current = project
+  const revisionRef = useRef(revision)
+  revisionRef.current = revision
+  const dispatchedKey = useRef('')
+  const adoptedReplyKey = useRef('')
+  const previousRequest = useRef({
+    source: '',
+    mode: '',
+    search: '',
+    revision: -1,
+  })
+  // Projects are immutable; mode drafts need a reference, not a clone per frame.
+  drafts.current[project.mode ?? 'linear'] = project
   const mode = project.mode ?? 'linear'
   const nonlinear = mode === 'nonlinear'
   const nonlinearSearch = project.nonlinearSearch ?? 'auto'
@@ -1392,12 +1732,7 @@ export default function App() {
     (p) => p.name === project.sweepName,
   )
   const sourceLines = project.source.split('\n')
-  const equationCount = sourceLines.filter((l) =>
-    nonlinear && project.source.split('\n').some((x) => /^\s*f\(/.test(x))
-      ? /^\s*f\([A-Za-z][A-Za-z0-9_]*\)\s*=/.test(l)
-      : l.split('#')[0].trim() &&
-        !/^\s*[A-Za-z][A-Za-z0-9_]*\((min|max|0)\)/.test(l),
-  ).length
+  const equationCount = countEquations(project.source, nonlinear)
   useEffect(() => {
     const w = new Worker(
       new URL('./engine/solver.worker.ts', import.meta.url),
@@ -1407,43 +1742,39 @@ export default function App() {
     w.onmessage = ({ data }) => {
       if (data.id !== requestId.current) return
       setPending(false)
+      setDiscoveryPending(data.discoveryPending === true)
       if (data.ok) {
         setPayload(data.payload)
         setSelectedSimulation(data.payload.selectedSimulation ?? null)
         setSimulationResults(data.payload.simulations ?? [])
         setSearchInfo(data.payload.search ?? null)
-        if (data.payload.selectedSolution !== undefined)
-          setProject((p) =>
-            p.selectedSolution === data.payload.selectedSolution
-              ? p
-              : { ...p, selectedSolution: data.payload.selectedSolution },
-          )
         setError('')
         const latest = projectRef.current
+        // A reply may normalize its selection metadata without changing inputs.
+        // Adopt that same anchor/result once, rather than solving a second time.
         if (
-          latest.mode === 'nonlinear' &&
-          latest.nonlinearSearch !== 'manual' &&
-          !latest.selectedAnchor &&
-          data.payload.solutions?.length
+          solverInputKey(latest, revisionRef.current) === dispatchedKey.current
         ) {
-          const index = data.payload.selectedSolution ?? 0
-          const selected = data.payload.solutions[index]
-          setProject((p) =>
-            p.selectedAnchor
-              ? p
-              : {
-                  ...p,
-                  selectedAnchor: {
-                    id: crypto.randomUUID(),
-                    label: `해 ${index + 1}`,
-                    variables: [...selected.variables],
-                    values: [...selected.values],
-                    parameters: Object.fromEntries(
-                      p.parameters.map((v) => [v.name, v.value]),
-                    ),
-                  },
-                },
-          )
+          const adopted =
+            !latest.selectedAnchor &&
+            data.adoptedAnchor &&
+            validAnchor(data.adoptedAnchor)
+              ? (data.adoptedAnchor as SimulationAnchor)
+              : latest.selectedAnchor
+          const nextIndex =
+            data.payload.selectedSolution ?? latest.selectedSolution
+          if (
+            adopted !== latest.selectedAnchor ||
+            nextIndex !== latest.selectedSolution
+          ) {
+            const next = {
+              ...latest,
+              selectedAnchor: adopted,
+              selectedSolution: nextIndex,
+            }
+            adoptedReplyKey.current = solverInputKey(next, revisionRef.current)
+            setProject(next)
+          }
         }
       } else {
         setError(data.line ? `${data.line}행 · ${data.error}` : data.error)
@@ -1455,6 +1786,7 @@ export default function App() {
     }
     w.onerror = () => {
       setPending(false)
+      setDiscoveryPending(false)
       setError('계산 워커를 시작하지 못했습니다. 페이지를 새로고침해 주세요.')
     }
     setWorkerReady(true)
@@ -1465,6 +1797,24 @@ export default function App() {
   }, [])
   useEffect(() => {
     if (!workerReady) return
+    const key = solverInputKey(project, revision)
+    if (adoptedReplyKey.current === key) {
+      adoptedReplyKey.current = ''
+      dispatchedKey.current = key
+      return
+    }
+    adoptedReplyKey.current = ''
+    const sourceChanged =
+      previousRequest.current.source !== project.source ||
+      previousRequest.current.mode !== mode ||
+      previousRequest.current.search !== nonlinearSearch
+    const explicitSolve = previousRequest.current.revision !== revision
+    previousRequest.current = {
+      source: project.source,
+      mode,
+      search: nonlinearSearch,
+      revision,
+    }
     const id = ++requestId.current
     if (!hasSource) {
       setPayload(null)
@@ -1473,37 +1823,25 @@ export default function App() {
       setSearchInfo(null)
       setSimulationResults([])
       setSelectedSimulation(null)
+      setDiscoveryPending(false)
       return
     }
     setPending(true)
+    setDiscoveryPending(false)
     setError('')
     setSearchInfo(null)
     setSelectedIndex(null)
-    const timer = setTimeout(() => {
-      worker.current?.postMessage({
-        id,
-        source: project.source,
-        conditionNorm,
-        mode,
-        nonlinearSearch,
-        searchBounds: project.searchBounds,
-        solutionIndex,
-        simulationAnchors: project.simulations,
-        selectedAnchor: project.selectedAnchor,
-        parameters: Object.fromEntries(
-          project.parameters.map((p) => [p.name, p.value]),
-        ),
-        sweep: sweepParam
-          ? {
-              name: sweepParam.name,
-              min: sweepParam.min,
-              max: sweepParam.max,
-              steps: 81,
-              step: sweepParam.step,
-            }
-          : null,
-      })
-    }, 160)
+    const timer = setTimeout(
+      () => {
+        dispatchedKey.current = key
+        worker.current?.postMessage({
+          id,
+          ...createSolverInput(project),
+          deferDiscovery: !sourceChanged && !explicitSolve,
+        })
+      },
+      sourceChanged ? 160 : 16,
+    )
     return () => clearTimeout(timer)
   }, [
     project.source,
@@ -1519,19 +1857,7 @@ export default function App() {
     revision,
     workerReady,
   ])
-  useEffect(() => {
-    try {
-      drafts.current[project.mode ?? 'linear'] = structuredClone(project)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(project))
-      localStorage.setItem(
-        `${STORAGE_KEY}-${project.mode ?? 'linear'}`,
-        JSON.stringify(project),
-      )
-      setStorageOk(true)
-    } catch {
-      setStorageOk(false)
-    }
-  }, [project])
+  useProjectPersistence(project, STORAGE_KEY, setStorageOk)
   const variableKey = result?.variables.join('|') || ''
   useEffect(() => {
     setVisibleVariables(variableKey ? variableKey.split('|') : [])
@@ -1887,7 +2213,7 @@ export default function App() {
     setToast('계산 리포트를 내려받았습니다.')
   }
   function exportAllReports() {
-    if (!solutions.length || pending || error) return
+    if (!solutions.length || pending || discoveryPending || error) return
     downloadFile(
       'polymath-all-solutions.md',
       solutions.map((item, i) => buildReport(item, i)).join('\n---\n\n'),
@@ -1898,19 +2224,22 @@ export default function App() {
   function exportCSV() {
     if (!result || !payload || pending || (sweepParam && payload.datasetError))
       return
-    const csv = sweepParam
+    const rows = sweepParam
       ? [
-          [project.sweepName, ...result.variables].join(','),
-          ...payload.dataset.map((p) =>
-            [p.parameter, ...(p.values || result.variables.map(() => ''))].join(
-              ',',
-            ),
-          ),
-        ].join('\n')
+          [project.sweepName, ...result.variables],
+          ...payload.dataset.map((point) => [
+            point.parameter,
+            ...(point.values || result.variables.map(() => '')),
+          ]),
+        ]
       : [
-          ['variable', 'value'].join(','),
-          ...result.variables.map((v, i) => [v, result.values[i]].join(',')),
-        ].join('\n')
+          ['variable', 'value'],
+          ...result.variables.map((name, index) => [
+            name,
+            result.values[index],
+          ]),
+        ]
+    const csv = encodeCsv(rows)
     downloadFile(
       automatic
         ? project.selectedAnchor
@@ -1943,56 +2272,6 @@ export default function App() {
   }
   return (
     <div className="app-shell">
-      <aside className="rail" aria-label="주 메뉴">
-        <a
-          className="brand-mark"
-          href="#"
-          aria-label="Polymath Studio 홈"
-          onClick={(e) => {
-            e.preventDefault()
-            navigate('home')
-          }}
-        >
-          <span>p</span>
-          <i />
-        </a>
-        <div className="rail-group">
-          <button
-            className="rail-item active"
-            aria-label="Equation Solver"
-            title="Equation Solver"
-            onClick={() => {
-              navigate('model')
-            }}
-          >
-            <Sigma size={23} />
-            <span>방정식</span>
-          </button>
-          <button
-            className="rail-item planned-category"
-            disabled
-            aria-label="Differential Equation Solver 준비 중"
-            title="Differential Equation Solver · 준비 중"
-          >
-            <Activity size={22} />
-            <span>미분방정식</span>
-            <small>준비 중</small>
-          </button>
-        </div>
-        <div className="rail-bottom">
-          <button
-            className="rail-item"
-            onClick={() => setGuide(true)}
-            aria-label="사용 가이드"
-          >
-            <CircleHelp size={21} />
-            <span>가이드</span>
-          </button>
-          <div className="avatar" title="로컬 워크스페이스">
-            ME
-          </div>
-        </div>
-      </aside>
       <div className="workspace">
         <header className="topbar">
           <div className="wordmark">
@@ -2005,7 +2284,11 @@ export default function App() {
               {storageOk ? '로컬 자동 저장' : '자동 저장 불가'}
             </span>
             <div className="top-divider" />
-            <button className="quiet-button" onClick={() => setGuide(true)}>
+            <button
+              className="quiet-button"
+              aria-label="사용 가이드"
+              onClick={() => setGuide(true)}
+            >
               <CircleHelp size={16} />
               <span>사용 가이드</span>
             </button>
@@ -2558,11 +2841,19 @@ export default function App() {
                     onChange={updateParameter}
                   />
                 )}
-                {automatic && solutions.length > 0 && (
+                {automatic && discoveryPending && (
+                  <p className="discovery-status" role="status">
+                    현재 해를 표시하고 있습니다. 전체 해 목록을 갱신하는
+                    중입니다.
+                  </p>
+                )}
+                {automatic && (solutions.length > 0 || discoveryPending) && (
                   <details className="solutions-section">
                     <summary className="solutions-title">
                       <h3 className="solution-count">
-                        발견한 실수 해 {solutions.length}개
+                        {discoveryPending
+                          ? '해 목록 갱신 중'
+                          : `발견한 실수 해 ${solutions.length}개`}
                       </h3>
                       <span>
                         해 선택 · 시뮬레이션 추가 <ChevronDown size={14} />

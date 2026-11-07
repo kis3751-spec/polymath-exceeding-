@@ -45,6 +45,31 @@ describe('nonlinear mathematical source compilation', () => {
     expect(evaluated.auxiliary.b).toBe(7)
   })
 
+  it('classifies f variable bounds and initial guesses before f(x) residual definitions', () => {
+    const scalar = compileNonlinear('f(f)=f^2-4\nf(min)=0\nf(max)=3', [])
+    expect(scalar.variables).toEqual(['f'])
+    expect(scalar.bounds).toEqual({ min: 0, max: 3 })
+    expect(scalar.evaluate([2], {}).residuals).toEqual([0])
+    const system = compileNonlinear('f(f)=f^2-4\nf(x)=x-f\nf(0)=2\nx(0)=1', [])
+    expect(system.variables).toEqual(['f', 'x'])
+    expect(system.guesses).toEqual([2, 1])
+    expect(system.evaluate([2, 2], {}).residuals).toEqual([0, 0])
+  })
+
+  it('normalizes function calls without changing case-sensitive variable references', () => {
+    const model = compileNonlinear(
+      'f(x)=SIN(x)+cOs(0)+LOG10(100)+Ln(e)+MIN(x,1)-Target+target\nx(min)=0\nx(max)=3',
+      ['Target', 'target'],
+    )
+    expect(
+      model.evaluate([Math.PI / 2], { Target: 8, target: 3 }).residuals[0],
+    ).toBeCloseTo(1, 13)
+    expect(() => compileNonlinear('a=UNKNOWN(1)', [])).toThrow(
+      "지원하지 않는 함수 'UNKNOWN'",
+    )
+    expect(() => compileNonlinear('a=SIN(1,2)', [])).toThrow('인수')
+  })
+
   it('preserves mathematical exponent precedence and numeric coefficient shorthand', () => {
     const expressions = [
       '-x^2',

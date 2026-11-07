@@ -50,6 +50,29 @@ describe('WebAssembly LEQ solver', () => {
   it('supports parentheses and division only when linear', () => {
     near(solve('(x + y)/2 = 3\nx - y = 2', {}).values, [4, 2])
   })
+  it('accepts numeric and parenthesized coefficient multiplication', () => {
+    near(solve('2(x + 1) + y = 10\nx - y = 1', {}).values, [3, 2])
+    near(solve('(2 + 1)(x - 1) = 6', {}).values, [3])
+    near(solve('(x + 1)k = 10', { k: 2 }).values, [4])
+    expect(() => solve('(x + 1)(x - 1) = 0', {})).toThrow(ModelError)
+    expect(() => solve('x(y + 1) = 10', { y: 1 })).toThrow(ModelError)
+  })
+  it.each([
+    ['-2^2*x = 8', -2],
+    ['(-2)^2*x = 8', 2],
+    ['2^-2*x = 1', 4],
+    ['2^3^2*x = 1024', 2],
+    ['-2^2^3*x = 256', -1],
+    ['2^-2^2*x = 1', 16],
+  ])('keeps mathematical exponent precedence in %s', (source, value) => {
+    near(solve(source, {}).values, [value])
+  })
+  it('preserves e and pi as existing linear unknown and parameter names', () => {
+    const result = solve('e + pi = 5\ne - pi = 1', {})
+    expect(result.variables).toEqual(['e', 'pi'])
+    near(result.values, [3, 2])
+    near(solve('pi*x = e', { pi: 2, e: 6 }).values, [3])
+  })
   it('supports whitespace shorthand and scientific notation', () => {
     near(solve('.5 x + 1e-1 y = 1.2\nx - y = 0', {}).values, [2, 2])
   })

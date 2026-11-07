@@ -138,6 +138,90 @@ describe('selected real-root continuation', () => {
     }
   })
 
+  it('reaches zero at the endpoint of a crossing polynomial branch', () => {
+    const source = '(x-a)*(x+a-2)=0'
+    const parameters = { a: 0.3 }
+    const selected = search.solveNear(source, parameters, [1.7])
+    const result = computeBranchSweeps(
+      search.solveNear,
+      source,
+      parameters,
+      { name: 'a', min: 0, max: 2, step: 0.05, steps: 81 },
+      selected,
+    )
+    for (const point of [...result.sweep, ...result.dataset]) {
+      expect(point.error, `a=${point.parameter}`).toBeUndefined()
+      expect(point.values?.[0], `a=${point.parameter}`).toBeCloseTo(
+        2 - point.parameter,
+        8,
+      )
+    }
+  })
+
+  it.each([3, 5, 7, 11])(
+    'continues a unique degree-%s root through a stationary residual at zero',
+    (degree) => {
+      const source = `x^${degree}-(2-a)=0`
+      const parameters = { a: 0 }
+      const selected = search(source, parameters).solutions[0]
+      const result = computeBranchSweeps(
+        search.solveNear,
+        source,
+        parameters,
+        { name: 'a', min: 0, max: 3, step: 0.05, steps: 121 },
+        selected,
+      )
+      for (const point of [...result.sweep, ...result.dataset]) {
+        expect(point.error, `a=${point.parameter}`).toBeUndefined()
+        const remaining = 2 - point.parameter
+        const expected =
+          Math.sign(remaining) * Math.abs(remaining) ** (1 / degree)
+        expect(point.values?.[0], `a=${point.parameter}`).toBeCloseTo(
+          expected,
+          8,
+        )
+      }
+    },
+  )
+
+  it('handles the same singular endpoint after translating the root coordinate', () => {
+    const source = '(x-5)^3-(2-a)=0'
+    const parameters = { a: 0 }
+    const selected = search(source, parameters).solutions[0]
+    const result = computeBranchSweeps(
+      search.solveNear,
+      source,
+      parameters,
+      { name: 'a', min: 0, max: 3, step: 0.05, steps: 121 },
+      selected,
+    )
+    for (const point of [...result.sweep, ...result.dataset]) {
+      expect(point.error, `a=${point.parameter}`).toBeUndefined()
+      expect(point.values?.[0], `a=${point.parameter}`).toBeCloseTo(
+        5 + Math.cbrt(2 - point.parameter),
+        7,
+      )
+    }
+  })
+
+  it.each(['x=1/p', '(x-1/p)^3=0'])(
+    'does not use a unique polynomial root to jump across an unsampled pole: %s',
+    (source) => {
+      const parameters = { p: 1 }
+      const selected = search(source, parameters).solutions[0]
+      const result = computeBranchSweeps(
+        search.solveNear,
+        source,
+        parameters,
+        { name: 'p', min: -1, max: 1, step: 2, steps: 4 },
+        selected,
+      )
+      for (const point of result.sweep.filter((point) => point.parameter < 0))
+        expect(point.values).toBeNull()
+      expect(result.dataset[0].values).toBeNull()
+    },
+  )
+
   const periodicPhases = [
     0,
     Math.PI / 2,

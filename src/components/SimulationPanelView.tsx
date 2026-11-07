@@ -3,6 +3,7 @@ import { Download, FileText, X } from 'lucide-react'
 import type { Parameter, SimulationAnchor, SimulationPanel } from '../engine'
 import SolutionChart, { SERIES_COLORS } from './SolutionChart'
 import './SimulationPanelView.css'
+import { encodeCsv } from '../csv'
 
 export type SimulationPanelViewProps = {
   panel: SimulationPanel
@@ -26,11 +27,6 @@ function vectorText(variables: string[], values: number[]): string {
   return variables
     .map((name, index) => `${name} = ${formatNumber(values[index])}`)
     .join(' · ')
-}
-
-function csvCell(value: string | number): string {
-  const text = String(value)
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
 export default function SimulationPanelView({
@@ -94,7 +90,7 @@ export default function SimulationPanelView({
             panel.result?.values[index] ?? '',
           ]),
         ]
-    const text = content.map((row) => row.map(csvCell).join(',')).join('\r\n')
+    const text = encodeCsv(content)
     const url = URL.createObjectURL(
       new Blob(['\uFEFF', text], { type: 'text/csv;charset=utf-8' }),
     )

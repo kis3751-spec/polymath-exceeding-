@@ -15,45 +15,38 @@ const modules: {
   kind: ModuleKind
   letter: string
   name: string
-  description: string
   available?: boolean
 }[] = [
   {
     kind: 'equation',
     letter: 'E',
     name: 'Equation Solver',
-    description: '선형·비선형 방정식의 해를 구하고 변화를 탐색하세요.',
     available: true,
   },
   {
     kind: 'differential',
     letter: 'D',
     name: 'Differential Equations',
-    description: '미분방정식으로 시간에 따른 변화를 계산합니다.',
   },
   {
     kind: 'curve',
     letter: 'P',
     name: 'Curve Fitting',
-    description: '데이터에 맞는 선형·다항식 모델을 찾습니다.',
   },
   {
     kind: 'nonlinear',
     letter: 'N',
     name: 'Nonlinear Fitting',
-    description: '비선형 모델의 파라미터를 데이터에서 추정합니다.',
   },
   {
     kind: 'optimum',
     letter: 'O',
     name: 'Optimum Finder',
-    description: '조건을 만족하는 최적의 값을 탐색합니다.',
   },
   {
     kind: 'integration',
     letter: 'I',
     name: 'Discrete Integration',
-    description: '측정한 데이터 사이의 면적과 적분값을 구합니다.',
   },
 ]
 
@@ -152,12 +145,7 @@ export function LandingModules({
   onOpenEquationSolver: () => void
 }) {
   return (
-    <section className="module-home" aria-labelledby="module-home-title">
-      <header className="module-home-heading">
-        <span className="module-home-eyebrow">YOUR MATHEMATICAL WORKSPACE</span>
-        <h1 id="module-home-title">어떤 계산을 시작할까요?</h1>
-        <p>필요한 도구를 선택하고, 한 화면에서 한 가지 작업에 집중하세요.</p>
-      </header>
+    <section className="module-home" aria-label="계산 도구">
       <div className="module-grid">
         {modules.map((module) => (
           <button
@@ -172,12 +160,10 @@ export function LandingModules({
               <span className="module-letter">{module.letter}</span>
               <span>{module.name}</span>
             </span>
-            <span className="module-description">{module.description}</span>
             <ModuleIllustration kind={module.kind} />
             <span className="module-card-footer">
               {module.available ? (
                 <>
-                  <span>계산 시작</span>
                   <ArrowRight size={16} />
                 </>
               ) : (
@@ -187,9 +173,6 @@ export function LandingModules({
           </button>
         ))}
       </div>
-      <p className="module-home-note">
-        Equation Solver에서 선형·비선형 계산을 사용할 수 있습니다.
-      </p>
     </section>
   )
 }

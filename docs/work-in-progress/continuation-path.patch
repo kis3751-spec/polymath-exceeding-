@@ -1,0 +1,681 @@
+diff --git a/src/engine/automatic-polynomial.ts b/src/engine/automatic-polynomial.ts
+index fa28db5..ce63699 100644
+--- a/src/engine/automatic-polynomial.ts
++++ b/src/engine/automatic-polynomial.ts
+@@ -5,6 +5,161 @@ import {
+ 
+ const MAX_DEGREE = 12
+ 
++/** Conservative classification used only for relaxing a continuation gate.
++ * With polynomial parameter coefficients and a fixed nonzero leading term,
++ * finite parameter paths cannot send a root through a hidden rational pole.
++ * Instantiating a polynomial at one parameter value alone cannot establish
++ * this: x=1/p and p*x=1 are unsafe families despite being linear in x. */
++export function isRegularPolynomialFamily(
++  node: NonlinearNode,
++  variable: string,
++  parameterNames: Set<string>,
++  helpers: Map<string, NonlinearNode>,
++): boolean {
++  type Family = { degree: number; leading: number | null }
++  const active = new Set<string>()
++  const memo = new Map<string, Family | null>()
++  const constant = (value: number): Family | null =>
++    Number.isFinite(value) ? { degree: 0, leading: value } : null
++  const power = (base: Family, exponent: Family): Family | null => {
++    const value = exponent.leading
++    if (
++      exponent.degree !== 0 ||
++      value === null ||
++      !Number.isInteger(value) ||
++      value < 0 ||
++      value > MAX_DEGREE
++    )
++      return null
++    const degree = base.degree * value
++    if (degree > MAX_DEGREE) return null
++    if (value === 0) return constant(1)
++    const leading = base.leading === null ? null : base.leading ** value
++    return leading === null || Number.isFinite(leading)
++      ? { degree, leading }
++      : null
++  }
++  const visit = (current: NonlinearNode, depth = 0): Family | null => {
++    if (depth > 256) return null
++    if (current.kind === 'number') return constant(current.value)
++    if (current.kind === 'name') {
++      if (current.name === variable) return { degree: 1, leading: 1 }
++      if (parameterNames.has(current.name)) return { degree: 0, leading: null }
++      if (current.name === 'pi') return constant(Math.PI)
++      if (current.name === 'e') return constant(Math.E)
++      if (memo.has(current.name)) return memo.get(current.name)!
++      const helper = helpers.get(current.name)
++      if (!helper || active.has(current.name)) return null
++      active.add(current.name)
++      const family = visit(helper, depth + 1)
++      active.delete(current.name)
++      memo.set(current.name, family)
++      return family
++    }
++    if (current.kind === 'unary') {
++      const child = visit(current.child, depth + 1)
++      return (
++        child && {
++          degree: child.degree,
++          leading:
++            child.leading === null
++              ? null
++              : current.sign === '-'
++                ? -child.leading
++                : child.leading,
++        }
++      )
++    }
++    if (current.kind === 'binary') {
++      const left = visit(current.left, depth + 1)
++      const right = visit(current.right, depth + 1)
++      if (!left || !right) return null
++      if (current.operator === '+' || current.operator === '-') {
++        if (left.degree !== right.degree)
++          return left.degree > right.degree
++            ? left
++            : {
++                degree: right.degree,
++                leading:
++                  right.leading === null
++                    ? null
++                    : current.operator === '-'
++                      ? -right.leading
++                      : right.leading,
++              }
++        const leading =
++          left.leading === null || right.leading === null
++            ? null
++            : left.leading +
++              (current.operator === '-' ? -right.leading : right.leading)
++        if (leading !== null && !Number.isFinite(leading)) return null
++        // A cancelled leading term has an unknown lower degree here. Refuse
++        // the optional exception instead of deriving a symbolic certificate.
++        return {
++          degree: left.degree,
++          leading: left.degree > 0 && leading === 0 ? null : leading,
++        }
++      }
++      if (current.operator === '*') {
++        const degree = left.degree + right.degree
++        if (degree > MAX_DEGREE) return null
++        if (
++          (left.degree === 0 && left.leading === 0) ||
++          (right.degree === 0 && right.leading === 0)
++        )
++          return constant(0)
++        const leading =
++          left.leading === null || right.leading === null
++            ? null
++            : left.leading * right.leading
++        return leading === null || Number.isFinite(leading)
++          ? { degree, leading }
++          : null
++      }
++      if (current.operator === '/') {
++        if (right.degree !== 0 || right.leading === null || right.leading === 0)
++          return null
++        const leading =
++          left.leading === null ? null : left.leading / right.leading
++        return leading === null || Number.isFinite(leading)
++          ? { degree: left.degree, leading }
++          : null
++      }
++      if (current.operator === '^') return power(left, right)
++      return null
++    }
++    const args = current.args.map((argument) => visit(argument, depth + 1))
++    if (args.some((argument) => argument === null)) return null
++    if (current.name === 'pow') return power(args[0]!, args[1]!)
++    if (
++      args.some(
++        (argument) => argument!.degree !== 0 || argument!.leading === null,
++      )
++    )
++      return null
++    try {
++      return constant(
++        evaluateNonlinearExpression(
++          { node: current, line: 1, references: new Set() },
++          new Map([
++            ['pi', Math.PI],
++            ['e', Math.E],
++          ]),
++        ),
++      )
++    } catch {
++      return null
++    }
++  }
++  const family = visit(node)
++  return Boolean(
++    family &&
++      family.degree > 0 &&
++      family.leading !== null &&
++      family.leading !== 0,
++  )
++}
++
+ /** Return ascending coefficients only for algebraic operations that preserve a
+  * polynomial's domain. No source code is executed during classification. */
+ export function polynomialCoefficients(
+diff --git a/src/engine/automatic.ts b/src/engine/automatic.ts
+index 858fbd6..ab2251c 100644
+--- a/src/engine/automatic.ts
++++ b/src/engine/automatic.ts
+@@ -10,9 +10,11 @@ import {
+ } from './nonlinear-parser'
+ import {
+   findPolynomialRealRoots,
++  isRegularPolynomialFamily,
+   polynomialCoefficients,
+ } from './automatic-polynomial'
+-import { markUniquePolynomialRoot } from './root-isolation'
++import { markUniquePolynomialRoot, withParameterPathValidator, type ParameterPathValidator } from './root-isolation'
++import { createParameterPathValidator } from './parameter-path'
+ 
+ export type SearchSummary = {
+   method: string
+@@ -49,6 +51,8 @@ type Prepared = {
+   expression?: NonlinearNode
+   helpers: Map<string, NonlinearNode>
+   polynomialRoots: Map<string, { value: number; slope: number }[] | null>
++  regularPolynomialFamily: boolean
++  parameterPathValidator?: ParameterPathValidator
+ }
+ const preparedCache = new Map<string, Prepared>()
+ const ROOT_LIMIT = 32
+@@ -163,6 +167,17 @@ function prepare(source: string, parameterNames: string[]): Prepared {
+     expression,
+     helpers,
+     polynomialRoots: new Map(),
++    regularPolynomialFamily:
++      model.variables.length === 1 &&
++      expression !== undefined &&
++      isRegularPolynomialFamily(
++        expression,
++        model.variables[0],
++        new Set(parameterNames),
++        helpers,
++      ),
++    parameterPathValidator:model.variables.length === 1 && expression
++      ? createParameterPathValidator(expression,model.variables[0],helpers) : undefined,
+   }
+   if (preparedCache.size >= 16)
+     preparedCache.delete(preparedCache.keys().next().value!)
+@@ -544,19 +559,22 @@ export async function createAutomaticSolver(
+           0,
+           closest.slope,
+         )
+-        return roots.length === 1 ? markUniquePolynomialRoot(result) : result
++        const verified = roots.length === 1 && prepared.regularPolynomialFamily
++          ? markUniquePolynomialRoot(result) : result
++        return prepared.parameterPathValidator ? withParameterPathValidator(verified,prepared.parameterPathValidator) : verified
+       }
+       // Expansion can erase a small coefficient beside a large constant.
+       // An empty verified candidate set is not a proof that the original
+       // expression has no root; retain the original-model Newton fallback.
+       const refined = scalarNear(prepared, parameters, values[0])
+-      return scalarResult(
++      const result=scalarResult(
+         prepared,
+         parameters,
+         refined.value,
+         options,
+         refined.iterations,
+       )
++      return prepared.parameterPathValidator ? withParameterPathValidator(result,prepared.parameterPathValidator) : result
+     }
+     return manual(
+       `${prepared.source}\n${prepared.variables.map((name, i) => `${name}(0) = ${values[i]}`).join('\n')}`,
+diff --git a/src/engine/branches.ts b/src/engine/branches.ts
+index 856b3dc..d544413 100644
+--- a/src/engine/branches.ts
++++ b/src/engine/branches.ts
+@@ -6,7 +6,7 @@ import {
+   type SweepPoint,
+ } from './index'
+ import { parameterValues, type SweepSettings } from './sweep'
+-import { isUniquePolynomialRoot } from './root-isolation'
++import { isUniquePolynomialRoot, isParameterPathSafe } from './root-isolation'
+ 
+ export type NearSolver = (
+   source: string,
+@@ -81,6 +81,8 @@ function createContinuation(
+         value + (previous ? ratio * (value - previous.values[i]) : 0),
+     )
+     const result = solve(target, predictor)
++    if (!isParameterPathSafe(result,parametersAt(current.parameter),parametersAt(target)))
++      throw new ModelError('파라미터 구간에서 분모가 0이 되거나 선형식의 유한한 해가 사라질 수 있어 추적을 중단했습니다.')
+     for (let i = 0; i < result.values.length; i++) {
+       const motion = Math.abs(predictor[i] - current.values[i])
+       const rounding = continuationPrecision(
+@@ -139,17 +141,17 @@ function createContinuation(
+       )
+         throw error
+       const halfway = advance(path, middle, depth + 1)
+-      // At a unique singular polynomial endpoint, such as x^3=p at p=0,
+-      // the derivative of x(p) is infinite and a secant-based relative gate
+-      // fails at every scale. Relax it only after an ordinary half-step has
+-      // actually moved toward the verified endpoint. Checking the half-step
+-      // first prevents this exception from leaping over poles or empty real
+-      // intervals. The reverse check remains mandatory on the relaxed step.
++      // A unique polynomial branch can have an infinite parameter slope,
++      // such as x^3=p at p=0, either at or between the requested endpoints.
++      // Relax the secant gate only after an ordinary half-step lies inside
++      // their root-value interval and contracts toward the verified target.
++      // A pole's intermediate root instead leaves that interval; empty real
++      // regions still fail the ordinary half-step. Reverse checking remains
++      // mandatory, and generic or multiple-root correctors get no exception.
+       if (
+         error instanceof PredictorError &&
+         isUniquePolynomialRoot(error.corrected) &&
+-        error.corrected.values.length === 1 &&
+-        error.corrected.matrix[0]?.[0] === 0
++        error.corrected.values.length === 1
+       ) {
+         const endpoint = error.corrected.values[0]
+         const scale = Math.max(
+@@ -164,7 +166,11 @@ function createContinuation(
+         const halfDistance = Math.abs(
+           endpoint / scale - halfway.current.values[0] / scale,
+         )
+-        if (halfDistance < firstDistance * 0.95) {
++        const withinRootInterval =
++          halfway.current.values[0] >
++            Math.min(endpoint, path.current.values[0]) &&
++          halfway.current.values[0] < Math.max(endpoint, path.current.values[0])
++        if (withinRootInterval && halfDistance < firstDistance * 0.95) {
+           try {
+             return {
+               previous: halfway.current,
+diff --git a/src/engine/root-isolation.ts b/src/engine/root-isolation.ts
+index 5bcb075..64f085f 100644
+--- a/src/engine/root-isolation.ts
++++ b/src/engine/root-isolation.ts
+@@ -1,9 +1,22 @@
+ import type { SolveResult } from './index'
+ 
+ // An internal, process-local hint from the existing bounded-degree polynomial
+-// isolator. It is not serialized as a mathematical completeness certificate.
+-// Generic correctors and unverified candidates never receive this hint.
++// isolator, restricted to regular families with polynomial parameter
++// coefficients and a fixed nonzero leading term. It is not serialized as a
++// mathematical completeness certificate. Parameter-denominator poles, generic
++// correctors and unverified candidates never receive this hint.
+ const uniquePolynomialRoots = new WeakSet<SolveResult>()
++export type ParameterPathValidator = (from:Record<string,number>,to:Record<string,number>) => boolean
++const parameterPathValidators = new WeakMap<SolveResult,ParameterPathValidator>()
++
++export function withParameterPathValidator(result:SolveResult,validator:ParameterPathValidator):SolveResult {
++  parameterPathValidators.set(result,validator)
++  return result
++}
++
++export function isParameterPathSafe(result:SolveResult,from:Record<string,number>,to:Record<string,number>):boolean {
++  return parameterPathValidators.get(result)?.(from,to) ?? true
++}
+ 
+ export function markUniquePolynomialRoot(result: SolveResult): SolveResult {
+   uniquePolynomialRoots.add(result)
+diff --git a/tests/app.spec.ts b/tests/app.spec.ts
+index c495896..100ca11 100644
+--- a/tests/app.spec.ts
++++ b/tests/app.spec.ts
+@@ -2567,6 +2567,38 @@ test.describe('Calm screens and stable interactive charts', () => {
+ })
+ 
+ test.describe('Audit regressions for current results and persistence', () => {
++  test('the current cube-root solution crosses zero between continuation steps without changing its curve', async ({
++    page,
++  }) => {
++    await page.goto('/')
++    await loadFixture(page, {
++      mode: 'nonlinear',
++      nonlinearSearch: 'auto',
++      title: '현재 해의 세제곱근 0 통과',
++      description: '',
++      source: 'x^3=2-a',
++      parameters: [{ id: 'a', name: 'a', value: 0, min: 0, max: 3, step: 0.1 }],
++      sweepName: 'a',
++    })
++    const panel = page.locator(
++      '.selected-simulation-workspace .simulation-panel',
++    )
++    const current = panel.locator('.simulation-panel-current strong')
++    await expect(current).toHaveText('x = 1.259921')
++    const curve = panel.locator('.sc-curve')
++    const original = await curve.getAttribute('d')
++    const slider = page.getByRole('slider', { name: 'a 슬라이더', exact: true })
++    await slider.fill('2')
++    await expect(current).toHaveText('x = 0')
++    await slider.fill('3')
++    await expect(current).toHaveText('x = -1')
++    await expect(panel.locator('.simulation-panel-error')).toHaveCount(0)
++    await expect(curve).toHaveAttribute('d', original!)
++    await slider.fill('0')
++    await expect(current).toHaveText('x = 1.259921')
++    await expect(curve).toHaveAttribute('d', original!)
++  })
++
+   test('initial anchor adoption avoids a second solve and rapid changes finish with a fresh root list', async ({
+     page,
+   }) => {
+diff --git a/tests/automatic.test.ts b/tests/automatic.test.ts
+index 04d0564..d6815af 100644
+--- a/tests/automatic.test.ts
++++ b/tests/automatic.test.ts
+@@ -1,6 +1,8 @@
+ import { readFile } from 'node:fs/promises'
+ import { beforeAll, describe, expect, it } from 'vitest'
+ import { ModelError } from '../src/engine'
++import { parseNonlinearExpression } from '../src/engine/nonlinear-parser'
++import { isRegularPolynomialFamily } from '../src/engine/automatic-polynomial'
+ import {
+   createAutomaticSolver,
+   normalizeAutomaticModel,
+@@ -30,6 +32,30 @@ const expectRoots = (
+ }
+ 
+ describe('automatic real polynomial roots without conditions', () => {
++  it.each([
++    ['x^3-(2-a)', true],
++    ['(x-5)^3-(2-a)', true],
++    ['a*x^2+x^3-(2-a)', true],
++    ['pow(x,3)/2-a', true],
++    ['x-1/a', false],
++    ['(x-1/(a-0.1)^2)^3', false],
++    ['a*x-1', false],
++    ['x^a-2', false],
++    ['x^3-sqrt(a)', false],
++  ] as const)(
++    'restricts singular continuation certification for %s',
++    (source, expected) => {
++      const expression = parseNonlinearExpression(source, 1)
++      expect(
++        isRegularPolynomialFamily(
++          expression.node,
++          'x',
++          new Set(['a']),
++          new Map(),
++        ),
++      ).toBe(expected)
++    },
++  )
+   it.each([
+     ['x^2 = 4', [2, -2]],
+     ['x^4 - 5*x^2 + 4 = 0', [1, -1, 2, -2]],
+diff --git a/tests/branches.test.ts b/tests/branches.test.ts
+index c90b551..b4088d7 100644
+--- a/tests/branches.test.ts
++++ b/tests/branches.test.ts
+@@ -15,6 +15,7 @@ import {
+   type NearSolver,
+ } from '../src/engine/branches'
+ import type { SolveResult } from '../src/engine'
++import { createSimulationPanelComputer } from '../src/engine/simulation-panels'
+ 
+ function root(value: number): SolveResult {
+   return {
+@@ -204,6 +205,43 @@ describe('selected real-root continuation', () => {
+     }
+   })
+ 
++  it.each([3, 5, 7, 11])(
++    'continues a degree-%s current root when its fixed continuation grid straddles the singularity',
++    (degree) => {
++      const source = `x^${degree}=2-a`
++      const origin = { a: 0 }
++      const selected = search(source, origin).solutions[0]
++      for (const a of [2.000001, 2.0625, 3]) {
++        const continued = continueRoot(
++          search.solveNear,
++          source,
++          origin,
++          { a },
++          selected,
++        )
++        expect(continued.values[0]).toBeCloseTo(-Math.pow(a - 2, 1 / degree), 8)
++        expect(continued.maxResidual).toBeLessThan(1e-10)
++      }
++      const compute = createSimulationPanelComputer(search.solveNear)
++      const panel = compute(
++        source,
++        { a: 3 },
++        { name: 'a', min: 0, max: 3, step: 0.1, steps: 81 },
++        [
++          {
++            id: 'selected',
++            label: '해 1',
++            variables: ['x'],
++            values: [...selected.values],
++            parameters: origin,
++          },
++        ],
++      )[0]
++      expect(panel.error).toBeUndefined()
++      expect(panel.result?.values[0]).toBeCloseTo(-1, 9)
++    },
++  )
++
+   it.each(['x=1/p', '(x-1/p)^3=0'])(
+     'does not use a unique polynomial root to jump across an unsampled pole: %s',
+     (source) => {
+@@ -219,6 +257,46 @@ describe('selected real-root continuation', () => {
+       for (const point of result.sweep.filter((point) => point.parameter < 0))
+         expect(point.values).toBeNull()
+       expect(result.dataset[0].values).toBeNull()
++      expect(() =>
++        continueRoot(
++          search.solveNear,
++          source,
++          parameters,
++          { p: -0.9 },
++          selected,
++        ),
++      ).toThrow()
++    },
++  )
++
++  it('keeps a cubic curve continuous when neither sampling grid lands on its singularity', () => {
++    const source = 'x^3=2-a'
++    const parameters = { a: 0 }
++    const selected = search(source, parameters).solutions[0]
++    const result = computeBranchSweeps(
++      search.solveNear,
++      source,
++      parameters,
++      { name: 'a', min: 0, max: 3, step: 0.07, steps: 81 },
++      selected,
++    )
++    for (const point of [...result.sweep, ...result.dataset]) {
++      expect(point.parameter).not.toBe(2)
++      expect(point.error, `a=${point.parameter}`).toBeUndefined()
++      expect(point.values?.[0], `a=${point.parameter}`).toBeCloseTo(
++        Math.cbrt(2 - point.parameter),
++        8,
++      )
++    }
++  })
++
++  it.each(['x=1/(p-0.1)^2', '(x-1/(p-0.1)^2)^3=0'])(
++    'does not relax an even-order parameter-pole family: %s',
++    (source) => {
++      const selected = search.solveNear(source, { p: 0 }, [100])
++      expect(() =>
++        continueRoot(search.solveNear, source, { p: 0 }, { p: 1 }, selected),
++      ).toThrow()
+     },
+   )
+ 
+diff --git a/src/engine/parameter-path.ts b/src/engine/parameter-path.ts
+new file mode 100644
+index 0000000..026421f
+--- /dev/null
++++ b/src/engine/parameter-path.ts
+@@ -0,0 +1,160 @@
++import type { NonlinearNode } from './nonlinear-parser'
++
++type Node = NonlinearNode
++type Interval = [number, number] | null
++type Linear = { coefficient: Node; constant: Node }
++const number = (value: number): Node => ({kind:'number',value})
++const zero = (node: Node) => node.kind === 'number' && node.value === 0
++const binary = (operator: '+'|'-'|'*'|'/'|'^',left:Node,right:Node): Node => {
++  if (left.kind === 'number' && right.kind === 'number') {
++    const value = operator==='+' ? left.value+right.value : operator==='-' ? left.value-right.value :
++      operator==='*' ? left.value*right.value : operator==='/' ? left.value/right.value : left.value**right.value
++    if (Number.isFinite(value)) return number(value)
++  }
++  if (operator==='*' && (zero(left)||zero(right))) return number(0)
++  if ((operator==='+'||operator==='-') && zero(right)) return left
++  if (operator==='+' && zero(left)) return right
++  return {kind:'binary',operator,left,right}
++}
++const containsZero = (value: [number,number]) => value[0] <= 0 && value[1] >= 0
++
++/** Domain checks for algebraic parameter denominators and purely linear
++ * equations. Unknown/nonalgebraic intervals retain the ordinary corrector
++ * guards; this is not a general proof of continuous branch existence. */
++export function createParameterPathValidator(
++  expression: Node,
++  variable: string,
++  helpers: Map<string,Node>,
++) {
++  const denominators: Node[] = []
++  const visited = new Set<Node>()
++  const collect = (node: Node,depth=0) => {
++    if (depth>256 || visited.has(node)) return
++    visited.add(node)
++    if (node.kind==='name') {
++      const helper=helpers.get(node.name)
++      if (helper) collect(helper,depth+1)
++    } else if (node.kind==='unary') collect(node.child,depth+1)
++    else if (node.kind==='binary') {
++      if (node.operator==='/') denominators.push(node.right)
++      if (node.operator==='^' && node.right.kind==='number' && node.right.value<0) denominators.push(node.left)
++      collect(node.left,depth+1); collect(node.right,depth+1)
++    } else if (node.kind==='call') {
++      if (node.name==='pow' && node.args[1]?.kind==='number' && node.args[1].value<0) denominators.push(node.args[0])
++      node.args.forEach(child=>collect(child,depth+1))
++    }
++  }
++  collect(expression)
++
++  const linearActive = new Set<string>()
++  const asLinear = (node: Node,depth=0): Linear|null => {
++    if (depth>256) return null
++    if (node.kind==='number') return {coefficient:number(0),constant:node}
++    if (node.kind==='name') {
++      if (node.name===variable) return {coefficient:number(1),constant:number(0)}
++      const helper=helpers.get(node.name)
++      if (!helper) return {coefficient:number(0),constant:node}
++      if (linearActive.has(node.name)) return null
++      linearActive.add(node.name)
++      const result=asLinear(helper,depth+1)
++      linearActive.delete(node.name)
++      return result
++    }
++    if (node.kind==='unary') {
++      const child=asLinear(node.child,depth+1)
++      if (!child) return null
++      return node.sign==='+' ? child : {
++        coefficient:binary('*',number(-1),child.coefficient),
++        constant:binary('*',number(-1),child.constant),
++      }
++    }
++    if (node.kind==='binary') {
++      const left=asLinear(node.left,depth+1), right=asLinear(node.right,depth+1)
++      if (!left||!right) return null
++      if (node.operator==='+'||node.operator==='-') return {
++        coefficient:binary(node.operator,left.coefficient,right.coefficient),
++        constant:binary(node.operator,left.constant,right.constant),
++      }
++      if (node.operator==='*') {
++        if (!zero(left.coefficient)&&!zero(right.coefficient)) return null
++        return {
++          coefficient:zero(left.coefficient) ? binary('*',left.constant,right.coefficient) : binary('*',left.coefficient,right.constant),
++          constant:binary('*',left.constant,right.constant),
++        }
++      }
++      if (node.operator==='/') return zero(right.coefficient) ? {
++        coefficient:binary('/',left.coefficient,right.constant),
++        constant:binary('/',left.constant,right.constant),
++      } : null
++      if (node.operator==='^' && zero(right.coefficient) && right.constant.kind==='number') {
++        if (right.constant.value===0) return {coefficient:number(0),constant:number(1)}
++        if (right.constant.value===1) return left
++        if (zero(left.coefficient)) return {coefficient:number(0),constant:node}
++      }
++      return null
++    }
++    if (node.kind==='call') {
++      const args=node.args.map(child=>asLinear(child,depth+1))
++      return args.every(child=>child&&zero(child.coefficient)) ? {coefficient:number(0),constant:node} : null
++    }
++    return null
++  }
++  const linear=asLinear(expression)
++
++  return (from:Record<string,number>,to:Record<string,number>):boolean => {
++    const active=new Set<string>()
++    const interval=(node:Node,depth=0):Interval => {
++      if (depth>256) return null
++      const finite=(values:number[]):Interval => values.every(Number.isFinite) ? [Math.min(...values),Math.max(...values)] : null
++      if (node.kind==='number') return finite([node.value])
++      if (node.kind==='name') {
++        if (node.name===variable) return null
++        if (Object.hasOwn(from,node.name)&&Object.hasOwn(to,node.name)) return finite([from[node.name],to[node.name]])
++        if (node.name==='pi') return [Math.PI,Math.PI]
++        if (node.name==='e') return [Math.E,Math.E]
++        const helper=helpers.get(node.name)
++        if (!helper||active.has(node.name)) return null
++        active.add(node.name)
++        const result=interval(helper,depth+1)
++        active.delete(node.name)
++        return result
++      }
++      if (node.kind==='unary') {
++        const child=interval(node.child,depth+1)
++        return child && (node.sign==='+' ? child : [-child[1],-child[0]])
++      }
++      const power=(base:[number,number],exponent:[number,number]):Interval => {
++        const n=exponent[0]
++        if (n!==exponent[1]||!Number.isInteger(n)||Math.abs(n)>12) return null
++        if (n<0 && containsZero(base)) return null
++        const values=[base[0]**n,base[1]**n]
++        if (n>0 && n%2===0 && containsZero(base)) values.push(0)
++        return finite(values)
++      }
++      if (node.kind==='call') {
++        if (node.name!=='pow') return null
++        const base=interval(node.args[0],depth+1), exponent=interval(node.args[1],depth+1)
++        return base&&exponent ? power(base,exponent) : null
++      }
++      const left=interval(node.left,depth+1),right=interval(node.right,depth+1)
++      if (!left||!right) return null
++      if (node.operator==='+') return finite([left[0]+right[0],left[1]+right[1]])
++      if (node.operator==='-') return finite([left[0]-right[1],left[1]-right[0]])
++      if (node.operator==='*') return finite([left[0]*right[0],left[0]*right[1],left[1]*right[0],left[1]*right[1]])
++      if (node.operator==='/') return containsZero(right) ? null : finite([left[0]/right[0],left[0]/right[1],left[1]/right[0],left[1]/right[1]])
++      if (node.operator==='^') return power(left,right)
++      return null
++    }
++    for (const denominator of denominators) {
++      const range=interval(denominator)
++      if (range&&containsZero(range)) return false
++    }
++    // Only a genuinely linear equation has the implicit pole -C/L. A
++    // higher-order leading coefficient may vanish with a finite root left.
++    if (linear) {
++      const coefficient=interval(linear.coefficient),constant=interval(linear.constant)
++      if (coefficient&&constant&&containsZero(coefficient)&&!containsZero(constant)) return false
++    }
++    return true
++  }
++}

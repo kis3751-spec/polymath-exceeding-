@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `891c7f82d4a9abfc414f6c2dae0dddedd11bf293299f08cf742c872678272b2e`
+소스 묶음 SHA-256: `fc86ed306772c242bf43cbc848456e6f3e06458bf8a36bdae69e115fd76d62f9`
 
 ## 다른 코드 묶음
 
@@ -29,15 +29,16 @@
 - [src/engine/nonlinear.ts](#source-3) · [저장소 원본](../../src/engine/nonlinear.ts)
 - [src/engine/automatic-polynomial.ts](#source-4) · [저장소 원본](../../src/engine/automatic-polynomial.ts)
 - [src/engine/automatic.ts](#source-5) · [저장소 원본](../../src/engine/automatic.ts)
-- [src/engine/conditioning.ts](#source-6) · [저장소 원본](../../src/engine/conditioning.ts)
-- [src/engine/solver.wat](#source-7) · [저장소 원본](../../src/engine/solver.wat)
-- [scripts/build-wasm.mjs](#source-8) · [저장소 원본](../../scripts/build-wasm.mjs)
+- [src/engine/root-isolation.ts](#source-6) · [저장소 원본](../../src/engine/root-isolation.ts)
+- [src/engine/conditioning.ts](#source-7) · [저장소 원본](../../src/engine/conditioning.ts)
+- [src/engine/solver.wat](#source-8) · [저장소 원본](../../src/engine/solver.wat)
+- [scripts/build-wasm.mjs](#source-9) · [저장소 원본](../../scripts/build-wasm.mjs)
 
 <a id="source-1"></a>
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 531줄 · SHA-256: `5a496963bfe8b8e6cee21e4d5c4b64c13c3f6bd30c564387594fe0ea3fd30c17`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 538줄 · SHA-256: `cfe8f335e2d909381a1ecc1f5ec10caa92ccd26cba4ef1af9bb6cfbb66862fd2`
 
 ```typescript
 import { conditionNumber, type ConditionNorm } from './conditioning'
@@ -213,14 +214,21 @@ function parseExpression(source: string, names: Set<string>): Node {
   }
   function product(): Node {
     let node = unary()
-    while (
-      at('*') ||
-      at('/') ||
-      (tokens[index]?.kind === 'name' && tokens[index - 1]?.kind === 'number')
-    ) {
-      const implicit = tokens[index]?.kind === 'name'
-      const op = implicit ? '*' : tokens[index++].text
-      node = { kind: 'binary', op, left: node, right: unary() }
+    for (;;) {
+      if (at('*') || at('/')) {
+        const op = tokens[index++].text
+        node = { kind: 'binary', op, left: node, right: unary() }
+        continue
+      }
+      const previous = tokens[index - 1]
+      const next = tokens[index]
+      // Match nonlinear coefficient notation without treating a named call
+      // such as x(y + 1) as multiplication or allowing adjacent bare names.
+      const implicit =
+        (previous?.kind === 'number' || previous?.text === ')') &&
+        (next?.kind === 'name' || next?.text === '(')
+      if (!implicit) break
+      node = { kind: 'binary', op: '*', left: node, right: unary() }
     }
     return node
   }
@@ -577,7 +585,7 @@ export async function createSolver(
 
 ## src/engine/nonlinear-parser.ts
 
-원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 555줄 · SHA-256: `7423335394dc4c3d84a17116e60290c351602a38aa42b5f625217dd5bc2db648`
+원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 566줄 · SHA-256: `9b7d023d4203abdd53526547632a8d08f6ae91cbd6ffaa9726cd7498d8f31861`
 
 ```typescript
 import { ModelError } from './index'
@@ -651,6 +659,9 @@ const FUNCTIONS: Record<
   pow: { arity: 2, compute: Math.pow },
   min: { arity: 2, compute: Math.min },
   max: { arity: 2, compute: Math.max },
+}
+export function isNonlinearFunction(name: string): boolean {
+  return Object.hasOwn(FUNCTIONS, name.toLowerCase())
 }
 const BUILTINS = new Map([
   ['pi', Math.PI],
@@ -745,8 +756,10 @@ export function parseNonlinearExpression(source: string, line = 1): Expression {
       }
       if (token.type === 'name') {
         if (peek() === '(') {
-          const fn = Object.hasOwn(FUNCTIONS, token.text)
-            ? FUNCTIONS[token.text]
+          // Normalize calls only. Ordinary symbols remain case-sensitive.
+          const functionName = token.text.toLowerCase()
+          const fn = Object.hasOwn(FUNCTIONS, functionName)
+            ? FUNCTIONS[functionName]
             : undefined
           if (!fn)
             throw new ModelError(
@@ -770,7 +783,7 @@ export function parseNonlinearExpression(source: string, line = 1): Expression {
               `${token.text} 함수에는 ${fn.arity}개의 인수가 필요합니다.`,
               line,
             )
-          return { kind: 'call', name: token.text, args }
+          return { kind: 'call', name: functionName, args }
         }
         references.add(token.text)
         return { kind: 'name', name: token.text }
@@ -942,10 +955,16 @@ export function compileNonlinear(
     }
     const left = equals[0].trim(),
       right = equals[1].trim()
-    const root = /^f\(\s*([A-Za-z][A-Za-z0-9_]*)\s*\)$/.exec(left)
-    const condition = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)$/.exec(
+    const rawCondition = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)$/.exec(
       left,
     )
+    // f itself is a valid engineering variable (for example a friction
+    // factor). Its f(min)/f(max)/f(0) metadata must precede f(x) residuals.
+    const condition =
+      rawCondition && !RESERVED.has(rawCondition[1]) ? rawCondition : null
+    const root = condition
+      ? null
+      : /^f\(\s*([A-Za-z][A-Za-z0-9_]*)\s*\)$/.exec(left)
     if (root) {
       declare(root[1], line)
       roots.push({ name: root[1], ...parseExpression(right, line) })
@@ -1879,7 +1898,7 @@ function twoProductError(a: number, b: number, product: number) {
 
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 703줄 · SHA-256: `25646f8a095eb959f37cbd404676a339fb63e2929b3f583f76e085aacf48d18a`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 790줄 · SHA-256: `f16720c999f168ef2bc9ff84ffdd6b8607719146cad699230b3f9322f2e75fc1`
 
 ```typescript
 import { conditionNumber } from './conditioning'
@@ -1887,6 +1906,7 @@ import { ModelError, type SolveResult, type SolverOptions } from './index'
 import { createNonlinearSolver } from './nonlinear'
 import {
   compileNonlinear,
+  isNonlinearFunction,
   parseNonlinearExpression,
   type CompiledModel,
   type NonlinearNode,
@@ -1895,6 +1915,7 @@ import {
   findPolynomialRealRoots,
   polynomialCoefficients,
 } from './automatic-polynomial'
+import { markUniquePolynomialRoot } from './root-isolation'
 
 export type SearchSummary = {
   method: string
@@ -1930,6 +1951,7 @@ type Prepared = {
   model: CompiledModel
   expression?: NonlinearNode
   helpers: Map<string, NonlinearNode>
+  polynomialRoots: Map<string, { value: number; slope: number }[] | null>
 }
 const preparedCache = new Map<string, Prepared>()
 const ROOT_LIMIT = 32
@@ -1965,7 +1987,10 @@ function prepare(source: string, parameterNames: string[]): Prepared {
         )
       return { text: raw.split('#', 1)[0].trim(), line: index + 1 }
     })
-    .filter(({ text }) => text && !CONDITION.test(text))
+    .filter(({ text }) => {
+      const condition = CONDITION.exec(text)
+      return text && !(condition && !isNonlinearFunction(condition[1]))
+    })
   if (!lines.length) throw new ModelError('계산할 방정식을 입력하세요.')
   const explicit = lines.some(({ text }) => ROOT.test(text))
   const variables: string[] = []
@@ -2040,6 +2065,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     model,
     expression,
     helpers,
+    polynomialRoots: new Map(),
   }
   if (preparedCache.size >= 16)
     preparedCache.delete(preparedCache.keys().next().value!)
@@ -2160,6 +2186,58 @@ function smallLocalResidual(
     nearby.length > 0 &&
     Math.abs(residual) <= Math.max(...nearby.map(Math.abs)) * 1e-8
   )
+}
+
+/** Reuse the existing polynomial isolator for local corrections as well as
+ * discovery. Newton differences cannot resolve a tiny root next to a large
+ * additive constant, and repeated zero roots need an exact algebraic endpoint.
+ * Every candidate is still checked against the original (unexpanded) model. */
+function polynomialNearRoots(
+  prepared: Prepared,
+  parameters: Record<string, number>,
+) {
+  const key = JSON.stringify(
+    Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b)),
+  )
+  if (prepared.polynomialRoots.has(key))
+    return prepared.polynomialRoots.get(key)!
+  const coefficients = prepared.expression
+    ? polynomialCoefficients(
+        prepared.expression,
+        prepared.variables[0],
+        { pi: Math.PI, e: Math.E, ...parameters },
+        prepared.helpers,
+      )
+    : null
+  let roots: { value: number; slope: number }[] | null = null
+  if (coefficients) {
+    const isolated = findPolynomialRealRoots(coefficients)
+    if (isolated.identicallyZero)
+      throw new ModelError(
+        '이 방정식은 미지수와 무관하게 0=0이 됩니다. 해를 특정할 독립적인 방정식이 필요합니다.',
+      )
+    roots = []
+    for (const value of isolated.roots) {
+      let slope = 0
+      for (let i = coefficients.length - 1; i > 0; i--)
+        slope = slope * value + i * coefficients[i]
+      const residual = tryScalar(prepared.model, parameters, value)
+      if (
+        residual !== undefined &&
+        hasLocalVariation(prepared.model, parameters, value) &&
+        (residual === 0 ||
+          (slope !== 0 &&
+            smallLocalResidual(prepared.model, parameters, value, residual)))
+      )
+        roots.push({ value, slope })
+    }
+  }
+  if (prepared.polynomialRoots.size >= 32)
+    prepared.polynomialRoots.delete(
+      prepared.polynomialRoots.keys().next().value!,
+    )
+  prepared.polynomialRoots.set(key, roots)
+  return roots
 }
 
 /** Newton refinement requires a small correction as well as a reduced
@@ -2346,6 +2424,34 @@ export async function createAutomaticSolver(
     )
       throw new ModelError('추적할 해의 미지수 값이 올바르지 않습니다.')
     if (prepared.variables.length === 1) {
+      const roots = polynomialNearRoots(prepared, parameters)
+      if (roots?.length) {
+        const scale = Math.max(
+          Number.MIN_VALUE,
+          Math.abs(values[0]),
+          ...roots.map((root) => Math.abs(root.value)),
+        )
+        const closest = roots.reduce((best, root) => {
+          const nextDistance = Math.abs(root.value / scale - values[0] / scale)
+          const bestDistance = Math.abs(best.value / scale - values[0] / scale)
+          return nextDistance < bestDistance ||
+            (nextDistance === bestDistance && root.value > best.value)
+            ? root
+            : best
+        })
+        const result = scalarResult(
+          prepared,
+          parameters,
+          closest.value,
+          options,
+          0,
+          closest.slope,
+        )
+        return roots.length === 1 ? markUniquePolynomialRoot(result) : result
+      }
+      // Expansion can erase a small coefficient beside a large constant.
+      // An empty verified candidate set is not a proof that the original
+      // expression has no root; retain the original-model Newton fallback.
       const refined = scalarNear(prepared, parameters, values[0])
       return scalarResult(
         prepared,
@@ -2589,6 +2695,30 @@ export async function createAutomaticSolver(
 
 <a id="source-6"></a>
 
+## src/engine/root-isolation.ts
+
+원본: [src/engine/root-isolation.ts](../../src/engine/root-isolation.ts) · 15줄 · SHA-256: `91f2fdf6e6fd692df7ce889270c32bc5ee26529b94c64099c1e2a7a9266947a2`
+
+```typescript
+import type { SolveResult } from './index'
+
+// An internal, process-local hint from the existing bounded-degree polynomial
+// isolator. It is not serialized as a mathematical completeness certificate.
+// Generic correctors and unverified candidates never receive this hint.
+const uniquePolynomialRoots = new WeakSet<SolveResult>()
+
+export function markUniquePolynomialRoot(result: SolveResult): SolveResult {
+  uniquePolynomialRoots.add(result)
+  return result
+}
+
+export function isUniquePolynomialRoot(result: SolveResult): boolean {
+  return uniquePolynomialRoots.has(result)
+}
+```
+
+<a id="source-7"></a>
+
 ## src/engine/conditioning.ts
 
 원본: [src/engine/conditioning.ts](../../src/engine/conditioning.ts) · 117줄 · SHA-256: `b27323d78668576e581a83757c4cfbdf837bf190e9d21ca3b933494f9501848c`
@@ -2713,7 +2843,7 @@ export function conditionNumber(
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-8"></a>
 
 ## src/engine/solver.wat
 
@@ -2808,7 +2938,7 @@ export function conditionNumber(
 )
 ```
 
-<a id="source-8"></a>
+<a id="source-9"></a>
 
 ## scripts/build-wasm.mjs
 

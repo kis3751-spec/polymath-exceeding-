@@ -107,13 +107,17 @@ describe('focused, cursor-anchored wheel scaling', () => {
     }
     expect(narrow[1] - narrow[0]).toBeCloseTo(1 / 128)
     expect(wide[1] - wide[0]).toBe(8)
-    expect(wide[0]).toBeGreaterThanOrEqual(-4)
-    expect(wide[1]).toBeLessThanOrEqual(5)
+    expect(wide).toEqual([-3.5, 4.5])
     expect([...narrow, ...wide].every(Number.isFinite)).toBe(true)
   })
   it('ignores invalid scaling factors', () => {
     const axis: [number, number] = [0, 1]
     for (const invalid of [NaN, Infinity, 0, -1])
       expect(zoomAxis(axis, 0.5, invalid)).toBe(axis)
+  })
+  it('keeps the fully zoomed-out view identical at either pointer edge', () => {
+    for (const pointer of [0, 0.3, 0.9, 1]) {
+      expect(zoomAxis([-3.5, 4.5], pointer, 1.2)).toEqual([-3.5, 4.5])
+    }
   })
 })

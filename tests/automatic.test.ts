@@ -82,12 +82,75 @@ describe('automatic real polynomial roots without conditions', () => {
     expectRoots('f(x)=x^2-4\nx(min)=0\nx(max)=3', [2, -2])
   })
 
+  it('keeps ordinary equality semantics instead of silently inferring helpers', () => {
+    expectRoots('x=2', [2])
+    const coupled = search('x=y\ny=2', {})
+    expect(coupled.solutions).toHaveLength(1)
+    expect(coupled.solutions[0].variables).toEqual(['x', 'y'])
+    coupled.solutions[0].values.forEach((value) =>
+      expect(value).toBeCloseTo(2, 9),
+    )
+    const ordinary = search('k=4\nx^2=k', {})
+    expect(ordinary.solutions.map((result) => result.variables)).toEqual([
+      ['k', 'x'],
+      ['k', 'x'],
+    ])
+    ordinary.solutions.forEach((result, index) => {
+      expect(result.values[0]).toBeCloseTo(4, 9)
+      expect(result.values[1]).toBeCloseTo(index ? -2 : 2, 9)
+    })
+    const explicit = expectRoots('f(x)=x^2-k\nk=4', [2, -2])
+    expect(
+      explicit.solutions.every((result) => result.auxiliary?.k === 4),
+    ).toBe(true)
+  })
+
+  it.each(['sin(0)=x', 'SIN(0)=x', 'min(x, 1)=0'])(
+    'does not discard a function on the left as a variable condition: %s',
+    (source) => {
+      expectRoots(source, [0])
+    },
+  )
+
+  it('keeps tiny local polynomial roots distinct and rejects a false minimum', () => {
+    expect(search.solveNear('x*(x-1e-15)=0', {}, [0]).values).toEqual([0])
+    expect(search.solveNear('x*(x-1e-15)=0', {}, [1e-15]).values).toEqual([
+      1e-15,
+    ])
+    expect(() => search.solveNear('(x-1)^2+1e-16=0', {}, [1])).toThrow(
+      ModelError,
+    )
+  })
+
+  it('falls back to the original expression when expansion loses a small offset', () => {
+    const result = search.solveNear('(x-offset)^3=p', { offset: 5, p: 1e-15 }, [
+      5.00001,
+    ])
+    expect(result.values[0]).toBeCloseTo(5.00001, 10)
+    expect(result.maxResidual).toBeLessThan(1e-22)
+  })
+
   it('reports an identity as an underdetermined equation', () => {
     expect(() => search('x-x=0', {})).toThrow('독립적인 방정식')
   })
 })
 
 describe('bounded general real equation search', () => {
+  it('describes the bounded fallback for degree above the supported polynomial limit', () => {
+    const source = 'x^13-200^13=0'
+    const bounded = search(source, {})
+    expect(bounded.solutions).toHaveLength(0)
+    expect(bounded.search).toMatchObject({ min: -100, max: 100 })
+    expect(bounded.search.note).toContain('범위 밖')
+    const extended = search(
+      source,
+      {},
+      { searchBounds: { min: 100, max: 300 } },
+    )
+    expect(extended.solutions).toHaveLength(1)
+    expect(extended.solutions[0].values[0]).toBeCloseTo(200, 8)
+    expect(extended.search.method).not.toContain('다항식')
+  })
   it('finds all sine roots in a supplied finite interval and describes the numerical limitation', () => {
     const result = search(
       'sin(x)=0',

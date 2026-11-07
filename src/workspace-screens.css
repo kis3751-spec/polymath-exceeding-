@@ -2,6 +2,22 @@
   display: none !important;
 }
 
+.workspace {
+  margin-left: 0;
+  width: 100%;
+}
+
+.module-home-page {
+  min-height: calc(100dvh - 77px);
+  display: grid;
+  align-items: center;
+}
+
+.module-home-page .module-home {
+  width: 100%;
+  padding-block: 36px;
+}
+
 .workspace-nav-container {
   max-width: 1510px;
   margin: 0 auto;
@@ -93,6 +109,13 @@
 .selected-simulation-workspace {
   padding: 20px 24px 24px;
   background: #f7f9f3;
+}
+.discovery-status {
+  padding: 14px 24px;
+  color: #7c8c75;
+  font-size: 11px;
+  line-height: 1.7;
+  border-bottom: 1px solid #e8ece1;
 }
 .selected-simulation-toolbar {
   display: flex;

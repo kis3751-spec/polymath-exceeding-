@@ -171,14 +171,21 @@ function parseExpression(source: string, names: Set<string>): Node {
   }
   function product(): Node {
     let node = unary()
-    while (
-      at('*') ||
-      at('/') ||
-      (tokens[index]?.kind === 'name' && tokens[index - 1]?.kind === 'number')
-    ) {
-      const implicit = tokens[index]?.kind === 'name'
-      const op = implicit ? '*' : tokens[index++].text
-      node = { kind: 'binary', op, left: node, right: unary() }
+    for (;;) {
+      if (at('*') || at('/')) {
+        const op = tokens[index++].text
+        node = { kind: 'binary', op, left: node, right: unary() }
+        continue
+      }
+      const previous = tokens[index - 1]
+      const next = tokens[index]
+      // Match nonlinear coefficient notation without treating a named call
+      // such as x(y + 1) as multiplication or allowing adjacent bare names.
+      const implicit =
+        (previous?.kind === 'number' || previous?.text === ')') &&
+        (next?.kind === 'name' || next?.text === '(')
+      if (!implicit) break
+      node = { kind: 'binary', op: '*', left: node, right: unary() }
     }
     return node
   }

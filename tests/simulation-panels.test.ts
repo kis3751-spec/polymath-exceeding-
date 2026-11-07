@@ -495,7 +495,7 @@ describe('pinned simulation worker responses', () => {
     vi.resetModules()
   })
 
-  async function send(request: Record<string, unknown>) {
+  function enqueue(request: Record<string, unknown>) {
     scope.onmessage!({
       data: {
         id: 1,
@@ -506,6 +506,10 @@ describe('pinned simulation worker responses', () => {
         ...request,
       },
     } as MessageEvent)
+  }
+
+  async function send(request: Record<string, unknown>) {
+    enqueue(request)
     await vi.runAllTimersAsync()
     return scope.postMessage.mock.lastCall?.[0]
   }
@@ -521,11 +525,225 @@ describe('pinned simulation worker responses', () => {
         (panel: { result: SolveResult }) => panel.result.values[0],
       ),
     ).toEqual([-2, 2])
-    const calls = near.mock.calls.length
     const second = await send({ id: 2, solutionIndex: 1, simulationAnchors })
     expect(second.payload.result.values).toEqual([2])
+    expect(second.payload.simulations[0]).toBe(first.payload.simulations[0])
+    expect(second.payload.simulations[1]).toBe(first.payload.simulations[1])
+    expect(automatic).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns the first graph with the exact anchor the UI can adopt without recomputing it', async () => {
+    const sweep = { name: 'p', min: 1, max: 9, step: 1, steps: 17 }
+    const first = await send({ sweep })
+    expect(first.discoveryPending).toBe(false)
+    expect(first.adoptedAnchor).toMatchObject({
+      label: '해 1',
+      variables: ['x'],
+      values: [-2],
+      parameters: { p: 4 },
+    })
+    expect(first.payload.selectedSimulation.id).toBe(first.adoptedAnchor.id)
+    expect(first.payload.selectedSimulation.sweep).toBe(first.payload.sweep)
+    const calls = near.mock.calls.length
+    const adopted = await send({
+      id: 2,
+      sweep,
+      selectedAnchor: first.adoptedAnchor,
+    })
+    expect(adopted.adoptedAnchor).toBeUndefined()
+    expect(adopted.payload.selectedSimulation).toBe(
+      first.payload.selectedSimulation,
+    )
     expect(near).toHaveBeenCalledTimes(calls)
     expect(automatic).toHaveBeenCalledTimes(1)
+  })
+
+  it('publishes only current anchored values first and refreshes discovery after a quiet period', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: 1, max: 16, step: 1, steps: 17 }
+    const first = await send({ selectedAnchor, sweep })
+    scope.postMessage.mockClear()
+    enqueue({
+      id: 2,
+      parameters: { p: 9 },
+      selectedAnchor,
+      sweep,
+      deferDiscovery: true,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(automatic).toHaveBeenCalledTimes(1)
+    expect(scope.postMessage).toHaveBeenCalledTimes(1)
+    const fast = scope.postMessage.mock.lastCall![0]
+    expect(fast.id).toBe(2)
+    expect(fast.discoveryPending).toBe(true)
+    expect(fast.payload.result.values[0]).toBeCloseTo(3, 8)
+    expect(fast.payload.solutions).toEqual([])
+    expect(fast.payload.search).toBeUndefined()
+    expect(fast.payload.selectedSolution).toBeUndefined()
+    expect(fast.payload.sweep).toBe(first.payload.sweep)
+    await vi.advanceTimersByTimeAsync(179)
+    expect(automatic).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    await vi.runOnlyPendingTimersAsync()
+    const final = scope.postMessage.mock.lastCall![0]
+    expect(final.discoveryPending).toBe(false)
+    expect(final.id).toBe(2)
+    expect(final.payload.result.values[0]).toBeCloseTo(3, 8)
+    expect(final.payload.search).toMatchObject({ method: 'test' })
+    expect(automatic).toHaveBeenCalledTimes(2)
+    expect(automatic.mock.calls[1][1]).toEqual({ p: 9 })
+  })
+
+  it('cancels an older deferred global search and refreshes only the latest drag value', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: 1, max: 16, step: 1, steps: 17 }
+    await send({ selectedAnchor, sweep })
+    scope.postMessage.mockClear()
+    enqueue({
+      id: 2,
+      parameters: { p: 9 },
+      selectedAnchor,
+      sweep,
+      deferDiscovery: true,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(100)
+    enqueue({
+      id: 3,
+      parameters: { p: 16 },
+      selectedAnchor,
+      sweep,
+      deferDiscovery: true,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(
+      scope.postMessage.mock.lastCall![0].payload.result.values[0],
+    ).toBeCloseTo(4, 8)
+    await vi.advanceTimersByTimeAsync(180)
+    await vi.runOnlyPendingTimersAsync()
+    expect(automatic.mock.calls.map((call) => call[1])).toEqual([
+      { p: 4 },
+      { p: 16 },
+    ])
+    const finals = scope.postMessage.mock.calls
+      .map(([response]) => response)
+      .filter((response) => !response.discoveryPending)
+    expect(finals.map((response) => response.id)).toEqual([3])
+  })
+
+  it('coalesces queued interactions before starting their numerical work', async () => {
+    enqueue({ id: 1, parameters: { p: 1 } })
+    enqueue({ id: 2, parameters: { p: 4 } })
+    await vi.runAllTimersAsync()
+    expect(automatic).toHaveBeenCalledTimes(1)
+    expect(automatic.mock.calls[0][1]).toEqual({ p: 4 })
+    expect(
+      scope.postMessage.mock.calls.map(([response]) => response.id),
+    ).toEqual([2])
+  })
+
+  it('cancels pending automatic discovery when a new source and solver mode replace it', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: 1, max: 16, step: 1, steps: 17 }
+    await send({ selectedAnchor, sweep })
+    enqueue({
+      id: 2,
+      parameters: { p: 9 },
+      selectedAnchor,
+      sweep,
+      deferDiscovery: true,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(scope.postMessage.mock.lastCall![0].discoveryPending).toBe(true)
+    scope.postMessage.mockClear()
+    enqueue({
+      id: 3,
+      mode: 'linear',
+      source: '2*x=6',
+      parameters: {},
+      sweep: null,
+    })
+    await vi.runAllTimersAsync()
+    expect(automatic).toHaveBeenCalledTimes(1)
+    expect(
+      scope.postMessage.mock.calls.map(([response]) => response.id),
+    ).toEqual([3])
+    expect(scope.postMessage.mock.lastCall![0]).toMatchObject({
+      ok: true,
+      discoveryPending: false,
+      payload: { result: { values: [3] } },
+    })
+  })
+
+  it.each([
+    { source: 'x^2=2*p' },
+    { parameters: { p: 9, q: 2 } },
+    { searchBounds: { min: -10, max: 10 } },
+    { conditionNorm: '2' },
+    { sweep: { name: 'p', min: 1, max: 20, step: 1, steps: 17 } },
+  ])(
+    'does not defer changed source, fixed parameters, ranges or diagnostics: %o',
+    async (changed) => {
+      const selectedAnchor = anchor('selected', 2, { p: 4 })
+      const sweep = { name: 'p', min: 1, max: 16, step: 1, steps: 17 }
+      await send({ selectedAnchor, sweep })
+      scope.postMessage.mockClear()
+      enqueue({
+        id: 2,
+        parameters: { p: 9 },
+        selectedAnchor,
+        sweep,
+        deferDiscovery: true,
+        ...changed,
+      })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(automatic).toHaveBeenCalledTimes(2)
+      expect(scope.postMessage).toHaveBeenCalledTimes(1)
+      expect(scope.postMessage.mock.lastCall![0].discoveryPending).toBe(false)
+      await vi.runAllTimersAsync()
+      expect(scope.postMessage).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('reports a lost branch without stale values while full discovery remains pending', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: -1, max: 9, step: 1, steps: 17 }
+    const first = await send({ selectedAnchor, sweep })
+    scope.postMessage.mockClear()
+    enqueue({
+      id: 2,
+      parameters: { p: -1 },
+      selectedAnchor,
+      sweep,
+      deferDiscovery: true,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    const fast = scope.postMessage.mock.lastCall![0]
+    expect(fast).toMatchObject({ ok: false, discoveryPending: true })
+    expect(fast.payload).toBeUndefined()
+    expect(fast.search).toBeUndefined()
+    expect(fast.selectedSimulation.result).toBeNull()
+    expect(fast.selectedSimulation.sweep).toBe(first.payload.sweep)
+    await vi.advanceTimersByTimeAsync(180)
+    await vi.runOnlyPendingTimersAsync()
+    expect(scope.postMessage.mock.lastCall![0].discoveryPending).toBe(false)
+    expect(automatic).toHaveBeenCalledTimes(2)
+  })
+
+  it('immediately reuses current discovery on a cached parameter value', async () => {
+    const selectedAnchor = anchor('selected', 2, { p: 4 })
+    const sweep = { name: 'p', min: 1, max: 16, step: 1, steps: 17 }
+    await send({ selectedAnchor, sweep })
+    await send({ id: 2, selectedAnchor, sweep, parameters: { p: 9 } })
+    scope.postMessage.mockClear()
+    enqueue({ id: 3, selectedAnchor, sweep, deferDiscovery: true })
+    await vi.runAllTimersAsync()
+    expect(scope.postMessage).toHaveBeenCalledTimes(1)
+    expect(scope.postMessage.mock.lastCall![0].discoveryPending).toBe(false)
+    expect(scope.postMessage.mock.lastCall![0].payload.solutions).toHaveLength(
+      2,
+    )
+    expect(automatic).toHaveBeenCalledTimes(2)
   })
 
   it('uses the explicitly anchored current root instead of a changing discovery index', async () => {

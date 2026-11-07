@@ -22,6 +22,73 @@ async function plotLocation(
 }
 
 const runtimeErrors = new WeakMap<Page, string[]>()
+type SolverAudit = {
+  requests: Array<{
+    id: number
+    source: string
+    parameters: Record<string, number>
+  }>
+  responses: Array<{
+    id: number
+    discoveryPending: boolean
+    solutions: number[][]
+  }>
+}
+
+async function observeSolver(page: Page) {
+  await page.addInitScript(() => {
+    const audit: SolverAudit = { requests: [], responses: [] }
+    ;(window as unknown as { solverAudit: SolverAudit }).solverAudit = audit
+    const OriginalWorker = window.Worker
+    window.Worker = class extends OriginalWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options)
+        this.addEventListener('message', (event) => {
+          const data = event.data
+          if (typeof data?.id !== 'number') return
+          audit.responses.push({
+            id: data.id,
+            discoveryPending: data.discoveryPending === true,
+            solutions:
+              data.payload?.solutions?.map((solution: { values: number[] }) => [
+                ...solution.values,
+              ]) ?? [],
+          })
+        })
+      }
+
+      postMessage(
+        message: unknown,
+        options?: Transferable[] | StructuredSerializeOptions,
+      ) {
+        const request = message as {
+          id?: unknown
+          source?: unknown
+          parameters?: Record<string, number>
+        }
+        if (
+          typeof request?.id === 'number' &&
+          typeof request.source === 'string'
+        ) {
+          audit.requests.push({
+            id: request.id,
+            source: request.source,
+            parameters: { ...request.parameters },
+          })
+        }
+        if (Array.isArray(options)) super.postMessage(message, options)
+        else super.postMessage(message, options)
+      }
+    }
+  })
+}
+
+async function solverAudit(page: Page) {
+  return page.evaluate(
+    () => (window as unknown as { solverAudit: SolverAudit }).solverAudit,
+  )
+}
+
 test.beforeEach(async ({ page }) => {
   const errors: string[] = []
   runtimeErrors.set(page, errors)
@@ -321,8 +388,10 @@ test.describe('Linear regressions with a saved legacy model', () => {
     const csvDownload = await csv
     expect(csvDownload.suggestedFilename()).toBe('polymath-data.csv')
     const csvText = await readFile((await csvDownload.path())!, 'utf8')
-    expect(csvText.replace(/^\uFEFF/, '').split('\n')[0]).toBe('c_T,x,y')
-    expect(csvText.trim().split('\n')).toHaveLength(62)
+    expect(csvText).toContain('\r\n')
+    expect(csvText.replaceAll('\r\n', '')).not.toContain('\n')
+    expect(csvText.replace(/^\uFEFF/, '').split(/\r?\n/)[0]).toBe('c_T,x,y')
+    expect(csvText.trim().split(/\r?\n/)).toHaveLength(62)
     await page
       .locator('.workspace-navigation')
       .getByRole('button', { name: '해석 리포트', exact: true })
@@ -2063,9 +2132,10 @@ test.describe('Equation Solver workspace', () => {
     const text = (await readFile((await file.path())!, 'utf8'))
       .replace(/^\uFEFF/, '')
       .trim()
-    expect(text.split('\n')).toHaveLength(8)
-    expect(text.split('\n')[1]).toBe('-1,')
-    expect(text.split('\n').at(-1)).toBe('2,')
+    const csvLines = text.split(/\r?\n/)
+    expect(csvLines).toHaveLength(8)
+    expect(csvLines[1]).toBe('-1,')
+    expect(csvLines.at(-1)).toBe('2,')
     const editor = page.getByRole('textbox', { name: '방정식 입력' })
     await navigate(page, '수식·파라미터')
     await editor.fill(
@@ -2186,7 +2256,7 @@ test.describe('Calm screens and stable interactive charts', () => {
     await page.goto('/')
   })
 
-  test('the first screen offers six module icons and separates setup, simulation and report', async ({
+  test('the first screen contains only module choices and separates workspaces without a sidebar', async ({
     page,
   }) => {
     const entry = page.getByRole('button', {
@@ -2196,6 +2266,10 @@ test.describe('Calm screens and stable interactive charts', () => {
     await expect(entry).toBeVisible()
     await expect(page.locator('.module-card')).toHaveCount(6)
     await expect(page.locator('.module-card:disabled')).toHaveCount(5)
+    await expect(page.locator('.rail')).toHaveCount(0)
+    await expect(page.locator('.module-home-heading')).toHaveCount(0)
+    await expect(page.locator('.module-home-note')).toHaveCount(0)
+    await expect(page.locator('.module-description')).toHaveCount(0)
     await expect(
       page.getByRole('textbox', { name: '방정식 입력' }),
     ).not.toBeVisible()
@@ -2204,6 +2278,7 @@ test.describe('Calm screens and stable interactive charts', () => {
       fullPage: true,
     })
     await entry.click()
+    await expect(page.locator('.rail')).toHaveCount(0)
     await expect(
       page.getByRole('textbox', { name: '방정식 입력' }),
     ).toBeVisible()
@@ -2228,6 +2303,10 @@ test.describe('Calm screens and stable interactive charts', () => {
     await expect(page.locator('.report-content')).toBeVisible()
     await expect(page.locator('.chart-section')).not.toBeVisible()
     await expect(page.getByRole('slider')).toHaveCount(0)
+    await page.getByRole('button', { name: '사용 가이드', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).not.toBeVisible()
     await page.screenshot({
       path: '/tmp/polymath-screen-report.png',
       fullPage: true,
@@ -2484,5 +2563,111 @@ test.describe('Calm screens and stable interactive charts', () => {
       path: '/tmp/polymath-interactive-mobile.png',
       fullPage: true,
     })
+  })
+})
+
+test.describe('Audit regressions for current results and persistence', () => {
+  test('initial anchor adoption avoids a second solve and rapid changes finish with a fresh root list', async ({
+    page,
+  }) => {
+    await observeSolver(page)
+    await page.goto('/')
+    await loadFixture(page, INTERACTIVE_PROJECT)
+    await expect
+      .poll(() =>
+        page.evaluate((key) => {
+          const saved = JSON.parse(localStorage.getItem(key) || 'null')
+          return saved?.source === 'x^2=p' && Boolean(saved.selectedAnchor)
+        }, STORAGE_KEY),
+      )
+      .toBe(true)
+    const initial = await solverAudit(page)
+    expect(
+      initial.requests.filter((request) => request.source === 'x^2=p'),
+    ).toHaveLength(1)
+
+    const slider = page.getByRole('slider', {
+      name: 'p 슬라이더',
+      exact: true,
+    })
+    for (const value of ['1', '5', '1', '5', '9']) await slider.fill(value)
+    await expect(
+      page.locator(
+        '.selected-simulation-workspace .simulation-panel-current strong',
+      ),
+    ).toHaveText('x = 3')
+    await expect
+      .poll(async () => {
+        const audit = await solverAudit(page)
+        const latest = audit.requests.at(-1)
+        return {
+          value: latest?.parameters.p,
+          fast: audit.responses.some(
+            (response) =>
+              response.id === latest?.id && response.discoveryPending,
+          ),
+          complete: audit.responses.some(
+            (response) =>
+              response.id === latest?.id &&
+              !response.discoveryPending &&
+              response.solutions.length === 2 &&
+              response.solutions.every(
+                (values) => Math.abs(Math.abs(values[0]) - 3) < 1e-9,
+              ),
+          ),
+        }
+      })
+      .toEqual({ value: 9, fast: true, complete: true })
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice strong')).toHaveText([
+      'x = 3',
+      'x = -3',
+    ])
+  })
+
+  test('an immediate reload flushes the latest edits before the idle autosave runs', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await loadFixture(page, INTERACTIVE_PROJECT)
+    await page.getByRole('spinbutton', { name: 'p 값', exact: true }).fill('5')
+    await page
+      .getByRole('spinbutton', { name: 'p 값', exact: true })
+      .press('Enter')
+    await navigate(page, '수식·파라미터')
+    await page
+      .getByRole('textbox', { name: '모델 이름' })
+      .fill('즉시 종료 저장 검증')
+    await page.reload()
+    await navigate(page, '수식·파라미터')
+    await expect(page.getByRole('textbox', { name: '모델 이름' })).toHaveValue(
+      '즉시 종료 저장 검증',
+    )
+    await showSimulation(page)
+    await expect(
+      page.getByRole('spinbutton', { name: 'p 값', exact: true }),
+    ).toHaveValue('5')
+    await expect(page.locator('.simulation-panel-current strong')).toHaveText(
+      'x = 2.236068',
+    )
+  })
+
+  test('spaced residual notation displays the actual equation count and still solves', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      mode: 'nonlinear',
+      nonlinearSearch: 'manual',
+      title: '공백을 포함한 잔차 표기',
+      description: '',
+      source: 'f( x ) = x^2 - 4\nx(min) = 0\nx(max) = 3',
+      parameters: [],
+      sweepName: '',
+    })
+    await expect(page.locator('.editor-footer')).toContainText('1개 방정식')
+    await showSimulation(page)
+    await expect(page.locator('.solution-value strong')).toHaveText(['2'])
   })
 })

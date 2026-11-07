@@ -3,6 +3,7 @@ import { ModelError, type SolveResult, type SolverOptions } from './index'
 import { createNonlinearSolver } from './nonlinear'
 import {
   compileNonlinear,
+  isNonlinearFunction,
   parseNonlinearExpression,
   type CompiledModel,
   type NonlinearNode,
@@ -11,6 +12,7 @@ import {
   findPolynomialRealRoots,
   polynomialCoefficients,
 } from './automatic-polynomial'
+import { markUniquePolynomialRoot } from './root-isolation'
 
 export type SearchSummary = {
   method: string
@@ -46,6 +48,7 @@ type Prepared = {
   model: CompiledModel
   expression?: NonlinearNode
   helpers: Map<string, NonlinearNode>
+  polynomialRoots: Map<string, { value: number; slope: number }[] | null>
 }
 const preparedCache = new Map<string, Prepared>()
 const ROOT_LIMIT = 32
@@ -81,7 +84,10 @@ function prepare(source: string, parameterNames: string[]): Prepared {
         )
       return { text: raw.split('#', 1)[0].trim(), line: index + 1 }
     })
-    .filter(({ text }) => text && !CONDITION.test(text))
+    .filter(({ text }) => {
+      const condition = CONDITION.exec(text)
+      return text && !(condition && !isNonlinearFunction(condition[1]))
+    })
   if (!lines.length) throw new ModelError('계산할 방정식을 입력하세요.')
   const explicit = lines.some(({ text }) => ROOT.test(text))
   const variables: string[] = []
@@ -156,6 +162,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     model,
     expression,
     helpers,
+    polynomialRoots: new Map(),
   }
   if (preparedCache.size >= 16)
     preparedCache.delete(preparedCache.keys().next().value!)
@@ -276,6 +283,58 @@ function smallLocalResidual(
     nearby.length > 0 &&
     Math.abs(residual) <= Math.max(...nearby.map(Math.abs)) * 1e-8
   )
+}
+
+/** Reuse the existing polynomial isolator for local corrections as well as
+ * discovery. Newton differences cannot resolve a tiny root next to a large
+ * additive constant, and repeated zero roots need an exact algebraic endpoint.
+ * Every candidate is still checked against the original (unexpanded) model. */
+function polynomialNearRoots(
+  prepared: Prepared,
+  parameters: Record<string, number>,
+) {
+  const key = JSON.stringify(
+    Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b)),
+  )
+  if (prepared.polynomialRoots.has(key))
+    return prepared.polynomialRoots.get(key)!
+  const coefficients = prepared.expression
+    ? polynomialCoefficients(
+        prepared.expression,
+        prepared.variables[0],
+        { pi: Math.PI, e: Math.E, ...parameters },
+        prepared.helpers,
+      )
+    : null
+  let roots: { value: number; slope: number }[] | null = null
+  if (coefficients) {
+    const isolated = findPolynomialRealRoots(coefficients)
+    if (isolated.identicallyZero)
+      throw new ModelError(
+        '이 방정식은 미지수와 무관하게 0=0이 됩니다. 해를 특정할 독립적인 방정식이 필요합니다.',
+      )
+    roots = []
+    for (const value of isolated.roots) {
+      let slope = 0
+      for (let i = coefficients.length - 1; i > 0; i--)
+        slope = slope * value + i * coefficients[i]
+      const residual = tryScalar(prepared.model, parameters, value)
+      if (
+        residual !== undefined &&
+        hasLocalVariation(prepared.model, parameters, value) &&
+        (residual === 0 ||
+          (slope !== 0 &&
+            smallLocalResidual(prepared.model, parameters, value, residual)))
+      )
+        roots.push({ value, slope })
+    }
+  }
+  if (prepared.polynomialRoots.size >= 32)
+    prepared.polynomialRoots.delete(
+      prepared.polynomialRoots.keys().next().value!,
+    )
+  prepared.polynomialRoots.set(key, roots)
+  return roots
 }
 
 /** Newton refinement requires a small correction as well as a reduced
@@ -462,6 +521,34 @@ export async function createAutomaticSolver(
     )
       throw new ModelError('추적할 해의 미지수 값이 올바르지 않습니다.')
     if (prepared.variables.length === 1) {
+      const roots = polynomialNearRoots(prepared, parameters)
+      if (roots?.length) {
+        const scale = Math.max(
+          Number.MIN_VALUE,
+          Math.abs(values[0]),
+          ...roots.map((root) => Math.abs(root.value)),
+        )
+        const closest = roots.reduce((best, root) => {
+          const nextDistance = Math.abs(root.value / scale - values[0] / scale)
+          const bestDistance = Math.abs(best.value / scale - values[0] / scale)
+          return nextDistance < bestDistance ||
+            (nextDistance === bestDistance && root.value > best.value)
+            ? root
+            : best
+        })
+        const result = scalarResult(
+          prepared,
+          parameters,
+          closest.value,
+          options,
+          0,
+          closest.slope,
+        )
+        return roots.length === 1 ? markUniquePolynomialRoot(result) : result
+      }
+      // Expansion can erase a small coefficient beside a large constant.
+      // An empty verified candidate set is not a proof that the original
+      // expression has no root; retain the original-model Newton fallback.
       const refined = scalarNear(prepared, parameters, values[0])
       return scalarResult(
         prepared,

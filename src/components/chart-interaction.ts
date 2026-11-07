@@ -78,19 +78,21 @@ export function zoomAxis(
   anchorRatio: number,
   factor: number,
 ): AxisWindow {
-  if (!Number.isFinite(factor) || factor <= 0) return window
+  if (!Number.isFinite(factor) || factor <= 0 || !Number.isFinite(anchorRatio))
+    return window
   const ratio = Math.min(1, Math.max(0, anchorRatio))
   const span = Math.min(8, Math.max(1 / 128, (window[1] - window[0]) * factor))
+  if (span === 8) return [-3.5, 4.5]
   const anchor = interpolate(window[0], window[1], ratio)
   let min = anchor - ratio * span
   let max = min + span
-  if (min < -4) {
-    max += -4 - min
-    min = -4
+  if (min < -3.5) {
+    max += -3.5 - min
+    min = -3.5
   }
-  if (max > 5) {
-    min -= max - 5
-    max = 5
+  if (max > 4.5) {
+    min -= max - 4.5
+    max = 4.5
   }
   return [min, max]
 }

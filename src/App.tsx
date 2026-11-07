@@ -30,6 +30,10 @@ import {
 import SolutionChart, { SERIES_COLORS } from './components/SolutionChart'
 import Guide from './components/Guide'
 import SimulationPanelView from './components/SimulationPanelView'
+import { createSolverInput, solverInputKey } from './solver-input'
+import { useProjectPersistence } from './use-project-persistence'
+import { countEquations } from './equation-count'
+import { encodeCsv } from './csv'
 import {
   LandingModules,
   WorkspaceNavigation,
@@ -177,6 +181,7 @@ export default function App() {
   )
   const [searchInfo, setSearchInfo] = useState<SearchSummary | null>(null)
   const [pending, setPending] = useState(false)
+  const [discoveryPending, setDiscoveryPending] = useState(false)
   const [workerReady, setWorkerReady] = useState(false)
   const [revision, setRevision] = useState(0)
   const [screen, setScreen] = useState<WorkspaceScreen>('home')
@@ -202,6 +207,18 @@ export default function App() {
   const examplesRef = useRef<HTMLDivElement>(null)
   const projectRef = useRef(project)
   projectRef.current = project
+  const revisionRef = useRef(revision)
+  revisionRef.current = revision
+  const dispatchedKey = useRef('')
+  const adoptedReplyKey = useRef('')
+  const previousRequest = useRef({
+    source: '',
+    mode: '',
+    search: '',
+    revision: -1,
+  })
+  // Projects are immutable; mode drafts need a reference, not a clone per frame.
+  drafts.current[project.mode ?? 'linear'] = project
   const mode = project.mode ?? 'linear'
   const nonlinear = mode === 'nonlinear'
   const nonlinearSearch = project.nonlinearSearch ?? 'auto'
@@ -264,12 +281,7 @@ export default function App() {
     (p) => p.name === project.sweepName,
   )
   const sourceLines = project.source.split('\n')
-  const equationCount = sourceLines.filter((l) =>
-    nonlinear && project.source.split('\n').some((x) => /^\s*f\(/.test(x))
-      ? /^\s*f\([A-Za-z][A-Za-z0-9_]*\)\s*=/.test(l)
-      : l.split('#')[0].trim() &&
-        !/^\s*[A-Za-z][A-Za-z0-9_]*\((min|max|0)\)/.test(l),
-  ).length
+  const equationCount = countEquations(project.source, nonlinear)
   useEffect(() => {
     const w = new Worker(
       new URL('./engine/solver.worker.ts', import.meta.url),
@@ -279,43 +291,39 @@ export default function App() {
     w.onmessage = ({ data }) => {
       if (data.id !== requestId.current) return
       setPending(false)
+      setDiscoveryPending(data.discoveryPending === true)
       if (data.ok) {
         setPayload(data.payload)
         setSelectedSimulation(data.payload.selectedSimulation ?? null)
         setSimulationResults(data.payload.simulations ?? [])
         setSearchInfo(data.payload.search ?? null)
-        if (data.payload.selectedSolution !== undefined)
-          setProject((p) =>
-            p.selectedSolution === data.payload.selectedSolution
-              ? p
-              : { ...p, selectedSolution: data.payload.selectedSolution },
-          )
         setError('')
         const latest = projectRef.current
+        // A reply may normalize its selection metadata without changing inputs.
+        // Adopt that same anchor/result once, rather than solving a second time.
         if (
-          latest.mode === 'nonlinear' &&
-          latest.nonlinearSearch !== 'manual' &&
-          !latest.selectedAnchor &&
-          data.payload.solutions?.length
+          solverInputKey(latest, revisionRef.current) === dispatchedKey.current
         ) {
-          const index = data.payload.selectedSolution ?? 0
-          const selected = data.payload.solutions[index]
-          setProject((p) =>
-            p.selectedAnchor
-              ? p
-              : {
-                  ...p,
-                  selectedAnchor: {
-                    id: crypto.randomUUID(),
-                    label: `해 ${index + 1}`,
-                    variables: [...selected.variables],
-                    values: [...selected.values],
-                    parameters: Object.fromEntries(
-                      p.parameters.map((v) => [v.name, v.value]),
-                    ),
-                  },
-                },
-          )
+          const adopted =
+            !latest.selectedAnchor &&
+            data.adoptedAnchor &&
+            validAnchor(data.adoptedAnchor)
+              ? (data.adoptedAnchor as SimulationAnchor)
+              : latest.selectedAnchor
+          const nextIndex =
+            data.payload.selectedSolution ?? latest.selectedSolution
+          if (
+            adopted !== latest.selectedAnchor ||
+            nextIndex !== latest.selectedSolution
+          ) {
+            const next = {
+              ...latest,
+              selectedAnchor: adopted,
+              selectedSolution: nextIndex,
+            }
+            adoptedReplyKey.current = solverInputKey(next, revisionRef.current)
+            setProject(next)
+          }
         }
       } else {
         setError(data.line ? `${data.line}행 · ${data.error}` : data.error)
@@ -327,6 +335,7 @@ export default function App() {
     }
     w.onerror = () => {
       setPending(false)
+      setDiscoveryPending(false)
       setError('계산 워커를 시작하지 못했습니다. 페이지를 새로고침해 주세요.')
     }
     setWorkerReady(true)
@@ -337,6 +346,24 @@ export default function App() {
   }, [])
   useEffect(() => {
     if (!workerReady) return
+    const key = solverInputKey(project, revision)
+    if (adoptedReplyKey.current === key) {
+      adoptedReplyKey.current = ''
+      dispatchedKey.current = key
+      return
+    }
+    adoptedReplyKey.current = ''
+    const sourceChanged =
+      previousRequest.current.source !== project.source ||
+      previousRequest.current.mode !== mode ||
+      previousRequest.current.search !== nonlinearSearch
+    const explicitSolve = previousRequest.current.revision !== revision
+    previousRequest.current = {
+      source: project.source,
+      mode,
+      search: nonlinearSearch,
+      revision,
+    }
     const id = ++requestId.current
     if (!hasSource) {
       setPayload(null)
@@ -345,37 +372,25 @@ export default function App() {
       setSearchInfo(null)
       setSimulationResults([])
       setSelectedSimulation(null)
+      setDiscoveryPending(false)
       return
     }
     setPending(true)
+    setDiscoveryPending(false)
     setError('')
     setSearchInfo(null)
     setSelectedIndex(null)
-    const timer = setTimeout(() => {
-      worker.current?.postMessage({
-        id,
-        source: project.source,
-        conditionNorm,
-        mode,
-        nonlinearSearch,
-        searchBounds: project.searchBounds,
-        solutionIndex,
-        simulationAnchors: project.simulations,
-        selectedAnchor: project.selectedAnchor,
-        parameters: Object.fromEntries(
-          project.parameters.map((p) => [p.name, p.value]),
-        ),
-        sweep: sweepParam
-          ? {
-              name: sweepParam.name,
-              min: sweepParam.min,
-              max: sweepParam.max,
-              steps: 81,
-              step: sweepParam.step,
-            }
-          : null,
-      })
-    }, 160)
+    const timer = setTimeout(
+      () => {
+        dispatchedKey.current = key
+        worker.current?.postMessage({
+          id,
+          ...createSolverInput(project),
+          deferDiscovery: !sourceChanged && !explicitSolve,
+        })
+      },
+      sourceChanged ? 160 : 16,
+    )
     return () => clearTimeout(timer)
   }, [
     project.source,
@@ -391,19 +406,7 @@ export default function App() {
     revision,
     workerReady,
   ])
-  useEffect(() => {
-    try {
-      drafts.current[project.mode ?? 'linear'] = structuredClone(project)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(project))
-      localStorage.setItem(
-        `${STORAGE_KEY}-${project.mode ?? 'linear'}`,
-        JSON.stringify(project),
-      )
-      setStorageOk(true)
-    } catch {
-      setStorageOk(false)
-    }
-  }, [project])
+  useProjectPersistence(project, STORAGE_KEY, setStorageOk)
   const variableKey = result?.variables.join('|') || ''
   useEffect(() => {
     setVisibleVariables(variableKey ? variableKey.split('|') : [])
@@ -759,7 +762,7 @@ export default function App() {
     setToast('계산 리포트를 내려받았습니다.')
   }
   function exportAllReports() {
-    if (!solutions.length || pending || error) return
+    if (!solutions.length || pending || discoveryPending || error) return
     downloadFile(
       'polymath-all-solutions.md',
       solutions.map((item, i) => buildReport(item, i)).join('\n---\n\n'),
@@ -770,19 +773,22 @@ export default function App() {
   function exportCSV() {
     if (!result || !payload || pending || (sweepParam && payload.datasetError))
       return
-    const csv = sweepParam
+    const rows = sweepParam
       ? [
-          [project.sweepName, ...result.variables].join(','),
-          ...payload.dataset.map((p) =>
-            [p.parameter, ...(p.values || result.variables.map(() => ''))].join(
-              ',',
-            ),
-          ),
-        ].join('\n')
+          [project.sweepName, ...result.variables],
+          ...payload.dataset.map((point) => [
+            point.parameter,
+            ...(point.values || result.variables.map(() => '')),
+          ]),
+        ]
       : [
-          ['variable', 'value'].join(','),
-          ...result.variables.map((v, i) => [v, result.values[i]].join(',')),
-        ].join('\n')
+          ['variable', 'value'],
+          ...result.variables.map((name, index) => [
+            name,
+            result.values[index],
+          ]),
+        ]
+    const csv = encodeCsv(rows)
     downloadFile(
       automatic
         ? project.selectedAnchor
@@ -815,56 +821,6 @@ export default function App() {
   }
   return (
     <div className="app-shell">
-      <aside className="rail" aria-label="주 메뉴">
-        <a
-          className="brand-mark"
-          href="#"
-          aria-label="Polymath Studio 홈"
-          onClick={(e) => {
-            e.preventDefault()
-            navigate('home')
-          }}
-        >
-          <span>p</span>
-          <i />
-        </a>
-        <div className="rail-group">
-          <button
-            className="rail-item active"
-            aria-label="Equation Solver"
-            title="Equation Solver"
-            onClick={() => {
-              navigate('model')
-            }}
-          >
-            <Sigma size={23} />
-            <span>방정식</span>
-          </button>
-          <button
-            className="rail-item planned-category"
-            disabled
-            aria-label="Differential Equation Solver 준비 중"
-            title="Differential Equation Solver · 준비 중"
-          >
-            <Activity size={22} />
-            <span>미분방정식</span>
-            <small>준비 중</small>
-          </button>
-        </div>
-        <div className="rail-bottom">
-          <button
-            className="rail-item"
-            onClick={() => setGuide(true)}
-            aria-label="사용 가이드"
-          >
-            <CircleHelp size={21} />
-            <span>가이드</span>
-          </button>
-          <div className="avatar" title="로컬 워크스페이스">
-            ME
-          </div>
-        </div>
-      </aside>
       <div className="workspace">
         <header className="topbar">
           <div className="wordmark">
@@ -877,7 +833,11 @@ export default function App() {
               {storageOk ? '로컬 자동 저장' : '자동 저장 불가'}
             </span>
             <div className="top-divider" />
-            <button className="quiet-button" onClick={() => setGuide(true)}>
+            <button
+              className="quiet-button"
+              aria-label="사용 가이드"
+              onClick={() => setGuide(true)}
+            >
               <CircleHelp size={16} />
               <span>사용 가이드</span>
             </button>
@@ -1430,11 +1390,19 @@ export default function App() {
                     onChange={updateParameter}
                   />
                 )}
-                {automatic && solutions.length > 0 && (
+                {automatic && discoveryPending && (
+                  <p className="discovery-status" role="status">
+                    현재 해를 표시하고 있습니다. 전체 해 목록을 갱신하는
+                    중입니다.
+                  </p>
+                )}
+                {automatic && (solutions.length > 0 || discoveryPending) && (
                   <details className="solutions-section">
                     <summary className="solutions-title">
                       <h3 className="solution-count">
-                        발견한 실수 해 {solutions.length}개
+                        {discoveryPending
+                          ? '해 목록 갱신 중'
+                          : `발견한 실수 해 ${solutions.length}개`}
                       </h3>
                       <span>
                         해 선택 · 시뮬레이션 추가 <ChevronDown size={14} />

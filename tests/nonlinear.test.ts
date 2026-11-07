@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { ModelError } from '../src/engine'
 import { createNonlinearSolver } from '../src/engine/nonlinear'
+import { createAutomaticSolver } from '../src/engine/automatic'
 
 let solve: Awaited<ReturnType<typeof createNonlinearSolver>>
 beforeAll(async () => {
@@ -21,6 +22,30 @@ const near = (values: number[], expected: number[]) => {
 }
 
 describe('nonlinear single-root intervals', () => {
+  it('solves an engineering friction-factor variable named f without metadata collision', async () => {
+    const automatic = await createAutomaticSolver(
+      await readFile(new URL('../public/solver.wasm', import.meta.url)),
+    )
+    const polynomial = automatic('f^2=4', {})
+    expect(polynomial.solutions).toHaveLength(2)
+    expect(
+      polynomial.solutions.every((result) => result.variables[0] === 'f'),
+    ).toBe(true)
+    near(
+      polynomial.solutions.map((result) => result.values[0]),
+      [2, -2],
+    )
+    const result = automatic(
+      '1/sqrt(f) = -2*log10(eps/(3.7*D) + 2.51/(Re*sqrt(f)))',
+      { eps: 1.5e-4, D: 0.05, Re: 1e5 },
+    )
+    expect(result.solutions).toHaveLength(1)
+    expect(result.solutions[0].values[0]).toBeCloseTo(0.0274708627, 8)
+    expect(result.solutions[0].maxResidual).toBeLessThan(1e-10)
+    const functionOnLeft = automatic('min(x,1)=0.5', {})
+    expect(functionOnLeft.solutions).toHaveLength(1)
+    near(functionOnLeft.solutions[0].values, [0.5])
+  })
   it('selects the positive or negative branch by numeric bounds', () => {
     const positive = solve(scalar('x^2 - 4'), {})
     const negative = solve(scalar('x^2 - 4', -3, 0), {})

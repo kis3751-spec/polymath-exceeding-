@@ -1,0 +1,2 @@
+# Unified diff context keeps a space on otherwise blank lines.
+docs/work-in-progress/*.patch whitespace=-blank-at-eol
