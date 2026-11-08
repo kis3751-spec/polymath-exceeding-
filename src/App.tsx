@@ -1,4 +1,5 @@
 import { normalizeAutomaticModel } from './engine/automatic'
+import { equationProject } from './equation-project'
 import {
   certificateSummary,
   certificateReport,
@@ -211,7 +212,7 @@ function isProject(value: unknown): value is Project {
 function initialProject(): Project {
   try {
     const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-    if (isProject(p)) return p
+    if (isProject(p)) return equationProject(p)
   } catch {
     /* A clean model is usable if storage is unavailable. */
   }
@@ -621,7 +622,7 @@ export default function App() {
           localStorage.getItem(`${STORAGE_KEY}-${nextMode}`) || 'null',
         )
         if (isProject(saved) && (saved.mode ?? 'linear') === nextMode)
-          next = saved
+          next = equationProject(saved)
       } catch {}
     }
     setProject(
@@ -896,7 +897,7 @@ export default function App() {
               .map(([name, value]) => `- ${name} = ${value.toPrecision(12)}`)
               .join('\n')}`
           : '',
-        `최대 절대 잔차: ${isEvaluation ? '해당 없음' : target.maxResidual.toExponential(5)}`,
+        `최대 절대 등식 오차: ${isEvaluation ? '해당 없음' : target.maxResidual.toExponential(5)}`,
         `조건수 (${target.conditionNorm === '2' ? '2-norm · SVD' : '∞-norm'}): ${isEvaluation ? '해당 없음' : Number.isNaN(target.condition) ? '계산 불가' : target.condition.toPrecision(8)}`,
         `민감도: ${isEvaluation ? '해당 없음' : classifyCondition(target.condition).label}`,
         '참고 기준: κ < 10^4 안정, 10^4 ≤ κ < 10^8 민감, κ ≥ 10^8 매우 민감. 참고 범위이며 입력 오차와 단위에 따라 해석해야 합니다.',
@@ -971,7 +972,7 @@ export default function App() {
       const p = JSON.parse(await file.text())
       if (!isProject(p)) throw new Error()
       drafts.current[mode] = structuredClone(project)
-      setProject(p)
+      setProject(equationProject(p))
       setPayload(null)
       setSelectedSimulation(null)
       if (screen === 'home') navigate('model')
@@ -1200,7 +1201,7 @@ export default function App() {
                     {nonlinear
                       ? automatic
                         ? '식만 입력 · 실수 해 자동 탐색'
-                        : 'f(미지수) = 0이 될 잔차식'
+                        : '등식 입력 · 초기값 또는 범위로 한 해 탐색'
                       : '한 줄에 하나의 방정식'}
                   </span>
                 </div>
@@ -1277,7 +1278,7 @@ export default function App() {
                       nonlinear
                         ? automatic
                           ? 'x^2 = 4\n\n# 연립식도 한 줄에 하나씩 입력하세요'
-                          : 'f(x) = x^2 - 4\nx(min) = 0\nx(max) = 3'
+                          : 'x^2 = 4\nx(0) = 1'
                         : '방정식을 입력하세요\n예: 2x + y = 10'
                     }
                     onKeyDown={(e) => {
@@ -1387,9 +1388,10 @@ export default function App() {
                         </>
                       ) : (
                         <p>
-                          f(x)=잔차식과 x(min)·x(max), 또는 연립식의 각 x(0)을
-                          수식에 적어 주세요. 명시식 계산도 이 방식에서
-                          지원합니다.
+                          x^2=4처럼 등식을 입력하고 x(0)=1로 초기값을
+                          지정하세요. x(min)·x(max)로 범위를 지정할 수도
+                          있습니다. 연립식은 각 미지수의 초기값을 적습니다.
+                          이름=수식 계산도 지원합니다.
                         </p>
                       )}
                     </div>
@@ -1990,7 +1992,7 @@ export default function App() {
                                         <th>변수</th>
                                         <th>값</th>
                                         {!evaluation && (
-                                          <th>방정식 최대 절대 잔차</th>
+                                          <th>방정식 최대 절대 등식 오차</th>
                                         )}
                                       </tr>
                                     </thead>
@@ -2092,7 +2094,7 @@ export default function App() {
                         >
                           <div>
                             <span>
-                              {evaluation ? '계산 항목' : '최대 절대 잔차'}
+                              {evaluation ? '계산 항목' : '최대 절대 등식 오차'}
                             </span>
                             <strong>
                               {evaluation
@@ -2167,8 +2169,8 @@ export default function App() {
                             )}
                             <p className="condition-caveat">
                               위 범위는 참고 기준입니다. 실제 신뢰도는 측정
-                              오차와 단위·스케일에 따라 달라지며, 작은
-                              잔차만으로 해의 정확도를 보장하지는 않습니다.
+                              오차와 단위·스케일에 따라 달라지며, 작은 등식
+                              오차만으로 해의 정확도를 보장하지는 않습니다.
                             </p>
                             <details className="condition-guide">
                               <summary>
@@ -2216,8 +2218,8 @@ export default function App() {
                           {nonlinear
                             ? evaluation
                               ? '명시식의 의존 관계를 확인하여 순서대로 계산합니다.'
-                              : '잔차는 f(x)에 해를 대입한 값입니다. 아래 Jacobian은 수렴점에서의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
-                            : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 잔차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
+                              : '등식 오차는 구한 해를 넣었을 때 좌변과 우변의 차이입니다. 아래 Jacobian은 해 주변의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
+                            : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 등식 오차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
                         </p>
                         {!evaluation && (
                           <details className="matrix-details">
@@ -2232,7 +2234,7 @@ export default function App() {
                             </summary>
                             <p>
                               {nonlinear
-                                ? '수렴점의 Jacobian J와 마지막 잔차를 확인합니다. J·Δx = −f(x)는 국소 선형화이며 원래 비선형 방정식 자체는 아닙니다.'
+                                ? '해 주변의 Jacobian J와 각 방정식의 좌변·우변 차이를 확인합니다. 수치 계산의 수렴과 민감도를 검토할 수 있습니다.'
                                 : '수식을 A·x = b로 변환한 계수와 우변을 확인합니다. 부호나 누락된 항을 검토할 때 활용하세요.'}
                             </p>
                             <MatrixView result={result} />
@@ -2565,7 +2567,7 @@ function MatrixView({
   return (
     <div className="matrix-view">
       <div className="matrix-caption">
-        {result.kind === 'nonlinear' ? 'J · Δx = −f(x)' : 'A · x = b'}{' '}
+        {result.kind === 'nonlinear' ? 'J · Δx = −(좌변 − 우변)' : 'A · x = b'}{' '}
         <span>
           {result.kind === 'nonlinear'
             ? '수렴점에서의 국소 선형화'

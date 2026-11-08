@@ -189,7 +189,7 @@ function bisect(model: CompiledModel, evaluate: Evaluator): IterationResult {
       return { values: [middle], evaluation, iterations: iteration }
     if (middle === left || middle === right)
       throw new ModelError(
-        '구간이 수치 한계까지 줄었지만 잔차가 0에 가까워지지 않았습니다. 불연속점이나 근이 없는 구간인지 확인해 주세요.',
+        '구간이 수치 한계까지 줄었지만 등식 오차가 0에 가까워지지 않았습니다. 불연속점이나 근이 없는 구간인지 확인해 주세요.',
       )
     if (Math.sign(residual) === Math.sign(leftResidual)) {
       left = middle
@@ -295,7 +295,7 @@ function newton(
           domainError.line,
         )
       throw new ModelError(
-        'Newton 반복이 더 이상 잔차를 줄이지 못해 수렴하지 않았습니다. 다른 초기 추정값과 수식의 연속성을 확인해 주세요.',
+        'Newton 반복이 더 이상 등식 오차를 줄이지 못해 수렴하지 않았습니다. 다른 초기 추정값과 수식의 연속성을 확인해 주세요.',
       )
     }
     lastStep = Math.max(
@@ -310,7 +310,7 @@ function newton(
       numericalJacobian(evaluate, values, evaluation.residuals)
     if (lastStep === 0 && norm(evaluation.residuals) > RESIDUAL_TOLERANCE)
       throw new ModelError(
-        'Newton 보정량이 수치 한계에 도달했지만 잔차가 남았습니다. 초기 추정값과 수식의 단위를 확인해 주세요.',
+        'Newton 보정량이 수치 한계에 도달했지만 등식 오차가 남았습니다. 초기 추정값과 수식의 단위를 확인해 주세요.',
       )
   }
   throw new ModelError(
@@ -390,27 +390,50 @@ export async function createNonlinearSolver(
       )
     let solved: IterationResult
     let matrix: number[][]
+    let usedNewton = false
     try {
       if (nonsmooth) {
-        const found = derivativeFreeRoots((x) => {
-          try {
-            return evaluate([x]).residuals[0]
-          } catch {
-            return undefined
-          }
-        }, model.bounds!)
+        const found = derivativeFreeRoots(
+          (x) => {
+            try {
+              return evaluate([x]).residuals[0]
+            } catch {
+              return undefined
+            }
+          },
+          model.bounds ?? {
+            min: model.guesses![0] - Math.max(1, Math.abs(model.guesses![0])),
+            max: model.guesses![0] + Math.max(1, Math.abs(model.guesses![0])),
+          },
+        )
         if (!found.roots.length || found.truncated)
           throw new ModelError(
             '지정 구간에서 미분 없이 실근을 찾지 못했습니다.',
           )
         const x = found.roots.sort((a, b) => Math.abs(a) - Math.abs(b))[0]
         solved = { values: [x], evaluation: evaluate([x]), iterations: 0 }
-      } else
-        solved = scalar
-          ? bisect(model, evaluate)
-          : newton(model, evaluate, wasm, (values) =>
-              model.jacobian?.(values, parameters),
+      } else {
+        const solveNewton = () => {
+          usedNewton = true
+          return newton(model, evaluate, wasm, (values) =>
+            model.jacobian?.(values, parameters),
+          )
+        }
+        if (scalar && model.bounds) {
+          try {
+            solved = bisect(model, evaluate)
+          } catch (error) {
+            if (!model.guesses) throw error
+            const candidate = solveNewton()
+            if (
+              candidate.values[0] < model.bounds.min ||
+              candidate.values[0] > model.bounds.max
             )
+              throw error
+            solved = candidate
+          }
+        } else solved = solveNewton()
+      }
       matrix = nonsmooth
         ? [[NaN]]
         : (solved.matrix ??
@@ -433,7 +456,7 @@ export async function createNonlinearSolver(
         condition = conditionNumber(matrix, conditionNorm)
       } catch {
         conditionError =
-          '선택한 방법으로 해에서의 Jacobian 조건수를 계산하지 못했습니다. 잔차와 다른 norm을 확인해 주세요.'
+          '선택한 방법으로 해에서의 Jacobian 조건수를 계산하지 못했습니다. 등식 오차와 다른 norm을 확인해 주세요.'
       }
     }
     const warnings: string[] = []
@@ -443,7 +466,7 @@ export async function createNonlinearSolver(
         '미분 없는 수치 탐색 결과입니다. 구간 해가 있으면 대표값을 표시할 수 있습니다.',
       )
     }
-    if (!scalar && !wasm)
+    if (usedNewton && !wasm)
       warnings.push(
         'WebAssembly를 사용할 수 없어 JavaScript Newton 솔버로 계산했습니다.',
       )
@@ -453,7 +476,7 @@ export async function createNonlinearSolver(
         '해에서의 Jacobian 조건수가 큽니다. 초기 추정값과 입력 오차에 대한 민감도를 확인해 주세요.',
       )
     warnings.push(
-      scalar
+      scalar && model.bounds
         ? '지정 구간에서 찾은 하나의 근입니다. 모든 근을 보장하지 않으며 다른 구간에서는 다른 근을 찾을 수 있습니다.'
         : '초기 추정값에서 찾은 하나의 해입니다. 다른 초기 추정값에서는 다른 해를 찾거나 수렴하지 않을 수 있습니다.',
     )
@@ -469,11 +492,11 @@ export async function createNonlinearSolver(
       condition,
       conditionNorm,
       ...(conditionError ? { conditionError } : {}),
-      engine: !scalar && wasm ? 'wasm' : 'javascript',
+      engine: usedNewton && wasm ? 'wasm' : 'javascript',
       iterations: solved.iterations,
       method: nonsmooth
         ? '미분 없는 구간 탐색'
-        : scalar
+        : !usedNewton
           ? '구간 이분법'
           : model.jacobian?.(solved.values, parameters)
             ? '감쇠 Newton · 자동미분 Jacobian'

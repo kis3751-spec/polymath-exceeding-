@@ -1,4 +1,8 @@
-import { tangencyLabel } from '../engine/tangency'
+import {
+  branchEventLabel,
+  branchEventText,
+  uniqueBranchEvents,
+} from '../engine/branch-events'
 import {
   useEffect,
   useId,
@@ -534,20 +538,15 @@ export default function SolutionChart({
   const allBifurcationEvents = useMemo(() => {
     if (isMultiBranch && multiBranchSeries) {
       const list: BranchTerminalEvent[] = []
-      const seen = new Set<string>()
       multiBranchSeries.forEach((branch) => {
         if (!visibleVariables.includes(branch.id)) return
         for (const ev of branch.events ?? []) {
-          const key = `${ev.kind}|${ev.direction}|${ev.parameter.toPrecision(5)}|${(ev.tangency?.verified ? ev.tangency.valuesStar : ev.values)[activeVariableIndex]?.toPrecision(4)}`
-          if (!seen.has(key)) {
-            seen.add(key)
-            list.push(ev)
-          }
+          list.push(ev)
         }
       })
-      return list
+      return uniqueBranchEvents(list)
     }
-    return events
+    return uniqueBranchEvents(events)
   }, [
     isMultiBranch,
     multiBranchSeries,
@@ -854,7 +853,7 @@ export default function SolutionChart({
                           stroke={isMerge ? '#d9480f' : '#e67700'}
                           strokeWidth="2.2"
                         />
-                        <title>{ev.description}</title>
+                        <title>{branchEventText(ev, parameterName)}</title>
                       </g>
                     )
                   })}
@@ -1053,16 +1052,18 @@ export default function SolutionChart({
                     : ev.parameter,
                 )
               }
-              title={ev.tangency?.geometricSummary ?? ev.description}
+              title={
+                ev.tangency?.verified
+                  ? '원래 등식과 도함수를 국소 수치 검증한 지점입니다.'
+                  : '수치 추적으로 추정한 지점입니다.'
+              }
             >
-              <b>
-                {ev.tangency?.verified
-                  ? tangencyLabel(ev.tangency)
-                  : ev.kind === 'merge'
-                    ? '● 병합·소멸 후보'
-                    : '○ 추적 경계'}
-              </b>{' '}
-              {ev.description}
+              <b>{branchEventLabel(ev)}</b> · {parameterName || '파라미터'} ≈{' '}
+              {formatNumber(
+                ev.tangency?.verified
+                  ? ev.tangency.parameterStar
+                  : ev.parameter,
+              )}
             </button>
           ))}
         </div>

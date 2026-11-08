@@ -63,6 +63,7 @@ const books = [
     ],
     files: [
       'src/editor-input.ts',
+      'src/equation-project.ts',
       'src/models.ts',
       'src/showcase-examples.ts',
       'src/solver-input.ts',
@@ -71,6 +72,7 @@ const books = [
       'src/csv.ts',
       'src/engine/sweep.ts',
       'src/engine/branches.ts',
+      'src/engine/branch-events.ts',
       'src/engine/simulation-panels.ts',
       'src/engine/solver.worker.ts',
       'src/App.tsx',

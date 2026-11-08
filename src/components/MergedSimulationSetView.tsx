@@ -8,6 +8,7 @@ import type {
 } from '../engine'
 import { encodeCsv } from '../csv'
 import { detectMergedBranchEvents } from '../engine/simulation-panels'
+import { branchEventLabel } from '../engine/branch-events'
 import SolutionChart, {
   SERIES_COLORS,
   type MultiBranchSeries,
@@ -210,6 +211,12 @@ export default function MergedSimulationSetView({
         {includedPanels.map((panel, idx) => {
           const val = panel.result?.values[activeVarIdx]
           const color = branchColor(panel.id)
+          const mergeEvent = mergedEvents.find(
+            (event) =>
+              event.kind === 'merge' &&
+              (event.branchId === panel.id ||
+                event.mergedWithAnchorId === panel.id),
+          )
           return (
             <div
               key={panel.id}
@@ -222,13 +229,8 @@ export default function MergedSimulationSetView({
               <strong>
                 {panel.result
                   ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
-                  : mergedEvents.some(
-                        (event) =>
-                          event.kind === 'merge' &&
-                          (event.branchId === panel.id ||
-                            event.mergedWithAnchorId === panel.id),
-                      )
-                    ? '병합·소멸 후보 / 추적 불가'
+                  : mergeEvent
+                    ? `${branchEventLabel(mergeEvent)} · 현재 추적 불가`
                     : '현재 분기 추적 불가'}
               </strong>
             </div>

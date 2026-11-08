@@ -398,7 +398,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
       .click()
     await navigate(page, '해석 리포트')
     await expect(page.locator('.report-metrics')).toContainText(
-      '최대 절대 잔차',
+      '최대 절대 등식 오차',
     )
     await expect(page.locator('.matrix-equation')).not.toBeVisible()
     await navigate(page, '해석 리포트')
@@ -1258,9 +1258,9 @@ test.describe('Equation Solver workspace', () => {
     await expect(page.locator('.result-footer')).not.toContainText('0 × 4')
     await expect(page.getByRole('columnheader')).toHaveText(['변수', '값'])
     await expect(page.locator('.result-table tbody tr')).toHaveCount(4)
-    await expect(page.getByRole('columnheader', { name: /잔차/ })).toHaveCount(
-      0,
-    )
+    await expect(
+      page.getByRole('columnheader', { name: /등식 오차/ }),
+    ).toHaveCount(0)
     await showValues(page)
     await expect(page.locator('.nonlinear-status')).not.toContainText('반복')
     await page
@@ -2070,7 +2070,7 @@ test.describe('Equation Solver workspace', () => {
     await setSearchMode(page, 'manual')
     const editor = page.getByRole('textbox', { name: '방정식 입력' })
     for (const [source, diagnostic] of [
-      ['f(x) = x^2 - 4', '경계를 모두 입력하세요'],
+      ['x^2 = 4', '초기값을 입력하세요'],
       ['f(x) = x^2 + y^2 - 25\nf(y) = x - y - 1', '초기값을 입력하세요'],
       ['f(x) = ln(x)\nx(min) = -2\nx(max) = -1', '실수 범위를 벗어났습니다'],
       ['f(x) = x^2 + 1\nx(min) = -3\nx(max) = 3', '부호가 같습니다'],
@@ -2829,7 +2829,7 @@ test.describe('V3 tangency diagnostics and reference manual', () => {
     })
     await showSimulation(page)
     await expect(page.locator('.sc-bifurcation-banner')).toContainText(
-      '3중 접점',
+      '변곡점 통과',
     )
     const curve = await page.locator('.sc-curve').first().getAttribute('d')
     await page
@@ -2917,7 +2917,7 @@ test.describe('Readable manual and scientific showcase', () => {
       const merged = page.locator('.merged-simulation-panel')
       await expect(merged.locator('.sc-curve')).toHaveCount(ex.count)
       await expect(merged.locator('.sc-bifurcation-banner')).toContainText(
-        '2차 접점',
+        '근 병합',
       )
       const curves = await merged
         .locator('.sc-curve')
@@ -3311,4 +3311,70 @@ test.describe('Interval verification', () => {
       '구간 검증 보류',
     )
   })
+})
+
+test.describe('Plain equations and consistent merge messages', () => {
+  test('manual equations use ordinary equalities and scalar initial guesses throughout the UI', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await setSearchMode(page, 'manual')
+    const editor = page.getByRole('textbox', { name: '방정식 입력' })
+    await editor.fill('x^2=4\nx(0)=1')
+    await showSimulation(page)
+    await expect(page.locator('.solution-value strong')).toHaveText(['2'])
+    await navigate(page, '해석 리포트')
+    await expect(page.locator('.report-content')).toContainText('좌변과 우변')
+    await navigate(page, '수식·파라미터')
+    await expect(page.locator('.editor-toolbar')).not.toContainText('잔차')
+    await expect(editor).not.toHaveAttribute('placeholder', /f\(x\)/)
+    await page.getByRole('button', { name: '사용 가이드', exact: true }).click()
+    await expect(page.getByRole('dialog')).not.toContainText('잔차식')
+    await page.getByRole('button', { name: '사용 방법', exact: true }).click()
+    await expect(page.getByRole('dialog')).not.toContainText('잔차식')
+    await page.keyboard.press('Escape')
+    await editor.fill('f1(x)=2*x+4\nf2(x)=-3*x+7\nf1(x)=f2(x)\nx(0)=1')
+    await showSimulation(page)
+    await expect(page.locator('.solution-value strong')).toHaveText(['0.6'])
+  })
+  for (const title of [
+    'van der Waals 등온선',
+    '몰체적을 계산하는 van der Waals',
+  ])
+    test(`shows one short message per fold in ${title}`, async ({ page }) => {
+      await page.goto('/')
+      await navigate(page, '수식·파라미터')
+      await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+      await openExample(page, title)
+      await page
+        .getByRole('button', { name: '시뮬레이션 병합 세트 추가', exact: true })
+        .click()
+      const merged = page.locator('.merged-simulation-panel')
+      await expect(merged.locator('.sc-bifurcation-chip')).toHaveCount(2)
+      await expect(merged.locator('.sc-bifurcation-chip b')).toHaveText([
+        '근 병합',
+        '근 병합',
+      ])
+      const texts = await merged
+        .locator('.sc-bifurcation-chip')
+        .allTextContents()
+      for (const text of texts) {
+        expect(text.match(/근 병합/g)).toHaveLength(1)
+        expect(text).not.toMatch(/중근|접점|확인됨/)
+      }
+      const coordinates = await merged
+        .locator('.sc-curve')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('d')))
+      await page
+        .getByRole('slider', { name: 'P 슬라이더', exact: true })
+        .fill(title === 'van der Waals 등온선' ? '0.8' : '60')
+      await expect(merged.locator('.sc-bifurcation-chip')).toHaveCount(2)
+      expect(
+        await merged
+          .locator('.sc-curve')
+          .evaluateAll((els) => els.map((el) => el.getAttribute('d'))),
+      ).toEqual(coordinates)
+    })
 })

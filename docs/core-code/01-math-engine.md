@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `cf4b100de7a590ec702ce4d5f7b0f561dd7af7046444d4b14dd54f656548fb77`
+소스 묶음 SHA-256: `fb7f93c3fdc1e4a4e9338af40394c005526f5dc4cea9cb494a6cf85652ae56eb`
 
 ## 다른 코드 묶음
 
@@ -49,7 +49,7 @@
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 608줄 · SHA-256: `e88a642f64fe0e967cf1c6813a1a77576a4b32c4f6be991300b9d2b1de75c8a5`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 608줄 · SHA-256: `91a7c7ca82b580c0d1e3f7c7d531e212e39c2e391b8f796d102f5cdbe9425a43`
 
 ```typescript
 import type { VariableBounds, SearchWindow } from './search-analysis'
@@ -622,7 +622,7 @@ export async function createSolver(
         condition = conditionNumber(matrix, conditionNorm)
       } catch {
         conditionError =
-          '선택한 방법으로 조건수를 계산하지 못했습니다. 해와 잔차를 별도로 확인하거나 다른 norm을 선택해 주세요.'
+          '선택한 방법으로 조건수를 계산하지 못했습니다. 해와 등식 오차를 별도로 확인하거나 다른 norm을 선택해 주세요.'
       }
     }
     const warnings: string[] = []
@@ -638,7 +638,7 @@ export async function createSolver(
     const scale = Math.max(1, ...rhs.map(Math.abs))
     if (maxResidual > 1e-8 * scale)
       warnings.push(
-        '수치 잔차가 큽니다. 결과의 정밀도와 입력 단위를 확인해 주세요.',
+        '수치 등식 오차가 큽니다. 결과의 정밀도와 입력 단위를 확인해 주세요.',
       )
     return {
       variables,
@@ -666,10 +666,11 @@ export async function createSolver(
 
 ## src/engine/nonlinear-parser.ts
 
-원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 604줄 · SHA-256: `3d57f324ce2a4536f8ee72c9c0cc8fb1aa796f667612801584b923c3294503d6`
+원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 685줄 · SHA-256: `52391bc41d5e80d2770d9a329cb6b5300ceb4d3c73891249db6d651d5e02564c`
 
 ```typescript
 import { evaluateDual, type Dual } from './expression-derivative'
+import { preprocessSolverSource } from './preprocessor'
 import { ModelError } from './index'
 
 export type NonlinearNode =
@@ -979,8 +980,86 @@ export function evaluateNonlinearExpression(
 
 const evaluateExpression = evaluateNonlinearExpression
 
-/** Parse once and evaluate repeatedly with new root values or external parameters. */
+/** Ordinary equalities and optional manual conditions share the same compiler.
+ * The f(variable) form below is an internal representation/old-file adapter,
+ * never a syntax users must construct. */
 export function compileNonlinear(
+  source: string,
+  parameterNames: string[],
+): CompiledModel {
+  return compilePreparedNonlinear(
+    manualEquationSource(source, parameterNames),
+    parameterNames,
+  )
+}
+
+function manualEquationSource(source: string, parameters: string[]): string {
+  const oldRoot = /^\s*f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/m.test(source)
+  if (oldRoot && !/^\s*f\d+\s*(?:\([^)]*\))?\s*=/m.test(source)) return source
+  source = preprocessSolverSource(source, parameters, 'nonlinear')
+  const lines = source.split('\n')
+  const condition = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/
+  const texts = lines.map((raw) => raw.split('#')[0].trim())
+  const conditions = new Set(
+    texts.flatMap((text) => {
+      const m = condition.exec(text)
+      return m && !isNonlinearFunction(m[1]) ? [m[1]] : []
+    }),
+  )
+  // Old files and private automatic-solver output remain readable.
+  if (
+    texts.some(
+      (t) =>
+        !condition.test(t) && /^f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/.test(t),
+    )
+  )
+    return source
+  const rows = texts.flatMap((text, line) => {
+    if (
+      !text ||
+      (condition.test(text) && !isNonlinearFunction(condition.exec(text)![1]))
+    )
+      return []
+    const sides = text.split('=')
+    return sides.length === 2
+      ? [{ left: sides[0].trim(), right: sides[1].trim(), line }]
+      : []
+  })
+  if (!conditions.size && rows.every((r) => NAME.test(r.left))) return source
+  const helpers = new Set(
+    rows
+      .filter((r) => NAME.test(r.left) && !conditions.has(r.left))
+      .map((r) => r.left),
+  )
+  const equations = rows.filter((r) => !helpers.has(r.left))
+  if (!equations.length) return source
+  const variables: string[] = []
+  for (const row of equations) {
+    const expression = parseNonlinearExpression(
+      `(${row.left})-(${row.right})`,
+      row.line + 1,
+    )
+    for (const name of expression.references)
+      if (
+        !parameters.includes(name) &&
+        !BUILTINS.has(name) &&
+        !helpers.has(name) &&
+        !variables.includes(name)
+      )
+        variables.push(name)
+  }
+  if (variables.length !== equations.length)
+    throw new ModelError(
+      `미지수 ${variables.length}개에 대해 독립적인 방정식 ${variables.length}개가 필요합니다. 현재 ${equations.length}개입니다.`,
+      equations[0].line + 1,
+    )
+  equations.forEach((row, i) => {
+    lines[row.line] = `f(${variables[i]}) = (${row.left})-(${row.right})`
+  })
+  return lines.join('\n')
+}
+
+function compilePreparedNonlinear(
   source: string,
   parameterNames: string[],
 ): CompiledModel {
@@ -1034,10 +1113,7 @@ export function compileNonlinear(
       )
     const equals = text.split('=')
     if (equals.length > 2)
-      throw new ModelError(
-        '한 줄에는 등호를 하나만 사용하세요. f(x) 오른쪽에는 0이 될 잔차식만 작성합니다.',
-        line,
-      )
+      throw new ModelError('등호 양쪽에 완성된 수식을 입력하세요.', line)
     if (equals.length === 1) {
       anonymous.push(parseExpression(text, line))
       continue
@@ -1079,7 +1155,7 @@ export function compileNonlinear(
       assignments.push({ name: left, ...parseExpression(right, line) })
     } else
       throw new ModelError(
-        'f(x)=잔차식, 이름=수식, x(min)/x(max) 또는 x(0) 형식으로 작성하세요.',
+        '등식, 이름=수식, x(min)/x(max) 또는 x(0) 형식으로 작성하세요.',
         line,
       )
   }
@@ -1146,7 +1222,7 @@ export function compileNonlinear(
   for (const condition of conditions) {
     if (!variables.includes(condition.name))
       throw new ModelError(
-        `조건의 변수 '${condition.name}'에 대응하는 f(${condition.name})가 없습니다.`,
+        `조건의 변수 '${condition.name}'가 방정식의 미지수에 없습니다.`,
         condition.line,
       )
     const conditionKey = `${condition.name}:${condition.type}`
@@ -1156,25 +1232,30 @@ export function compileNonlinear(
         condition.line,
       )
     conditionKeys.add(conditionKey)
-    if ((roots.length === 1) !== (condition.type !== '0'))
+    if (roots.length > 1 && condition.type !== '0')
       throw new ModelError(
-        roots.length === 1
-          ? '하나의 근에는 초기값 대신 (min), (max) 경계가 필요합니다.'
-          : '연립 비선형식에는 경계 대신 각 변수의 (0) 초기값이 필요합니다.',
+        '연립 비선형식에는 경계 대신 각 변수의 (0) 초기값이 필요합니다.',
         condition.line,
       )
   }
   if (roots.length === 1) {
     const min = conditions.find((condition) => condition.type === 'min')
     const max = conditions.find((condition) => condition.type === 'max')
-    if (!min || !max)
+    const guess = conditions.find((condition) => condition.type === '0')
+    if (guess) guesses = [guess.value]
+    if (Boolean(min) !== Boolean(max))
       throw new ModelError(
         `${variables[0]}(min)과 ${variables[0]}(max) 경계를 모두 입력하세요.`,
         roots[0].line,
       )
-    if (min.value >= max.value)
+    if (!min && !max && !guess)
+      throw new ModelError(
+        `${variables[0]}(min)과 ${variables[0]}(max) 경계 또는 ${variables[0]}(0) 초기값을 입력하세요.`,
+        roots[0].line,
+      )
+    if (min && max && min.value >= max.value)
       throw new ModelError('최소 경계는 최대 경계보다 작아야 합니다.', max.line)
-    bounds = { min: min.value, max: max.value }
+    if (min && max) bounds = { min: min.value, max: max.value }
   } else if (roots.length > 1) {
     guesses = roots.map((root) => {
       const guess = conditions.find(
@@ -2853,7 +2934,7 @@ export function normalizedModelCall<T>(
 
 ## src/engine/preprocessor.ts
 
-원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 634줄 · SHA-256: `fe1256087b35e01af6d1cf8c7af73d950db855c7f3642b123104619a9fdb242e`
+원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 631줄 · SHA-256: `8c0a32616b030369ee8745a277f9da812751a9f19b7c69ba62a8ec1c10b419fd`
 
 ```typescript
 import { normalizeEquationSource } from './source-statements'
@@ -3371,6 +3452,11 @@ export function preprocessModelSource(
 
   // Track which definitions (`f1(x)`, `f(x)`, `f1`) are referenced in other equations or definitions
   const equationItems = parsedLines.filter((l) => l.kind === 'equation')
+  if (allDefs.length && !equationItems.length)
+    throw new ModelError(
+      '함수 정의 뒤에 등식을 추가하세요. 예: f1(x)=4 또는 f1(x)=0',
+      allDefs[0].line,
+    )
   const referencedKeys = new Set<string>()
   for (const item of parsedLines) {
     const textToScan =
@@ -3424,14 +3510,6 @@ export function preprocessModelSource(
         item.kind === 'func_def' ? `${item.name}(${item.param})` : item.name
       if (referencedKeys.has(key) || hasExplicitEquations) {
         outputLines.push(`# [정의] ${key}`)
-      } else {
-        const expanded = expandExpression(
-          item.rhs,
-          defsByName,
-          defsBySignature,
-          item.line,
-        )
-        outputLines.push(`${expanded} = 0`)
       }
       continue
     }
@@ -3496,7 +3574,7 @@ export function preprocessSolverSource(
 
 ## src/engine/nonlinear.ts
 
-원본: [src/engine/nonlinear.ts](../../src/engine/nonlinear.ts) · 489줄 · SHA-256: `911d6154a2165e625353470e0ee2ac7852b6e77c27b29b745269e96ce29eb1dc`
+원본: [src/engine/nonlinear.ts](../../src/engine/nonlinear.ts) · 512줄 · SHA-256: `2bdb8fb87ba1af9f026e4179469affa689e18906193638d3df32095078ed6ac9`
 
 ```typescript
 import { nonsmoothSource } from './search-analysis'
@@ -3690,7 +3768,7 @@ function bisect(model: CompiledModel, evaluate: Evaluator): IterationResult {
       return { values: [middle], evaluation, iterations: iteration }
     if (middle === left || middle === right)
       throw new ModelError(
-        '구간이 수치 한계까지 줄었지만 잔차가 0에 가까워지지 않았습니다. 불연속점이나 근이 없는 구간인지 확인해 주세요.',
+        '구간이 수치 한계까지 줄었지만 등식 오차가 0에 가까워지지 않았습니다. 불연속점이나 근이 없는 구간인지 확인해 주세요.',
       )
     if (Math.sign(residual) === Math.sign(leftResidual)) {
       left = middle
@@ -3796,7 +3874,7 @@ function newton(
           domainError.line,
         )
       throw new ModelError(
-        'Newton 반복이 더 이상 잔차를 줄이지 못해 수렴하지 않았습니다. 다른 초기 추정값과 수식의 연속성을 확인해 주세요.',
+        'Newton 반복이 더 이상 등식 오차를 줄이지 못해 수렴하지 않았습니다. 다른 초기 추정값과 수식의 연속성을 확인해 주세요.',
       )
     }
     lastStep = Math.max(
@@ -3811,7 +3889,7 @@ function newton(
       numericalJacobian(evaluate, values, evaluation.residuals)
     if (lastStep === 0 && norm(evaluation.residuals) > RESIDUAL_TOLERANCE)
       throw new ModelError(
-        'Newton 보정량이 수치 한계에 도달했지만 잔차가 남았습니다. 초기 추정값과 수식의 단위를 확인해 주세요.',
+        'Newton 보정량이 수치 한계에 도달했지만 등식 오차가 남았습니다. 초기 추정값과 수식의 단위를 확인해 주세요.',
       )
   }
   throw new ModelError(
@@ -3891,27 +3969,50 @@ export async function createNonlinearSolver(
       )
     let solved: IterationResult
     let matrix: number[][]
+    let usedNewton = false
     try {
       if (nonsmooth) {
-        const found = derivativeFreeRoots((x) => {
-          try {
-            return evaluate([x]).residuals[0]
-          } catch {
-            return undefined
-          }
-        }, model.bounds!)
+        const found = derivativeFreeRoots(
+          (x) => {
+            try {
+              return evaluate([x]).residuals[0]
+            } catch {
+              return undefined
+            }
+          },
+          model.bounds ?? {
+            min: model.guesses![0] - Math.max(1, Math.abs(model.guesses![0])),
+            max: model.guesses![0] + Math.max(1, Math.abs(model.guesses![0])),
+          },
+        )
         if (!found.roots.length || found.truncated)
           throw new ModelError(
             '지정 구간에서 미분 없이 실근을 찾지 못했습니다.',
           )
         const x = found.roots.sort((a, b) => Math.abs(a) - Math.abs(b))[0]
         solved = { values: [x], evaluation: evaluate([x]), iterations: 0 }
-      } else
-        solved = scalar
-          ? bisect(model, evaluate)
-          : newton(model, evaluate, wasm, (values) =>
-              model.jacobian?.(values, parameters),
+      } else {
+        const solveNewton = () => {
+          usedNewton = true
+          return newton(model, evaluate, wasm, (values) =>
+            model.jacobian?.(values, parameters),
+          )
+        }
+        if (scalar && model.bounds) {
+          try {
+            solved = bisect(model, evaluate)
+          } catch (error) {
+            if (!model.guesses) throw error
+            const candidate = solveNewton()
+            if (
+              candidate.values[0] < model.bounds.min ||
+              candidate.values[0] > model.bounds.max
             )
+              throw error
+            solved = candidate
+          }
+        } else solved = solveNewton()
+      }
       matrix = nonsmooth
         ? [[NaN]]
         : (solved.matrix ??
@@ -3934,7 +4035,7 @@ export async function createNonlinearSolver(
         condition = conditionNumber(matrix, conditionNorm)
       } catch {
         conditionError =
-          '선택한 방법으로 해에서의 Jacobian 조건수를 계산하지 못했습니다. 잔차와 다른 norm을 확인해 주세요.'
+          '선택한 방법으로 해에서의 Jacobian 조건수를 계산하지 못했습니다. 등식 오차와 다른 norm을 확인해 주세요.'
       }
     }
     const warnings: string[] = []
@@ -3944,7 +4045,7 @@ export async function createNonlinearSolver(
         '미분 없는 수치 탐색 결과입니다. 구간 해가 있으면 대표값을 표시할 수 있습니다.',
       )
     }
-    if (!scalar && !wasm)
+    if (usedNewton && !wasm)
       warnings.push(
         'WebAssembly를 사용할 수 없어 JavaScript Newton 솔버로 계산했습니다.',
       )
@@ -3954,7 +4055,7 @@ export async function createNonlinearSolver(
         '해에서의 Jacobian 조건수가 큽니다. 초기 추정값과 입력 오차에 대한 민감도를 확인해 주세요.',
       )
     warnings.push(
-      scalar
+      scalar && model.bounds
         ? '지정 구간에서 찾은 하나의 근입니다. 모든 근을 보장하지 않으며 다른 구간에서는 다른 근을 찾을 수 있습니다.'
         : '초기 추정값에서 찾은 하나의 해입니다. 다른 초기 추정값에서는 다른 해를 찾거나 수렴하지 않을 수 있습니다.',
     )
@@ -3970,11 +4071,11 @@ export async function createNonlinearSolver(
       condition,
       conditionNorm,
       ...(conditionError ? { conditionError } : {}),
-      engine: !scalar && wasm ? 'wasm' : 'javascript',
+      engine: usedNewton && wasm ? 'wasm' : 'javascript',
       iterations: solved.iterations,
       method: nonsmooth
         ? '미분 없는 구간 탐색'
-        : scalar
+        : !usedNewton
           ? '구간 이분법'
           : model.jacobian?.(solved.values, parameters)
             ? '감쇠 Newton · 자동미분 Jacobian'
@@ -4857,7 +4958,7 @@ export function createParameterPathValidator(
 
 ## src/engine/tangency.ts
 
-원본: [src/engine/tangency.ts](../../src/engine/tangency.ts) · 218줄 · SHA-256: `3ec6c4871dae4497930ad6bd6130602bca43850420e52c63f38ab88931d9bcd5`
+원본: [src/engine/tangency.ts](../../src/engine/tangency.ts) · 216줄 · SHA-256: `9d8d7fe489c868b87ee5ced92ad546530b31505675a44728cc51067c24b6f80c`
 
 ```typescript
 import type { TangencyVerification } from './index'
@@ -5049,7 +5150,7 @@ export function verifyScalarTangency(
       residualAtStar: Math.abs(f),
       slopeAtStar: Math.abs(ds[0]!.value),
       parabolaCoeff: order === 2 ? -ds[1]!.value / (2 * fp.value) : undefined,
-      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 잔차와 1~4차 도함수를 두 스텝 크기로 비교했습니다.`,
+      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 등식 오차와 1~4차 도함수를 두 스텝 크기로 비교했습니다.`,
     }
   }
   return undefined
@@ -5071,12 +5172,10 @@ export interface MultivariableTangencyProbe {
 export function tangencyLabel(t: TangencyVerification): string {
   const order = t.bifurcationOrder
   return order === 'boundary'
-    ? '◆ 정의역 경계 접점'
+    ? '정의역 경계 도달'
     : order === 3
-      ? '◆ 3중 접점·변곡 분기 확인됨'
-      : order === 4
-        ? '◆ 고차 평탄 접점 확인됨 (4차)'
-        : '◆ 2차 접점·중근 확인됨'
+      ? '변곡점 통과'
+      : '근 병합'
 }
 ```
 
@@ -5084,7 +5183,7 @@ export function tangencyLabel(t: TangencyVerification): string {
 
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,541줄 · SHA-256: `1d3a087a3af8e1213b78abff344a0e578f16f99a82ee7fbd54c4fde138d038f6`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,541줄 · SHA-256: `6a0171561a759c2b755093b2b3c500c3528f9a26013e0d67e50485db563f9e85`
 
 ```typescript
 import { squareFreeCoefficients } from './square-free'
@@ -5803,7 +5902,7 @@ function scalarResult(
   ]
   if (condition === Infinity || slope === 0)
     warnings.push(
-      '이 해에서는 Jacobian이 특이합니다. 중근 또는 민감한 해일 수 있으므로 잔차와 주변 거동을 함께 확인하세요.',
+      '이 해에서는 Jacobian이 특이합니다. 중근 또는 민감한 해일 수 있으므로 등식 오차와 주변 거동을 함께 확인하세요.',
     )
   return {
     kind: 'nonlinear',
@@ -6684,7 +6783,7 @@ export function isUniquePolynomialRoot(result: SolveResult): boolean {
 
 ## src/engine/conditioning.ts
 
-원본: [src/engine/conditioning.ts](../../src/engine/conditioning.ts) · 117줄 · SHA-256: `b27323d78668576e581a83757c4cfbdf837bf190e9d21ca3b933494f9501848c`
+원본: [src/engine/conditioning.ts](../../src/engine/conditioning.ts) · 117줄 · SHA-256: `8996e9cbe3daf0495dcbbac1739035b0bf2a6ec0bd7e1e6c4adc35d2a8aa35f9`
 
 ```typescript
 import { Matrix, SingularValueDecomposition } from 'ml-matrix'
@@ -6708,7 +6807,7 @@ export function classifyCondition(value: number): ConditionAssessment {
       level: 'unavailable',
       label: '판정 불가',
       description:
-        '조건수를 계산하지 못했습니다. 해와 잔차를 별도로 확인해 주세요.',
+        '조건수를 계산하지 못했습니다. 해와 등식 오차를 별도로 확인해 주세요.',
     }
   if (value >= CONDITION_THRESHOLDS.verySensitive)
     return {
@@ -6722,7 +6821,7 @@ export function classifyCondition(value: number): ConditionAssessment {
       level: 'sensitive',
       label: '민감',
       description:
-        '입력 오차가 증폭될 수 있습니다. 입력값의 유효숫자와 결과의 잔차를 함께 확인하세요.',
+        '입력 오차가 증폭될 수 있습니다. 입력값의 유효숫자와 결과의 등식 오차를 함께 확인하세요.',
     }
   return {
     level: 'stable',

@@ -95,7 +95,7 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
       nonlinearSearch: 'auto',
       title: '세 실근을 가진 삼차식',
       description:
-        '하나의 방정식에서 x = 1, 2, 3을 탐색합니다. 해 목록에서 각 결과를 선택해 잔차와 리포트를 확인하세요.',
+        '하나의 방정식에서 x = 1, 2, 3을 탐색합니다. 해 목록에서 각 결과를 선택해 등식 오차와 리포트를 확인하세요.',
       source:
         '# 한 방정식에도 여러 실수 해가 있을 수 있습니다\n(x - 1)*(x - 2)*(x - 3) = 0',
       parameters: [],
@@ -146,9 +146,9 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
       nonlinearSearch: 'auto',
       title: '보조식으로 나누어 쓰는 비선형 모델',
       description:
-        '보조식 t를 분리한 f(x) 문법도 자동 탐색에 사용할 수 있습니다. 상용로그 log를 사용하며, 자동 탐색에서 x = 20을 찾습니다.',
+        '함수를 정의한 뒤 원하는 값과 같게 두세요. 상용로그 log를 사용하며, 자동 탐색에서 x = 20을 찾습니다.',
       source:
-        '# f(x) 형식에서는 이름=수식을 보조식으로 사용할 수 있습니다\nf(x) = t + 4*x^2 - 1620\nt = x*log(x/2)',
+        '# 함수 정의 후 목표값과 같은 방정식을 입력합니다\nf1(x) = x*log(x/2) + 4*x^2\nf1(x) = 1620',
       parameters: [],
       sweepName: '',
       conditionNorm: 'infinity',

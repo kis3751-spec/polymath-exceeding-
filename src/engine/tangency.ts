@@ -187,7 +187,7 @@ export function verifyScalarTangency(
       residualAtStar: Math.abs(f),
       slopeAtStar: Math.abs(ds[0]!.value),
       parabolaCoeff: order === 2 ? -ds[1]!.value / (2 * fp.value) : undefined,
-      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 잔차와 1~4차 도함수를 두 스텝 크기로 비교했습니다.`,
+      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 등식 오차와 1~4차 도함수를 두 스텝 크기로 비교했습니다.`,
     }
   }
   return undefined
@@ -209,10 +209,8 @@ export interface MultivariableTangencyProbe {
 export function tangencyLabel(t: TangencyVerification): string {
   const order = t.bifurcationOrder
   return order === 'boundary'
-    ? '◆ 정의역 경계 접점'
+    ? '정의역 경계 도달'
     : order === 3
-      ? '◆ 3중 접점·변곡 분기 확인됨'
-      : order === 4
-        ? '◆ 고차 평탄 접점 확인됨 (4차)'
-        : '◆ 2차 접점·중근 확인됨'
+      ? '변곡점 통과'
+      : '근 병합'
 }

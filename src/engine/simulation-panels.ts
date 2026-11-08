@@ -1,4 +1,5 @@
 import { nonsmoothSource } from './search-analysis'
+import { sameVerifiedEvent } from './branch-events'
 import { normalizeAutomaticModel } from './automatic'
 import { compileNonlinear } from './nonlinear-parser'
 import { adaptiveDerivative, verifyScalarTangency } from './tangency'
@@ -434,7 +435,11 @@ export function detectMergedBranchEvents(
             10 * gap
         )
       })
-      if (sameParam && sameValues && converging) {
+      const sameFold =
+        sameVerifiedEvent(a, b) &&
+        a.tangency?.bifurcationOrder !== 3 &&
+        a.tangency?.bifurcationOrder !== 'boundary'
+      if (((sameParam && sameValues) || sameFold) && converging) {
         matchedIndex = j
         break
       }

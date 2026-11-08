@@ -482,7 +482,7 @@ export function computeBranchSweeps(
             previousSlope: edgePath.previous?.slope,
             ...(singleTangency ? { tangency: singleTangency } : {}),
             description: singleTangency
-              ? `${name} ≈ ${Number(singleTangency.parameterStar.toPrecision(6))} 부근의 접점 후보입니다. 원래 식의 잔차·도함수 재검증이 필요합니다.`
+              ? `${name} ≈ ${Number(singleTangency.parameterStar.toPrecision(6))} 부근의 접점 후보입니다. 원래 식의 등식 오차·도함수 재검증이 필요합니다.`
               : `${name} ≈ ${Number(edgePath.current.parameter.toPrecision(6))} 지점의 추적 경계입니다.`,
           })
           loss = `선택한 해의 분기를 더 이상 추적할 수 없습니다. ${error instanceof Error ? error.message : '계산 실패'}`

@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `1c3018dcdf87ddebb83ec8413e8d19a9fd5a58d75d70f3c63cc6bb0638aac907`
+소스 묶음 SHA-256: `ccf1c82accf65503fa7ca0201e22843dd42e35258c1dac7eaaf98e6018cb3433`
 
 ## 다른 코드 묶음
 
@@ -286,7 +286,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/EquationReference.tsx
 
-원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 185줄 · SHA-256: `85ff5bf77fcc25ac6e17518c5e9a020a9d5c1c8128afdc7611f4dd2854b50b6e`
+원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 186줄 · SHA-256: `5d508cdd944920162618be80e6edd615353e9c40c8d6537ce31f9122713c956f`
 
 ```tsx
 const functions = [
@@ -461,11 +461,12 @@ export default function EquationReference() {
         </p>
         <p>
           자동 탐색은 유한한 수치 탐색이며 모든 실근을 보장하지 않습니다. ‘추적
-          불가’는 실근 부재의 증명이 아닙니다. 접점 ‘확인됨’은 잔차와 도함수의
-          국소 수치 검증이며 일반 Cusp 분기의 엄밀한 증명을 뜻하지 않습니다.
+          불가’는 실근 부재의 증명이 아닙니다. 접점 ‘확인됨’은 등식 오차와
+          도함수의 국소 수치 검증이며 일반 Cusp 분기의 엄밀한 증명을 뜻하지
+          않습니다.
         </p>
         <p>
-          기존 <code>f(x)=잔차식</code>은 호환용입니다. 고급 수동 모드에서{' '}
+          고급 수동 모드도 <code>x^2=4</code>처럼 등식을 씁니다.{' '}
           <code>x(0)=1</code>, <code>x(min)=0</code>, <code>x(max)=10</code>으로
           초기값·범위를 지정할 수 있습니다. 새 함수 모델에는 번호 있는 표기를
           권장합니다.
@@ -521,7 +522,7 @@ export default function ExampleWalkthrough({
 
 ## src/components/Guide.tsx
 
-원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 442줄 · SHA-256: `90933e856106205fb5aa321a03a1eb4d6bc300c4ec8aa44d1b37836d23f89463`
+원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 442줄 · SHA-256: `ea284eb20110aff6b58484b97fd91eeb4d8f4065f2903a8e08baa71d1b29eb9b`
 
 ```tsx
 import EquationReference from './EquationReference'
@@ -681,9 +682,8 @@ export default function Guide({
                         {'\n'}x^2 = 4
                       </pre>
                       <p className="guide-small">
-                        <code>f(x) = x^2 - 4</code> 같은 잔차식도 사용할 수
-                        있습니다. 자동 탐색은 실수 해만 다룹니다. 복소수
-                        계산기는 이후 별도 기능으로 제공할 예정입니다.
+                        자동 탐색은 실수 해만 다룹니다. 복소수 계산기는 이후
+                        별도 기능으로 제공할 예정입니다.
                       </p>
                     </>
                   ) : (
@@ -784,8 +784,8 @@ export default function Guide({
                     x에 대한 함수는 f1(x), f2(x)처럼 적습니다. 등록한 파라미터
                     외의 다른 미지수를 혼합하려면 <code>f1 = 2x + y - 10</code>
                     처럼 괄호 없이 정의하고, <code>f1 + f2 = 0</code>처럼 식을
-                    만드세요. 기존의 단독 f(x) 잔차 표기는 호환성을 위해
-                    유지합니다.
+                    만드세요. 정의한 함수에 목표값을 지정하려면{' '}
+                    <code>f1(x)=4</code>처럼 입력합니다.
                   </p>
                   <p>
                     파라미터 값은 연속적으로 조절합니다. <b>샘플 포인트 간격</b>
@@ -803,11 +803,10 @@ export default function Guide({
                     <h3>파라미터와 보조식으로 모델을 나누세요</h3>
                     <p>
                       조절할 상수는 파라미터 패널에 추가합니다. 일반 등식에서
-                      <code>y = 2</code>도 풀어야 할 조건으로 취급합니다.
-                      보조식이 필요하면 <code>f(x) = h - target</code>과
-                      <code>h = ln(x)</code>를 함께 적으세요. f 형식의
-                      모델에서는 h를 보조식으로 계산하고, target은 패널의
-                      파라미터입니다.
+                      <code>y = 2</code>도 풀어야 할 조건으로 취급합니다. 함수가
+                      필요하면 <code>f1(x) = ln(x) + 4*x^2</code>를 정의하고{' '}
+                      <code>f1(x) = target</code>처럼 목표값과 같게 두세요.
+                      target은 패널의 파라미터입니다.
                     </p>
                     <p className="guide-small">
                       보조식의 입력 순서는 자유롭지만 서로 순환해서 참조할 수
@@ -826,10 +825,11 @@ export default function Guide({
                       <summary>고급 옵션: 초기조건으로 한 해 찾기</summary>
                       <p>
                         ‘고급 탐색 설정 → 해 탐색 방식’에서 수동 모드를 선택하면
-                        기존 Polymath 형식을 사용할 수 있습니다. 단일근에는
-                        <code>x(min)</code>·<code>x(max)</code>, 연립식에는 각
-                        변수의 <code>x(0)</code> 초기 추정값을 적습니다.
-                        명시식만 계산하는 NLE0도 수동 모드에서 사용합니다.
+                        등식에 초기값 또는 범위를 추가합니다. 단일근에는
+                        <code>x(0)=1</code> 또는 <code>x(min)</code>·
+                        <code>x(max)</code>, 연립식에는 각 변수의{' '}
+                        <code>x(0)</code> 초기 추정값을 적습니다. 명시식만
+                        계산하는 NLE0도 수동 모드에서 사용합니다.
                       </p>
                     </details>
                   </div>
@@ -916,7 +916,8 @@ export default function Guide({
                       비선형 모델에서는 찾은 해 근처의 Jacobian 행렬로 계산한
                       국소 조건수입니다. 미지수가 하나면 0이 아닌 미분값의 행렬
                       조건수는 1이므로, 이것만으로 전체 구간의 안정성이나 수렴을
-                      판단할 수 없습니다. 잔차와 식의 단위도 함께 확인하세요.
+                      판단할 수 없습니다. 등식 오차와 식의 단위도 함께
+                      확인하세요.
                     </p>
                   )}
                   <p className="guide-small">
@@ -942,7 +943,7 @@ export default function Guide({
                   </h4>
                   <p>
                     {nonlinear
-                      ? '작은 잔차는 해당 식을 잘 만족한다는 뜻입니다. 발견한 해가 실제 모델에서 가능한 값인지 확인하세요. 예를 들어 음수 농도는 수학적 해여도 실제 운전 조건으로는 적합하지 않을 수 있습니다. 탐색 범위를 넓혀 다른 해가 있는지도 확인할 수 있습니다.'
+                      ? '작은 등식 오차는 해당 식을 잘 만족한다는 뜻입니다. 발견한 해가 실제 모델에서 가능한 값인지 확인하세요. 예를 들어 음수 농도는 수학적 해여도 실제 운전 조건으로는 적합하지 않을 수 있습니다. 탐색 범위를 넓혀 다른 해가 있는지도 확인할 수 있습니다.'
                       : 'Linear는 빈 계산기로 시작합니다. 독립적인 방정식 수와 미지수 수를 맞추고, 조절할 상수는 파라미터로 추가하세요.'}{' '}
                     <code>#</code> 뒤에는 메모를 적을 수 있습니다. Differential
                     Equation Solver 등 다른 큰 카테고리는 추후 추가될
@@ -1350,10 +1351,14 @@ export default function Guide({
 
 ## src/components/SolutionChart.tsx
 
-원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,089줄 · SHA-256: `c2aad936222049d12eec5c728a5ef4cc94c7d3e976fb3bbcd8399bce11f56250`
+원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,090줄 · SHA-256: `3a749379a29c523b56fa51c61627c9d0cedfcf39496d78d6ae577e576cb241e7`
 
 ```tsx
-import { tangencyLabel } from '../engine/tangency'
+import {
+  branchEventLabel,
+  branchEventText,
+  uniqueBranchEvents,
+} from '../engine/branch-events'
 import {
   useEffect,
   useId,
@@ -1889,20 +1894,15 @@ export default function SolutionChart({
   const allBifurcationEvents = useMemo(() => {
     if (isMultiBranch && multiBranchSeries) {
       const list: BranchTerminalEvent[] = []
-      const seen = new Set<string>()
       multiBranchSeries.forEach((branch) => {
         if (!visibleVariables.includes(branch.id)) return
         for (const ev of branch.events ?? []) {
-          const key = `${ev.kind}|${ev.direction}|${ev.parameter.toPrecision(5)}|${(ev.tangency?.verified ? ev.tangency.valuesStar : ev.values)[activeVariableIndex]?.toPrecision(4)}`
-          if (!seen.has(key)) {
-            seen.add(key)
-            list.push(ev)
-          }
+          list.push(ev)
         }
       })
-      return list
+      return uniqueBranchEvents(list)
     }
-    return events
+    return uniqueBranchEvents(events)
   }, [
     isMultiBranch,
     multiBranchSeries,
@@ -2209,7 +2209,7 @@ export default function SolutionChart({
                           stroke={isMerge ? '#d9480f' : '#e67700'}
                           strokeWidth="2.2"
                         />
-                        <title>{ev.description}</title>
+                        <title>{branchEventText(ev, parameterName)}</title>
                       </g>
                     )
                   })}
@@ -2408,16 +2408,18 @@ export default function SolutionChart({
                     : ev.parameter,
                 )
               }
-              title={ev.tangency?.geometricSummary ?? ev.description}
+              title={
+                ev.tangency?.verified
+                  ? '원래 등식과 도함수를 국소 수치 검증한 지점입니다.'
+                  : '수치 추적으로 추정한 지점입니다.'
+              }
             >
-              <b>
-                {ev.tangency?.verified
-                  ? tangencyLabel(ev.tangency)
-                  : ev.kind === 'merge'
-                    ? '● 병합·소멸 후보'
-                    : '○ 추적 경계'}
-              </b>{' '}
-              {ev.description}
+              <b>{branchEventLabel(ev)}</b> · {parameterName || '파라미터'} ≈{' '}
+              {formatNumber(
+                ev.tangency?.verified
+                  ? ev.tangency.parameterStar
+                  : ev.parameter,
+              )}
             </button>
           ))}
         </div>
@@ -3080,7 +3082,7 @@ export default function SimulationPanelView({
 
 ## src/components/MergedSimulationSetView.tsx
 
-원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 291줄 · SHA-256: `3ec5be841a5c0c04cbee3063ee54b06f2101c52b8d404eaa33fb50aa6d135ca2`
+원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 293줄 · SHA-256: `d80439076df429245478a46d2e97427b1c9720daa3bc3fe7ae3f6da0c4ab3240`
 
 ```tsx
 import { useEffect, useState } from 'react'
@@ -3093,6 +3095,7 @@ import type {
 } from '../engine'
 import { encodeCsv } from '../csv'
 import { detectMergedBranchEvents } from '../engine/simulation-panels'
+import { branchEventLabel } from '../engine/branch-events'
 import SolutionChart, {
   SERIES_COLORS,
   type MultiBranchSeries,
@@ -3295,6 +3298,12 @@ export default function MergedSimulationSetView({
         {includedPanels.map((panel, idx) => {
           const val = panel.result?.values[activeVarIdx]
           const color = branchColor(panel.id)
+          const mergeEvent = mergedEvents.find(
+            (event) =>
+              event.kind === 'merge' &&
+              (event.branchId === panel.id ||
+                event.mergedWithAnchorId === panel.id),
+          )
           return (
             <div
               key={panel.id}
@@ -3307,13 +3316,8 @@ export default function MergedSimulationSetView({
               <strong>
                 {panel.result
                   ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
-                  : mergedEvents.some(
-                        (event) =>
-                          event.kind === 'merge' &&
-                          (event.branchId === panel.id ||
-                            event.mergedWithAnchorId === panel.id),
-                      )
-                    ? '병합·소멸 후보 / 추적 불가'
+                  : mergeEvent
+                    ? `${branchEventLabel(mergeEvent)} · 현재 추적 불가`
                     : '현재 분기 추적 불가'}
               </strong>
             </div>

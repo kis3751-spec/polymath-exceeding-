@@ -568,7 +568,7 @@ export async function createSolver(
         condition = conditionNumber(matrix, conditionNorm)
       } catch {
         conditionError =
-          '선택한 방법으로 조건수를 계산하지 못했습니다. 해와 잔차를 별도로 확인하거나 다른 norm을 선택해 주세요.'
+          '선택한 방법으로 조건수를 계산하지 못했습니다. 해와 등식 오차를 별도로 확인하거나 다른 norm을 선택해 주세요.'
       }
     }
     const warnings: string[] = []
@@ -584,7 +584,7 @@ export async function createSolver(
     const scale = Math.max(1, ...rhs.map(Math.abs))
     if (maxResidual > 1e-8 * scale)
       warnings.push(
-        '수치 잔차가 큽니다. 결과의 정밀도와 입력 단위를 확인해 주세요.',
+        '수치 등식 오차가 큽니다. 결과의 정밀도와 입력 단위를 확인해 주세요.',
       )
     return {
       variables,

@@ -513,6 +513,11 @@ export function preprocessModelSource(
 
   // Track which definitions (`f1(x)`, `f(x)`, `f1`) are referenced in other equations or definitions
   const equationItems = parsedLines.filter((l) => l.kind === 'equation')
+  if (allDefs.length && !equationItems.length)
+    throw new ModelError(
+      '함수 정의 뒤에 등식을 추가하세요. 예: f1(x)=4 또는 f1(x)=0',
+      allDefs[0].line,
+    )
   const referencedKeys = new Set<string>()
   for (const item of parsedLines) {
     const textToScan =
@@ -566,14 +571,6 @@ export function preprocessModelSource(
         item.kind === 'func_def' ? `${item.name}(${item.param})` : item.name
       if (referencedKeys.has(key) || hasExplicitEquations) {
         outputLines.push(`# [정의] ${key}`)
-      } else {
-        const expanded = expandExpression(
-          item.rhs,
-          defsByName,
-          defsBySignature,
-          item.line,
-        )
-        outputLines.push(`${expanded} = 0`)
       }
       continue
     }

@@ -169,8 +169,8 @@ describe('line-aware nonlinear input validation', () => {
     ['a=1\na=2', '중복', 2],
     ['f(x)=x-1\nf(x)=x-2\nx(min)=0\nx(max)=3', '중복', 2],
     ['f(x)=x-1=0\nx(min)=0\nx(max)=3', '등호', 1],
-    ['f(x)=x-1\nx(0)=1', '초기값 대신', 2],
-    ['f(x)=x-1\ny(min)=0\nx(max)=3', '대응하는', 2],
+
+    ['f(x)=x-1\ny(min)=0\nx(max)=3', '미지수', 2],
     ['f(x)=x-1\nx(min)=0\nx(min)=1\nx(max)=3', '중복', 3],
     ['f(x)=x-1\nx(min)=0', '경계를 모두', 1],
     ['f(x)=x-1\nx(min)=3\nx(max)=0', '작아야', 3],
@@ -180,12 +180,12 @@ describe('line-aware nonlinear input validation', () => {
     ['f(x)=x-1\nx(min)=0\nx(max)=3\nx+1', '익명', 4],
     ['#@ NLE_SOLUTION_METHOD_INDEX = 3\nf(x)=x', '아직 지원', 1],
     ['f(x)=x+y\nf(y)=x-y\nx(0)=0 >=0\ny(0)=0', '아직 지원', 3],
-    ['d(x)/d(t)=-x', '형식으로', 1],
+    ['d(x)/d(t)=-x', '지원하지 않는', 1],
     ['sin=1', '변수 이름', 1],
     ['a=unknown(1)', '지원하지 않는 함수', 1],
     ['a=sin(1,2)', '인수', 1],
     ['a=pow(2)', '인수', 1],
-    ['a=', '등호 오른쪽', 1],
+    ['a=', '등호 양쪽', 1],
   ]
   it.each(invalidPrograms)(
     'rejects invalid source %s',

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `8b090532183b2dc5763d6d769626ce8ac34afc855934067bc31fb1e6aebfba89`
+소스 묶음 SHA-256: `f2f3902b10466c00e26f87c08ea2dcaa18da639d639f713a86e315fe5536e686`
 
 ## 다른 코드 묶음
 
@@ -25,17 +25,19 @@
 ## 포함한 원본
 
 - [src/editor-input.ts](#source-1) · [저장소 원본](../../src/editor-input.ts)
-- [src/models.ts](#source-2) · [저장소 원본](../../src/models.ts)
-- [src/showcase-examples.ts](#source-3) · [저장소 원본](../../src/showcase-examples.ts)
-- [src/solver-input.ts](#source-4) · [저장소 원본](../../src/solver-input.ts)
-- [src/use-project-persistence.ts](#source-5) · [저장소 원본](../../src/use-project-persistence.ts)
-- [src/equation-count.ts](#source-6) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-7) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-8) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-9) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/simulation-panels.ts](#source-10) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/solver.worker.ts](#source-11) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-12) · [저장소 원본](../../src/App.tsx)
+- [src/equation-project.ts](#source-2) · [저장소 원본](../../src/equation-project.ts)
+- [src/models.ts](#source-3) · [저장소 원본](../../src/models.ts)
+- [src/showcase-examples.ts](#source-4) · [저장소 원본](../../src/showcase-examples.ts)
+- [src/solver-input.ts](#source-5) · [저장소 원본](../../src/solver-input.ts)
+- [src/use-project-persistence.ts](#source-6) · [저장소 원본](../../src/use-project-persistence.ts)
+- [src/equation-count.ts](#source-7) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-8) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-9) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-10) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-11) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-12) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/solver.worker.ts](#source-13) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-14) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -65,9 +67,118 @@ export function normalizeEquationPaste(text: string) {
 
 <a id="source-2"></a>
 
+## src/equation-project.ts
+
+원본: [src/equation-project.ts](../../src/equation-project.ts) · 100줄 · SHA-256: `69160dbbf5e578ea1e2316676f55a301eeb7f4a2a7baecdb0d9c7ab299dd2fef`
+
+```typescript
+import type { Project } from './models'
+import { normalizeAutomaticModel } from './engine/automatic'
+import {
+  parseNonlinearExpression,
+  type NonlinearNode as Node,
+} from './engine/nonlinear-parser'
+import { nodeText } from './engine/search-analysis'
+import { normalizeEquationSource } from './engine/source-statements'
+
+/** Show saved formula wrappers as ordinary equalities, preserving anchors. */
+export function equationProject(project: Project): Project {
+  if (project.mode !== 'nonlinear') return project
+  try {
+    const params = project.parameters.map((p) => p.name)
+    const lines = normalizeEquationSource(project.source, params).split('\n')
+    if (lines.some((l) => /^\s*f\d+\s*(?:\([^)]*\))?\s*=/.test(l)))
+      return project
+    const root = /^\s*f\(\s*([A-Za-z][A-Za-z0-9_]*)\s*\)\s*=\s*(.+)$/
+    const roots = lines.map((l) => {
+      const m = root.exec(l.split('#')[0].trim())
+      return m && !['min', 'max'].includes(m[1]) ? m : null
+    })
+    if (!roots.some(Boolean)) return project
+    const rootNames = new Set(roots.flatMap((r) => (r ? [r[1]] : [])))
+    const helpers = new Map<string, Node>(),
+      helperRows = new Set<number>()
+    lines.forEach((l, i) => {
+      const m = /^\s*([A-Za-z][A-Za-z0-9_]*)\s*=\s*(.+)$/.exec(l.split('#')[0])
+      if (m && !rootNames.has(m[1]) && !params.includes(m[1])) {
+        if (helpers.has(m[1])) throw new Error('duplicate helper')
+        helpers.set(m[1], parseNonlinearExpression(m[2]).node)
+        helperRows.add(i)
+      }
+    })
+    const active = new Set<string>()
+    let visits = 0
+    const expand = (n: Node, depth = 0): Node => {
+      if (depth > 128 || ++visits > 10000) throw new Error('expansion limit')
+      if (n.kind === 'name' && helpers.has(n.name)) {
+        if (active.has(n.name)) throw new Error('cyclic helper')
+        active.add(n.name)
+        const r = expand(helpers.get(n.name)!, depth + 1)
+        active.delete(n.name)
+        return r
+      }
+      if (n.kind === 'binary')
+        return {
+          ...n,
+          left: expand(n.left, depth + 1),
+          right: expand(n.right, depth + 1),
+        }
+      if (n.kind === 'unary') return { ...n, child: expand(n.child, depth + 1) }
+      if (n.kind === 'call')
+        return { ...n, args: n.args.map((a) => expand(a, depth + 1)) }
+      return n
+    }
+    const source = lines
+      .map((line, i) => {
+        if (helperRows.has(i)) return `# ${line.trim()}`
+        if (!roots[i]) return line
+        const n = expand(parseNonlinearExpression(roots[i]![2]).node)
+        return n.kind === 'binary' && n.operator === '-'
+          ? `${nodeText(n.left)} = ${nodeText(n.right)}`
+          : `${nodeText(n)} = 0`
+      })
+      .join('\n')
+    if (source.length > 30000) return project
+    const variables = normalizeAutomaticModel(source, params).variables
+    if (
+      variables.length !== rootNames.size ||
+      variables.some((v) => !rootNames.has(v))
+    )
+      return project
+    const reorder = (anchor: NonNullable<Project['selectedAnchor']>) => {
+      if (
+        anchor.variables.length !== variables.length ||
+        variables.some((v) => !anchor.variables.includes(v))
+      )
+        return anchor
+      return {
+        ...anchor,
+        variables: [...variables],
+        values: variables.map(
+          (v) => anchor.values[anchor.variables.indexOf(v)],
+        ),
+      }
+    }
+    return {
+      ...project,
+      source,
+      selectedAnchor: project.selectedAnchor
+        ? reorder(project.selectedAnchor)
+        : undefined,
+      simulations: project.simulations?.map(reorder),
+    }
+  } catch {
+    // Invalid drafts remain editable; never erase them during migration.
+    return project
+  }
+}
+```
+
+<a id="source-3"></a>
+
 ## src/models.ts
 
-원본: [src/models.ts](../../src/models.ts) · 158줄 · SHA-256: `0779298c48673d487f18b09713b7fa8aed8fe31e0b97c8da7c457a5d152252ab`
+원본: [src/models.ts](../../src/models.ts) · 158줄 · SHA-256: `f4743b22f1768d165580c5e77999a544d22f1d39709f60ec537008083ee72639`
 
 ```typescript
 import type { VariableBounds } from './engine/search-analysis'
@@ -167,7 +278,7 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
       nonlinearSearch: 'auto',
       title: '세 실근을 가진 삼차식',
       description:
-        '하나의 방정식에서 x = 1, 2, 3을 탐색합니다. 해 목록에서 각 결과를 선택해 잔차와 리포트를 확인하세요.',
+        '하나의 방정식에서 x = 1, 2, 3을 탐색합니다. 해 목록에서 각 결과를 선택해 등식 오차와 리포트를 확인하세요.',
       source:
         '# 한 방정식에도 여러 실수 해가 있을 수 있습니다\n(x - 1)*(x - 2)*(x - 3) = 0',
       parameters: [],
@@ -218,9 +329,9 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
       nonlinearSearch: 'auto',
       title: '보조식으로 나누어 쓰는 비선형 모델',
       description:
-        '보조식 t를 분리한 f(x) 문법도 자동 탐색에 사용할 수 있습니다. 상용로그 log를 사용하며, 자동 탐색에서 x = 20을 찾습니다.',
+        '함수를 정의한 뒤 원하는 값과 같게 두세요. 상용로그 log를 사용하며, 자동 탐색에서 x = 20을 찾습니다.',
       source:
-        '# f(x) 형식에서는 이름=수식을 보조식으로 사용할 수 있습니다\nf(x) = t + 4*x^2 - 1620\nt = x*log(x/2)',
+        '# 함수 정의 후 목표값과 같은 방정식을 입력합니다\nf1(x) = x*log(x/2) + 4*x^2\nf1(x) = 1620',
       parameters: [],
       sweepName: '',
       conditionNorm: 'infinity',
@@ -230,11 +341,11 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
 ]
 ```
 
-<a id="source-3"></a>
+<a id="source-4"></a>
 
 ## src/showcase-examples.ts
 
-원본: [src/showcase-examples.ts](../../src/showcase-examples.ts) · 257줄 · SHA-256: `5c5510b99ecf44416d0e578859a48b9801c8f0c8e556afe3d1537043c67d80f6`
+원본: [src/showcase-examples.ts](../../src/showcase-examples.ts) · 257줄 · SHA-256: `5143c2615adbc11880a4c32f628a8e74864824dc7f552b6f8e5bc7d51751fb24`
 
 ```typescript
 import type { NonlinearExample, Project } from './models'
@@ -284,7 +395,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
     {
       context:
         'Landau 퍼텐셜의 정상점입니다. 그래프는 외부장 h에 따른 평형 위치이며 시간 궤적이 아닙니다.',
-      features: ['다중 실근', '2차 접점', '병합 세트'],
+      features: ['다중 실근', '근 병합', '병합 세트'],
       steps: [
         '시뮬레이션에서 병합 세트 추가를 눌러 세 해를 한 그래프에 담으세요.',
         'h를 −0.6에서 0.6으로 움직여 두 접점 h=±2/(3√3)≈±0.384900을 확인하세요.',
@@ -330,7 +441,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
     {
       context:
         'Arrhenius 발열을 지수로 근사한 Semenov 정상 열수지입니다. θ는 온도 상승, q는 열제거 계수의 무차원 값입니다.',
-      features: ['지수함수', '열폭주 임계점', '2차 접점'],
+      features: ['지수함수', '열폭주 임계점', '근 병합'],
       steps: [
         'q=4의 두 해 θ≈0.3574, 2.1533을 병합해 보세요.',
         'q를 낮춰 e≈2.718282에 접근하면 두 정상 온도가 θ=1에서 접합니다.',
@@ -412,7 +523,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
       steps: [
         'tr=0.95의 세 해를 병합 세트에 추가하세요.',
         'tr≈0.8292548과 1.0648626에서 만나는 해의 쌍을 비교하세요.',
-        '접점 배너를 클릭해 추정 임계 파라미터로 이동하고 해석 리포트의 잔차를 함께 확인하세요.',
+        '근 병합 안내를 클릭해 추정 임계 파라미터로 이동하고 해석 리포트의 등식 오차를 함께 확인하세요.',
       ],
       reference: {
         label: 'Saddle-node bifurcation · Fold 정상형',
@@ -431,10 +542,10 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
     {
       context:
         '고차 중근의 정상형 예제입니다. p>0에서는 두 실근, p=0에서는 4중근 하나, p<0에서는 실근이 없습니다.',
-      features: ['4차 평탄 접점', '두 해의 생성·병합'],
+      features: ['평탄한 근 병합', '두 해의 생성·병합'],
       steps: [
         '기본값의 x=0.5, 1.5를 병합하세요.',
-        'p=0 부근을 확대해 4차 접점 배너를 확인하세요.',
+        'p=0 부근을 확대해 근 병합 안내를 확인하세요.',
         'p의 부호에 따라 달라지는 실근 수를 확인하세요. 실패 구간을 가로지르는 선은 그리지 않습니다.',
       ],
       reference: {
@@ -454,10 +565,10 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
     {
       context:
         '3차 변곡 접점의 정상형입니다. 두 파라미터가 필요한 일반적인 Cusp 분기 전체를 표현하는 예제는 아닙니다.',
-      features: ['3차 변곡 접점', '0 교차', '연속 추적'],
+      features: ['변곡점 통과', '0 교차', '연속 추적'],
       steps: [
         'p를 음수에서 양수로 움직여 해가 끊기지 않고 원점을 통과하는지 살펴보세요.',
-        '원점의 3중 접점 배너와 x=∛p의 수직 접선 모양을 확인하세요.',
+        '원점의 변곡점 통과 안내와 x=∛p의 수직 접선 모양을 확인하세요.',
         '그래프 클릭으로 샘플 사이의 연속 값을 선택하고 표의 샘플 포인트와 비교하세요.',
       ],
       reference: {
@@ -485,7 +596,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
       steps: [
         '발견한 해 중 A≥0, B≥0, 0≤C≤min(A0,B0)를 만족하는 해를 선택하세요.',
         '기본값의 물리적 해는 C≈0.824609입니다. 다른 실근은 농도 조건을 만족하지 않습니다.',
-        'K를 움직이며 농도 변화를 탐색하고, 리포트에서 물질수지 잔차와 Jacobian 조건수를 확인하세요.',
+        'K를 움직이며 농도 변화를 탐색하고, 리포트에서 물질수지 등식 오차와 Jacobian 조건수를 확인하세요.',
       ],
       reference: {
         label: 'Law of mass action · 질량작용 법칙',
@@ -496,7 +607,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
 ]
 ```
 
-<a id="source-4"></a>
+<a id="source-5"></a>
 
 ## src/solver-input.ts
 
@@ -538,7 +649,7 @@ export const solverInputKey = (project: Project, revision: number) =>
   JSON.stringify([createSolverInput(project), revision])
 ```
 
-<a id="source-5"></a>
+<a id="source-6"></a>
 
 ## src/use-project-persistence.ts
 
@@ -601,7 +712,7 @@ export function useProjectPersistence(
 }
 ```
 
-<a id="source-6"></a>
+<a id="source-7"></a>
 
 ## src/equation-count.ts
 
@@ -642,7 +753,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-8"></a>
 
 ## src/csv.ts
 
@@ -665,7 +776,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-9"></a>
 
 ## src/engine/sweep.ts
 
@@ -854,11 +965,11 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-10"></a>
 
 ## src/engine/branches.ts
 
-원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 516줄 · SHA-256: `e86587cc04cb46c4313aba9f06aa5981e3305bb9a834e75273e5cacf89b7d84c`
+원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 516줄 · SHA-256: `a3a6d4c4233db71808b87bd0f2281cfe1ec86efd970863d108a7c58f7741bb9c`
 
 ```typescript
 import {
@@ -1345,7 +1456,7 @@ export function computeBranchSweeps(
             previousSlope: edgePath.previous?.slope,
             ...(singleTangency ? { tangency: singleTangency } : {}),
             description: singleTangency
-              ? `${name} ≈ ${Number(singleTangency.parameterStar.toPrecision(6))} 부근의 접점 후보입니다. 원래 식의 잔차·도함수 재검증이 필요합니다.`
+              ? `${name} ≈ ${Number(singleTangency.parameterStar.toPrecision(6))} 부근의 접점 후보입니다. 원래 식의 등식 오차·도함수 재검증이 필요합니다.`
               : `${name} ≈ ${Number(edgePath.current.parameter.toPrecision(6))} 지점의 추적 경계입니다.`,
           })
           loss = `선택한 해의 분기를 더 이상 추적할 수 없습니다. ${error instanceof Error ? error.message : '계산 실패'}`
@@ -1379,14 +1490,98 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-11"></a>
+
+## src/engine/branch-events.ts
+
+원본: [src/engine/branch-events.ts](../../src/engine/branch-events.ts) · 74줄 · SHA-256: `da7ddaa15bed08a0b2b88f480a25ca1352ca7231946ccd34dd80a09c2983e291`
+
+```typescript
+import type { BranchTerminalEvent } from './index'
+import { tangencyLabel } from './tangency'
+
+export const eventLocation = (event: BranchTerminalEvent) =>
+  event.tangency?.verified
+    ? {
+        parameter: event.tangency.parameterStar,
+        values: event.tangency.valuesStar,
+      }
+    : { parameter: event.parameter, values: event.values }
+
+// Compare refined coordinates, not the coarser points where tracking stopped.
+// This is presentation/event reconciliation; it never merges computed roots.
+function nearCoordinate(a: number, b: number) {
+  return (
+    a === b ||
+    Math.abs(a - b) <=
+      8192 *
+        Number.EPSILON *
+        Math.max(Number.MIN_VALUE, Math.abs(a), Math.abs(b))
+  )
+}
+export function sameVerifiedEvent(
+  a: BranchTerminalEvent,
+  b: BranchTerminalEvent,
+) {
+  if (
+    !a.tangency?.verified ||
+    !b.tangency?.verified ||
+    a.tangency.bifurcationOrder !== b.tangency.bifurcationOrder
+  )
+    return false
+  const x = eventLocation(a),
+    y = eventLocation(b)
+  return (
+    nearCoordinate(x.parameter, y.parameter) &&
+    x.values.length === y.values.length &&
+    x.values.every((v, i) => nearCoordinate(v, y.values[i]))
+  )
+}
+export function uniqueBranchEvents(
+  events: readonly BranchTerminalEvent[],
+): BranchTerminalEvent[] {
+  const result: BranchTerminalEvent[] = []
+  for (const event of events) {
+    const index = result.findIndex(
+      (other) =>
+        sameVerifiedEvent(event, other) ||
+        (event.kind === other.kind &&
+          event.parameter === other.parameter &&
+          event.values.length === other.values.length &&
+          event.values.every((v, i) => v === other.values[i])),
+    )
+    if (index < 0) result.push(event)
+    else if (
+      event.kind === 'merge' ||
+      (event.tangency?.verified && !result[index].tangency?.verified)
+    )
+      result[index] = event
+  }
+  return result
+}
+export function branchEventLabel(event: BranchTerminalEvent) {
+  const t = event.tangency
+  if (t?.verified) return tangencyLabel(t)
+  return event.kind === 'merge' ? '근 병합 추정' : '추적 종료'
+}
+export function branchEventText(
+  event: BranchTerminalEvent,
+  parameterName: string,
+) {
+  const location = eventLocation(event)
+  return `${branchEventLabel(event)} · ${parameterName || '파라미터'} ≈ ${Number(location.parameter.toPrecision(8))}`
+}
+```
+
+<a id="source-12"></a>
 
 ## src/engine/simulation-panels.ts
 
-원본: [src/engine/simulation-panels.ts](../../src/engine/simulation-panels.ts) · 469줄 · SHA-256: `bab4fb5e9d503c75c01c77fee77e25697443fc9e589a610fdc95849a9401f558`
+원본: [src/engine/simulation-panels.ts](../../src/engine/simulation-panels.ts) · 474줄 · SHA-256: `2c587acd2b9c2638599fc8a1aaf48306f35137793b3c8f45e21a5d69f483e63f`
 
 ```typescript
 import { nonsmoothSource } from './search-analysis'
+import { sameVerifiedEvent } from './branch-events'
 import { normalizeAutomaticModel } from './automatic'
 import { compileNonlinear } from './nonlinear-parser'
 import { adaptiveDerivative, verifyScalarTangency } from './tangency'
@@ -1822,7 +2017,11 @@ export function detectMergedBranchEvents(
             10 * gap
         )
       })
-      if (sameParam && sameValues && converging) {
+      const sameFold =
+        sameVerifiedEvent(a, b) &&
+        a.tangency?.bifurcationOrder !== 3 &&
+        a.tangency?.bifurcationOrder !== 'boundary'
+      if (((sameParam && sameValues) || sameFold) && converging) {
         matchedIndex = j
         break
       }
@@ -1857,15 +2056,14 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-13"></a>
 
 ## src/engine/solver.worker.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 361줄 · SHA-256: `dcfab689b0f55d09067010dfe6b2271687f13bde79a19106b62d4095f96e2e03`
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 331줄 · SHA-256: `51b1dddd2ed6b59ae96faa8c77098d4e9a2553a3fcd57cf6f057f9abbea9f80f`
 
 ```typescript
 import type { VariableBounds } from './search-analysis'
-import { normalizeEquationSource } from './source-statements'
 import { sameComputedRoot } from './root-comparison'
 /// <reference lib="webworker" />
 import {
@@ -1877,13 +2075,7 @@ import {
 } from './index'
 import { computeSweeps, type SweepSettings } from './sweep'
 import { createNonlinearSolver } from './nonlinear'
-import { preprocessSolverSource } from './preprocessor'
-import { isNonlinearFunction } from './nonlinear-parser'
-import {
-  createAutomaticSolver,
-  normalizeAutomaticModel,
-  type AutomaticSearchResult,
-} from './automatic'
+import { createAutomaticSolver, type AutomaticSearchResult } from './automatic'
 import { createSimulationPanelComputer } from './simulation-panels'
 type Request = {
   id: number
@@ -2178,30 +2370,7 @@ async function handleRequest(work: QueuedRequest) {
     }
     const solve = await (mode === 'nonlinear' ? nonlinearReady : ready)
     if (work.generation !== generation) return
-    let calculationSource = source
-    if (mode === 'nonlinear') {
-      const normalized = normalizeEquationSource(
-        source,
-        Object.keys(parameters),
-      )
-      calculationSource = normalized
-      const expanded = preprocessSolverSource(
-        normalized,
-        Object.keys(parameters),
-        'nonlinear',
-      )
-      if (expanded !== normalized) {
-        const conditions = expanded.split('\n').filter((line) => {
-          const match =
-            /^\s*([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/.exec(line)
-          return match && !isNonlinearFunction(match[1])
-        })
-        calculationSource =
-          normalizeAutomaticModel(expanded, Object.keys(parameters)).source +
-          '\n' +
-          conditions.join('\n')
-      }
-    }
+    const calculationSource = source
     const result = solve(calculationSource, parameters, { conditionNorm })
     const payload: SolvePayload = {
       result,
@@ -2227,14 +2396,15 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-14"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,233줄 · SHA-256: `9a79d650a02a2f0792979fb97ede7f28d337c4e90e016f9698474df8053dc2fc`
+원본: [src/App.tsx](../../src/App.tsx) · 3,235줄 · SHA-256: `c5146e45d84cf4b55492e096be880ee38e064f5dfce281d40df2c9c8ef71f71e`
 
 ```tsx
 import { normalizeAutomaticModel } from './engine/automatic'
+import { equationProject } from './equation-project'
 import {
   certificateSummary,
   certificateReport,
@@ -2447,7 +2617,7 @@ function isProject(value: unknown): value is Project {
 function initialProject(): Project {
   try {
     const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-    if (isProject(p)) return p
+    if (isProject(p)) return equationProject(p)
   } catch {
     /* A clean model is usable if storage is unavailable. */
   }
@@ -2857,7 +3027,7 @@ export default function App() {
           localStorage.getItem(`${STORAGE_KEY}-${nextMode}`) || 'null',
         )
         if (isProject(saved) && (saved.mode ?? 'linear') === nextMode)
-          next = saved
+          next = equationProject(saved)
       } catch {}
     }
     setProject(
@@ -3132,7 +3302,7 @@ export default function App() {
               .map(([name, value]) => `- ${name} = ${value.toPrecision(12)}`)
               .join('\n')}`
           : '',
-        `최대 절대 잔차: ${isEvaluation ? '해당 없음' : target.maxResidual.toExponential(5)}`,
+        `최대 절대 등식 오차: ${isEvaluation ? '해당 없음' : target.maxResidual.toExponential(5)}`,
         `조건수 (${target.conditionNorm === '2' ? '2-norm · SVD' : '∞-norm'}): ${isEvaluation ? '해당 없음' : Number.isNaN(target.condition) ? '계산 불가' : target.condition.toPrecision(8)}`,
         `민감도: ${isEvaluation ? '해당 없음' : classifyCondition(target.condition).label}`,
         '참고 기준: κ < 10^4 안정, 10^4 ≤ κ < 10^8 민감, κ ≥ 10^8 매우 민감. 참고 범위이며 입력 오차와 단위에 따라 해석해야 합니다.',
@@ -3207,7 +3377,7 @@ export default function App() {
       const p = JSON.parse(await file.text())
       if (!isProject(p)) throw new Error()
       drafts.current[mode] = structuredClone(project)
-      setProject(p)
+      setProject(equationProject(p))
       setPayload(null)
       setSelectedSimulation(null)
       if (screen === 'home') navigate('model')
@@ -3436,7 +3606,7 @@ export default function App() {
                     {nonlinear
                       ? automatic
                         ? '식만 입력 · 실수 해 자동 탐색'
-                        : 'f(미지수) = 0이 될 잔차식'
+                        : '등식 입력 · 초기값 또는 범위로 한 해 탐색'
                       : '한 줄에 하나의 방정식'}
                   </span>
                 </div>
@@ -3513,7 +3683,7 @@ export default function App() {
                       nonlinear
                         ? automatic
                           ? 'x^2 = 4\n\n# 연립식도 한 줄에 하나씩 입력하세요'
-                          : 'f(x) = x^2 - 4\nx(min) = 0\nx(max) = 3'
+                          : 'x^2 = 4\nx(0) = 1'
                         : '방정식을 입력하세요\n예: 2x + y = 10'
                     }
                     onKeyDown={(e) => {
@@ -3623,9 +3793,10 @@ export default function App() {
                         </>
                       ) : (
                         <p>
-                          f(x)=잔차식과 x(min)·x(max), 또는 연립식의 각 x(0)을
-                          수식에 적어 주세요. 명시식 계산도 이 방식에서
-                          지원합니다.
+                          x^2=4처럼 등식을 입력하고 x(0)=1로 초기값을
+                          지정하세요. x(min)·x(max)로 범위를 지정할 수도
+                          있습니다. 연립식은 각 미지수의 초기값을 적습니다.
+                          이름=수식 계산도 지원합니다.
                         </p>
                       )}
                     </div>
@@ -4226,7 +4397,7 @@ export default function App() {
                                         <th>변수</th>
                                         <th>값</th>
                                         {!evaluation && (
-                                          <th>방정식 최대 절대 잔차</th>
+                                          <th>방정식 최대 절대 등식 오차</th>
                                         )}
                                       </tr>
                                     </thead>
@@ -4328,7 +4499,7 @@ export default function App() {
                         >
                           <div>
                             <span>
-                              {evaluation ? '계산 항목' : '최대 절대 잔차'}
+                              {evaluation ? '계산 항목' : '최대 절대 등식 오차'}
                             </span>
                             <strong>
                               {evaluation
@@ -4403,8 +4574,8 @@ export default function App() {
                             )}
                             <p className="condition-caveat">
                               위 범위는 참고 기준입니다. 실제 신뢰도는 측정
-                              오차와 단위·스케일에 따라 달라지며, 작은
-                              잔차만으로 해의 정확도를 보장하지는 않습니다.
+                              오차와 단위·스케일에 따라 달라지며, 작은 등식
+                              오차만으로 해의 정확도를 보장하지는 않습니다.
                             </p>
                             <details className="condition-guide">
                               <summary>
@@ -4452,8 +4623,8 @@ export default function App() {
                           {nonlinear
                             ? evaluation
                               ? '명시식의 의존 관계를 확인하여 순서대로 계산합니다.'
-                              : '잔차는 f(x)에 해를 대입한 값입니다. 아래 Jacobian은 수렴점에서의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
-                            : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 잔차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
+                              : '등식 오차는 구한 해를 넣었을 때 좌변과 우변의 차이입니다. 아래 Jacobian은 해 주변의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
+                            : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 등식 오차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
                         </p>
                         {!evaluation && (
                           <details className="matrix-details">
@@ -4468,7 +4639,7 @@ export default function App() {
                             </summary>
                             <p>
                               {nonlinear
-                                ? '수렴점의 Jacobian J와 마지막 잔차를 확인합니다. J·Δx = −f(x)는 국소 선형화이며 원래 비선형 방정식 자체는 아닙니다.'
+                                ? '해 주변의 Jacobian J와 각 방정식의 좌변·우변 차이를 확인합니다. 수치 계산의 수렴과 민감도를 검토할 수 있습니다.'
                                 : '수식을 A·x = b로 변환한 계수와 우변을 확인합니다. 부호나 누락된 항을 검토할 때 활용하세요.'}
                             </p>
                             <MatrixView result={result} />
@@ -4801,7 +4972,7 @@ function MatrixView({
   return (
     <div className="matrix-view">
       <div className="matrix-caption">
-        {result.kind === 'nonlinear' ? 'J · Δx = −f(x)' : 'A · x = b'}{' '}
+        {result.kind === 'nonlinear' ? 'J · Δx = −(좌변 − 우변)' : 'A · x = b'}{' '}
         <span>
           {result.kind === 'nonlinear'
             ? '수렴점에서의 국소 선형화'

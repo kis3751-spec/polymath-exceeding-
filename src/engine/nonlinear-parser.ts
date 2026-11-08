@@ -1,4 +1,5 @@
 import { evaluateDual, type Dual } from './expression-derivative'
+import { preprocessSolverSource } from './preprocessor'
 import { ModelError } from './index'
 
 export type NonlinearNode =
@@ -308,8 +309,86 @@ export function evaluateNonlinearExpression(
 
 const evaluateExpression = evaluateNonlinearExpression
 
-/** Parse once and evaluate repeatedly with new root values or external parameters. */
+/** Ordinary equalities and optional manual conditions share the same compiler.
+ * The f(variable) form below is an internal representation/old-file adapter,
+ * never a syntax users must construct. */
 export function compileNonlinear(
+  source: string,
+  parameterNames: string[],
+): CompiledModel {
+  return compilePreparedNonlinear(
+    manualEquationSource(source, parameterNames),
+    parameterNames,
+  )
+}
+
+function manualEquationSource(source: string, parameters: string[]): string {
+  const oldRoot = /^\s*f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/m.test(source)
+  if (oldRoot && !/^\s*f\d+\s*(?:\([^)]*\))?\s*=/m.test(source)) return source
+  source = preprocessSolverSource(source, parameters, 'nonlinear')
+  const lines = source.split('\n')
+  const condition = /^([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/
+  const texts = lines.map((raw) => raw.split('#')[0].trim())
+  const conditions = new Set(
+    texts.flatMap((text) => {
+      const m = condition.exec(text)
+      return m && !isNonlinearFunction(m[1]) ? [m[1]] : []
+    }),
+  )
+  // Old files and private automatic-solver output remain readable.
+  if (
+    texts.some(
+      (t) =>
+        !condition.test(t) && /^f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/.test(t),
+    )
+  )
+    return source
+  const rows = texts.flatMap((text, line) => {
+    if (
+      !text ||
+      (condition.test(text) && !isNonlinearFunction(condition.exec(text)![1]))
+    )
+      return []
+    const sides = text.split('=')
+    return sides.length === 2
+      ? [{ left: sides[0].trim(), right: sides[1].trim(), line }]
+      : []
+  })
+  if (!conditions.size && rows.every((r) => NAME.test(r.left))) return source
+  const helpers = new Set(
+    rows
+      .filter((r) => NAME.test(r.left) && !conditions.has(r.left))
+      .map((r) => r.left),
+  )
+  const equations = rows.filter((r) => !helpers.has(r.left))
+  if (!equations.length) return source
+  const variables: string[] = []
+  for (const row of equations) {
+    const expression = parseNonlinearExpression(
+      `(${row.left})-(${row.right})`,
+      row.line + 1,
+    )
+    for (const name of expression.references)
+      if (
+        !parameters.includes(name) &&
+        !BUILTINS.has(name) &&
+        !helpers.has(name) &&
+        !variables.includes(name)
+      )
+        variables.push(name)
+  }
+  if (variables.length !== equations.length)
+    throw new ModelError(
+      `미지수 ${variables.length}개에 대해 독립적인 방정식 ${variables.length}개가 필요합니다. 현재 ${equations.length}개입니다.`,
+      equations[0].line + 1,
+    )
+  equations.forEach((row, i) => {
+    lines[row.line] = `f(${variables[i]}) = (${row.left})-(${row.right})`
+  })
+  return lines.join('\n')
+}
+
+function compilePreparedNonlinear(
   source: string,
   parameterNames: string[],
 ): CompiledModel {
@@ -363,10 +442,7 @@ export function compileNonlinear(
       )
     const equals = text.split('=')
     if (equals.length > 2)
-      throw new ModelError(
-        '한 줄에는 등호를 하나만 사용하세요. f(x) 오른쪽에는 0이 될 잔차식만 작성합니다.',
-        line,
-      )
+      throw new ModelError('등호 양쪽에 완성된 수식을 입력하세요.', line)
     if (equals.length === 1) {
       anonymous.push(parseExpression(text, line))
       continue
@@ -408,7 +484,7 @@ export function compileNonlinear(
       assignments.push({ name: left, ...parseExpression(right, line) })
     } else
       throw new ModelError(
-        'f(x)=잔차식, 이름=수식, x(min)/x(max) 또는 x(0) 형식으로 작성하세요.',
+        '등식, 이름=수식, x(min)/x(max) 또는 x(0) 형식으로 작성하세요.',
         line,
       )
   }
@@ -475,7 +551,7 @@ export function compileNonlinear(
   for (const condition of conditions) {
     if (!variables.includes(condition.name))
       throw new ModelError(
-        `조건의 변수 '${condition.name}'에 대응하는 f(${condition.name})가 없습니다.`,
+        `조건의 변수 '${condition.name}'가 방정식의 미지수에 없습니다.`,
         condition.line,
       )
     const conditionKey = `${condition.name}:${condition.type}`
@@ -485,25 +561,30 @@ export function compileNonlinear(
         condition.line,
       )
     conditionKeys.add(conditionKey)
-    if ((roots.length === 1) !== (condition.type !== '0'))
+    if (roots.length > 1 && condition.type !== '0')
       throw new ModelError(
-        roots.length === 1
-          ? '하나의 근에는 초기값 대신 (min), (max) 경계가 필요합니다.'
-          : '연립 비선형식에는 경계 대신 각 변수의 (0) 초기값이 필요합니다.',
+        '연립 비선형식에는 경계 대신 각 변수의 (0) 초기값이 필요합니다.',
         condition.line,
       )
   }
   if (roots.length === 1) {
     const min = conditions.find((condition) => condition.type === 'min')
     const max = conditions.find((condition) => condition.type === 'max')
-    if (!min || !max)
+    const guess = conditions.find((condition) => condition.type === '0')
+    if (guess) guesses = [guess.value]
+    if (Boolean(min) !== Boolean(max))
       throw new ModelError(
         `${variables[0]}(min)과 ${variables[0]}(max) 경계를 모두 입력하세요.`,
         roots[0].line,
       )
-    if (min.value >= max.value)
+    if (!min && !max && !guess)
+      throw new ModelError(
+        `${variables[0]}(min)과 ${variables[0]}(max) 경계 또는 ${variables[0]}(0) 초기값을 입력하세요.`,
+        roots[0].line,
+      )
+    if (min && max && min.value >= max.value)
       throw new ModelError('최소 경계는 최대 경계보다 작아야 합니다.', max.line)
-    bounds = { min: min.value, max: max.value }
+    if (min && max) bounds = { min: min.value, max: max.value }
   } else if (roots.length > 1) {
     guesses = roots.map((root) => {
       const guess = conditions.find(

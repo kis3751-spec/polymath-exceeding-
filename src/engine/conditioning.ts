@@ -19,7 +19,7 @@ export function classifyCondition(value: number): ConditionAssessment {
       level: 'unavailable',
       label: '판정 불가',
       description:
-        '조건수를 계산하지 못했습니다. 해와 잔차를 별도로 확인해 주세요.',
+        '조건수를 계산하지 못했습니다. 해와 등식 오차를 별도로 확인해 주세요.',
     }
   if (value >= CONDITION_THRESHOLDS.verySensitive)
     return {
@@ -33,7 +33,7 @@ export function classifyCondition(value: number): ConditionAssessment {
       level: 'sensitive',
       label: '민감',
       description:
-        '입력 오차가 증폭될 수 있습니다. 입력값의 유효숫자와 결과의 잔차를 함께 확인하세요.',
+        '입력 오차가 증폭될 수 있습니다. 입력값의 유효숫자와 결과의 등식 오차를 함께 확인하세요.',
     }
   return {
     level: 'stable',

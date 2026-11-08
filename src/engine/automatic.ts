@@ -714,7 +714,7 @@ function scalarResult(
   ]
   if (condition === Infinity || slope === 0)
     warnings.push(
-      '이 해에서는 Jacobian이 특이합니다. 중근 또는 민감한 해일 수 있으므로 잔차와 주변 거동을 함께 확인하세요.',
+      '이 해에서는 Jacobian이 특이합니다. 중근 또는 민감한 해일 수 있으므로 등식 오차와 주변 거동을 함께 확인하세요.',
     )
   return {
     kind: 'nonlinear',
