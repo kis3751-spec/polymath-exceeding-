@@ -446,3 +446,142 @@ function twoProductError(a: number, b: number, product: number) {
     bLow = b - bHigh
   return aHigh * bHigh - product + aHigh * bLow + aLow * bHigh + aLow * bLow
 }
+
+/** Extract the numerator polynomial of a rational expression N(x)/D(x) = 0
+ * (such as van der Waals (P + a/V^2)*(V - b) - R*T = 0) when D(x) depends on x.
+ * Every root candidate isolated from N(x) is still strictly verified against the
+ * original expression (which rejects poles where D(x) = 0). */
+export function rationalCoefficients(
+  node: NonlinearNode,
+  variable: string,
+  constants: Record<string, number>,
+  helpers: Map<string, NonlinearNode>,
+): { numerator: number[]; denominator: number[] } | null {
+  type Rat = { num: number[]; den: number[] }
+  const active = new Set<string>()
+  const memo = new Map<string, Rat | null>()
+  const finite = (c: number[]) => (c.every(Number.isFinite) ? trim(c) : null)
+  const addPoly = (a: number[], b: number[], sign = 1) => {
+    const res = Array<number>(Math.max(a.length, b.length)).fill(0)
+    for (let i = 0; i < res.length; i++)
+      res[i] = (a[i] ?? 0) + sign * (b[i] ?? 0)
+    return finite(res)
+  }
+  const mulPoly = (a: number[], b: number[]) => {
+    if (a.length + b.length - 2 > MAX_DEGREE) return null
+    const res = Array<number>(a.length + b.length - 1).fill(0)
+    for (let i = 0; i < a.length; i++)
+      for (let j = 0; j < b.length; j++) res[i + j] += a[i] * b[j]
+    return finite(res)
+  }
+  const powRat = (base: Rat, exp: number): Rat | null => {
+    if (!Number.isInteger(exp) || Math.abs(exp) > MAX_DEGREE) return null
+    if (exp === 0) return { num: [1], den: [1] }
+    const b = exp < 0 ? { num: base.den, den: base.num } : base
+    const n = Math.abs(exp)
+    let num: number[] | null = [1]
+    let den: number[] | null = [1]
+    for (let i = 0; i < n; i++) {
+      num = num && mulPoly(num, b.num)
+      den = den && mulPoly(den, b.den)
+      if (!num || !den) return null
+    }
+    return den.length === 1 && den[0] === 0 ? null : { num, den }
+  }
+  const visit = (current: NonlinearNode, depth = 0): Rat | null => {
+    if (depth > 256) return null
+    if (current.kind === 'number')
+      return Number.isFinite(current.value)
+        ? { num: [current.value], den: [1] }
+        : null
+    if (current.kind === 'name') {
+      if (current.name === variable) return { num: [0, 1], den: [1] }
+      if (Object.hasOwn(constants, current.name)) {
+        const v = constants[current.name]
+        return Number.isFinite(v) ? { num: [v], den: [1] } : null
+      }
+      if (current.name === 'pi') return { num: [Math.PI], den: [1] }
+      if (current.name === 'e') return { num: [Math.E], den: [1] }
+      if (memo.has(current.name)) return memo.get(current.name)!
+      const helper = helpers.get(current.name)
+      if (!helper || active.has(current.name)) return null
+      active.add(current.name)
+      const res = visit(helper, depth + 1)
+      active.delete(current.name)
+      memo.set(current.name, res)
+      return res
+    }
+    if (current.kind === 'unary') {
+      const child = visit(current.child, depth + 1)
+      return (
+        child && {
+          num: current.sign === '-' ? child.num.map((v) => -v) : [...child.num],
+          den: [...child.den],
+        }
+      )
+    }
+    if (current.kind === 'binary') {
+      const left = visit(current.left, depth + 1)
+      const right = visit(current.right, depth + 1)
+      if (!left || !right) return null
+      if (current.operator === '+' || current.operator === '-') {
+        const sign = current.operator === '-' ? -1 : 1
+        // If denominators are identical, avoid inflating degree!
+        if (
+          left.den.length === right.den.length &&
+          left.den.every((v, idx) => v === right.den[idx])
+        ) {
+          const num = addPoly(left.num, right.num, sign)
+          return num ? { num, den: left.den } : null
+        }
+        const term1 = mulPoly(left.num, right.den)
+        const term2 = mulPoly(right.num, left.den)
+        const den = mulPoly(left.den, right.den)
+        if (!term1 || !term2 || !den) return null
+        const num = addPoly(term1, term2, sign)
+        return num ? { num, den } : null
+      }
+      if (current.operator === '*') {
+        const num = mulPoly(left.num, right.num)
+        const den = mulPoly(left.den, right.den)
+        return num && den ? { num, den } : null
+      }
+      if (current.operator === '/') {
+        if (right.num.length === 1 && right.num[0] === 0) return null
+        const num = mulPoly(left.num, right.den)
+        const den = mulPoly(left.den, right.num)
+        return num && den ? { num, den } : null
+      }
+      if (
+        current.operator === '^' &&
+        right.den.length === 1 &&
+        right.den[0] === 1 &&
+        right.num.length === 1
+      ) {
+        return powRat(left, right.num[0])
+      }
+      return null
+    }
+    // Constant transcendental calls are allowed; a variable call remains non-rational.
+    if (current.kind === 'call' && current.name === 'pow') {
+      const base = visit(current.args[0], depth + 1)
+      const exponent = polynomialCoefficients(
+        current.args[1],
+        variable,
+        constants,
+        helpers,
+      )
+      return base && exponent?.length === 1 ? powRat(base, exponent[0]) : null
+    }
+    const constant = polynomialCoefficients(
+      current,
+      variable,
+      constants,
+      helpers,
+    )
+    return constant?.length === 1 ? { num: constant, den: [1] } : null
+  }
+  const rat = visit(node)
+  if (!rat || rat.den.every((v) => v === 0)) return null
+  return { numerator: rat.num, denominator: rat.den }
+}

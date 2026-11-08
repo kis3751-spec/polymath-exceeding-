@@ -1,3 +1,5 @@
+import { sameComputedRoot } from './engine/root-comparison'
+import { normalizeEquationPaste } from './editor-input'
 import ExampleWalkthrough from './components/ExampleWalkthrough'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -68,9 +70,9 @@ const fmt = (n: number, digits = 5) =>
     : n === 0
       ? '0'
       : Math.abs(n) < 0.000001 || Math.abs(n) >= 1e9
-        ? n.toExponential(Math.min(5, digits - 1))
+        ? n.toExponential(Math.min(15, digits - 1))
         : Number(n.toPrecision(digits)).toLocaleString('en-US', {
-            maximumFractionDigits: 8,
+            maximumSignificantDigits: digits,
           })
 function validAnchor(value: unknown): value is SimulationAnchor {
   if (!value || typeof value !== 'object') return false
@@ -234,6 +236,7 @@ export default function App() {
   const requestId = useRef(0)
   const importRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<HTMLTextAreaElement>(null)
+  const lineNumbersRef = useRef<HTMLDivElement>(null)
   const examplesRef = useRef<HTMLDivElement>(null)
   const projectRef = useRef(project)
   projectRef.current = project
@@ -284,18 +287,7 @@ export default function App() {
     ? solutions.findIndex(
         (item) =>
           selectedBranch.result &&
-          item.variables.join('|') ===
-            selectedBranch.result.variables.join('|') &&
-          item.values.every(
-            (value, i) =>
-              Math.abs(value - selectedBranch.result!.values[i]) <=
-              2e-7 *
-                Math.max(
-                  Number.MIN_VALUE,
-                  Math.abs(value),
-                  Math.abs(selectedBranch.result!.values[i]),
-                ),
-          ),
+          sameComputedRoot(item, selectedBranch.result),
       )
     : (basePayload?.selectedSolution ?? solutionIndex)
   const evaluation = result?.kind === 'evaluation'
@@ -316,7 +308,11 @@ export default function App() {
   const sweepParam = project.parameters.find(
     (p) => p.name === project.sweepName,
   )
-  const sourceLines = project.source.split('\n')
+  const sourceLines = project.source.replace(/\r\n?/g, '\n').split('\n')
+  const editorHeight = Math.min(
+    420,
+    Math.max(164, sourceLines.length * 28 + 24),
+  )
   const equationCount = countEquations(
     project.source,
     nonlinear,
@@ -636,13 +632,7 @@ export default function App() {
       (panel) =>
         anchors.some((anchor) => anchor.id === panel.id) &&
         panel.result &&
-        panel.result.variables.join('|') === item.variables.join('|') &&
-        panel.result.values.every(
-          (v, i) =>
-            Math.abs(v - item.values[i]) <=
-            2e-7 *
-              Math.max(Number.MIN_VALUE, Math.abs(v), Math.abs(item.values[i])),
-        ),
+        sameComputedRoot(panel.result, item),
     )
   }
   function rootAlreadyOpen(item: SolveResult) {
@@ -1179,13 +1169,57 @@ export default function App() {
                 <div
                   className={`equation-editor ${error ? 'editor-error' : ''}`}
                 >
-                  <div className="line-numbers" aria-hidden="true">
+                  <div
+                    className="line-numbers"
+                    ref={lineNumbersRef}
+                    style={{ height: editorHeight }}
+                    aria-hidden="true"
+                  >
                     {sourceLines.map((_, i) => (
                       <span key={i}>{String(i + 1).padStart(2, '0')}</span>
                     ))}
                   </div>
                   <textarea
                     ref={editorRef}
+                    wrap="off"
+                    style={{ height: editorHeight }}
+                    onScroll={(e) => {
+                      if (lineNumbersRef.current)
+                        lineNumbersRef.current.scrollTop =
+                          e.currentTarget.scrollTop
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault()
+                      const el = e.currentTarget,
+                        start = el.selectionStart,
+                        end = el.selectionEnd
+                      const pasted = normalizeEquationPaste(
+                        e.clipboardData.getData('text/plain'),
+                      )
+                      const available = Math.max(
+                        0,
+                        30000 - project.source.length + (end - start),
+                      )
+                      const insertion = pasted.slice(0, available)
+                      setProject((p) => ({
+                        ...p,
+                        source:
+                          p.source.slice(0, start) +
+                          insertion +
+                          p.source.slice(end),
+                        selectedSolution: 0,
+                        selectedAnchor: undefined,
+                        simulations: [],
+                        mergedSets: [],
+                        individualIds: [],
+                      }))
+                      requestAnimationFrame(() => {
+                        el.selectionStart = el.selectionEnd =
+                          start + insertion.length
+                        if (lineNumbersRef.current)
+                          lineNumbersRef.current.scrollTop = el.scrollTop
+                      })
+                    }}
                     aria-label="방정식 입력"
                     spellCheck={false}
                     maxLength={30000}

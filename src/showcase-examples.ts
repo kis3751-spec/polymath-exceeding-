@@ -130,6 +130,35 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
     },
   ),
   example(
+    'dimensional-van-der-waals',
+    '열역학 · L·bar·K 단위와 유리식',
+    '몰체적을 계산하는 van der Waals',
+    'a=3.59, b=0.0427, R=0.08314에서 T=280 K, P=53 bar의 세 몰체적을 풉니다. 유리식과 삼차식 표현을 비교하세요.',
+    '# V: L/mol, P: bar, T: K\n(P + a/V^2)*(V - b) = R*T',
+    [
+      parameter('a', 3.59, 3, 4, 0.01),
+      parameter('b', 0.0427, 0.03, 0.05, 0.0001),
+      parameter('R', 0.08314, 0.08, 0.09, 0.00001),
+      parameter('T', 280, 270, 310, 1),
+      parameter('P', 53, 45, 62, 0.1),
+    ],
+    'P',
+    {
+      context:
+        '예시 상수를 사용하는 van der Waals 몰 상태방정식입니다. 모든 상수는 L·bar·K·mol 단위 체계에 맞추었습니다. 임계온도는 약 299.628 K입니다.',
+      features: ['유리식의 세 근', '단위 체계', '표현식 비교'],
+      steps: [
+        '기본값의 V≈0.0853504100, 0.1245926854, 0.2719870933 L/mol을 비교하세요. 세 해 모두 V>b인지 확인하세요.',
+        '세 해를 병합해 P≈47.1563, 58.7502 bar의 분기 끝점을 살펴보세요. T를 300 K로 바꾸면 임계온도보다 높아 하나의 실근만 남습니다. 온도 변경 후에는 새 해를 선택하세요.',
+        '식 에디터를 P*V^3-(P*b+R*T)*V^2+a*V-a*b=0 으로 바꿔 같은 세 근인지 비교할 수 있습니다. 분모를 제거한 후보는 원래 식에서 검증해야 합니다.',
+      ],
+      reference: {
+        label: 'Van der Waals equation · 임계 상수',
+        url: 'https://en.wikipedia.org/wiki/Van_der_Waals_equation#Critical_point',
+      },
+    },
+  ),
+  example(
     'transcendental-folds',
     '수학 · 초월함수의 두 접점',
     '삼각·쌍곡함수의 교점 병합',

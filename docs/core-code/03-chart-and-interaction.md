@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `427604c59c68a0c278633b13fceef2fac02b4a37fee7fc811b65d40d67aaadf2`
+소스 묶음 SHA-256: `549c20e2216b3281c0c6b2cd7e99a5e904c72f44ab8039a0ce24c5c32ea6deff`
 
 ## 다른 코드 묶음
 
@@ -286,7 +286,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/EquationReference.tsx
 
-원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 134줄 · SHA-256: `a74415f22eded16485aa6360e8b74d079d56fee2a72492bdb25bfab19cc2dcd2`
+원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 158줄 · SHA-256: `65885a221d31d58b0ba7ae4145398112a0bc4b38a72b3da6919e920838a5251a`
 
 ```tsx
 const functions = [
@@ -338,8 +338,8 @@ export default function EquationReference() {
         <ul>
           <li>
             <code>2x + y = 10</code>: 등호 양쪽에 식을 씁니다. 방정식은 한 줄에
-            하나입니다. 일반 등식의 이름은 미지수이며 상수를 자동 추측하지
-            않습니다.
+            하나씩 적는 것을 권장합니다. 일반 등식의 이름은 미지수이며 상수를
+            자동 추측하지 않습니다.
           </li>
           <li>
             <code>+ - * / ^</code>와 괄호를 사용합니다. <code>-2^2 = -4</code>,{' '}
@@ -359,6 +359,30 @@ export default function EquationReference() {
             취급합니다.
           </li>
         </ul>
+        <h4>여러 등식·단위 주석</h4>
+        <pre>
+          {
+            '2x + y = x - y + 8 = 10\na = 3.59, b = 0.0427, R = 0.08314, T = 280\nf1(x) = 2x + 4 = 0'
+          }
+        </pre>
+        <p>
+          첫 줄은 두 등식이며 x=4, y=2입니다. 쉼표·세미콜론으로 등식을 나누거나
+          연쇄 등호를 쓸 수 있습니다. 숫자로 고정된 변수도 계산 결과에 남습니다.
+          f1(x)는 정의 후 0과 같게 두므로 x=−2입니다. 위 세 줄은 각각 별개의
+          문법 예시입니다.
+        </p>
+        <p>
+          숫자 뒤 공백과 괄호의 <code>280 (K)</code>,{' '}
+          <code>3.59 (L^2·bar/mol^2)</code>는 알려진 단위의 주석으로 읽습니다.
+          단위 환산·차원 검사는 수행하지 않으므로 같은 단위 체계의 수치를
+          입력하세요. 해당 기호가 변수나 파라미터로 사용되면 곱셈 의미를
+          유지합니다. 곱셈을 의도하면 <code>2*K</code>처럼 *를 명시하세요.
+        </p>
+        <p>
+          붙여넣기는 코드 블록 테두리와 특수 마이너스를 정리합니다. 수식 줄
+          번호는 편집기의 실제 행이고, 방정식 개수는 연쇄 등식 등을 나눈 논리적
+          등식 수입니다.
+        </p>
         <h4>함수·혼합식 정의</h4>
         <pre>{'f1(x) = 2x + 4\nf2(x) = -3x + 7\nf1(x) - f2(x) = 0'}</pre>
         <p>
@@ -470,7 +494,7 @@ export default function ExampleWalkthrough({
 
 ## src/components/Guide.tsx
 
-원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 442줄 · SHA-256: `dab468dbd046b256829439caeb042a5534fd9ad01ebfc00789f5919906b8e897`
+원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 442줄 · SHA-256: `90933e856106205fb5aa321a03a1eb4d6bc300c4ec8aa44d1b37836d23f89463`
 
 ```tsx
 import EquationReference from './EquationReference'
@@ -670,12 +694,12 @@ export default function Guide({
                     <>
                       <h3>여러 해를 목록에서 선택하세요</h3>
                       <p>
-                        연립식도 한 줄에 등식 하나씩 작성합니다. 미지수 수와
-                        독립적인 식 수를 맞추면 여러 시작점을 자동으로
-                        시도합니다. 시뮬레이션 화면의 발견한 해 목록에서 해를
-                        선택하고, 시뮬레이션 추가로 여러 창을 열어 비교하세요.
-                        선택한 해의 자세한 계산 결과는 해석 리포트에서 볼 수
-                        있습니다.
+                        연립식은 한 줄씩 적거나 쉼표·세미콜론으로 나눕니다.
+                        미지수 수와 독립적인 식 수를 맞추면 여러 시작점을
+                        자동으로 시도합니다. 시뮬레이션 화면의 발견한 해
+                        목록에서 해를 선택하고, 시뮬레이션 추가로 여러 창을 열어
+                        비교하세요. 선택한 해의 자세한 계산 결과는 해석
+                        리포트에서 볼 수 있습니다.
                       </p>
                       <pre className="guide-code">
                         <span># 원과 직선의 교점을 자동으로 탐색합니다</span>
@@ -4216,7 +4240,7 @@ export function WorkspaceNavigation({
 
 ## src/styles.css
 
-원본: [src/styles.css](../../src/styles.css) · 3,653줄 · SHA-256: `b3538989228b0a62011f1179ddb98f3606df33d12bdf4a55ea58ece9c49aa5aa`
+원본: [src/styles.css](../../src/styles.css) · 3,666줄 · SHA-256: `380507dd0905de2f7bbe7471f43b2724235774a62abc7bddd74f0be99dbd5477`
 
 ```css
 :root {
@@ -4819,7 +4843,9 @@ h2 {
   overflow: hidden;
 }
 .line-numbers {
-  padding: 0 12px 0 13px;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 0 12px 24px 13px;
   display: flex;
   flex-direction: column;
   font-size: 12px;
@@ -4829,10 +4855,11 @@ h2 {
   text-align: right;
 }
 .equation-editor textarea {
-  resize: vertical;
-  min-height: 122px;
-  height: 122px;
-  max-height: 500px;
+  resize: none;
+  min-height: 140px;
+  max-height: 420px;
+  display: block;
+  margin: 0;
   line-height: 28px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
@@ -6116,6 +6143,8 @@ h2 {
     font-size: 14px;
   }
   .line-numbers {
+    overflow: hidden;
+    flex-shrink: 0;
     padding-left: 9px;
     padding-right: 8px;
   }
@@ -6429,6 +6458,8 @@ h2 {
     min-height: 123px;
   }
   .line-numbers {
+    overflow: hidden;
+    flex-shrink: 0;
     padding-inline: 11px;
   }
   .editor-toolbar {
@@ -7871,6 +7902,12 @@ h2 {
     margin: 7px 0 0;
     line-height: 1.7;
   }
+}
+
+.line-numbers > span {
+  flex: 0 0 28px;
+  height: 28px;
+  line-height: 28px;
 }
 ```
 

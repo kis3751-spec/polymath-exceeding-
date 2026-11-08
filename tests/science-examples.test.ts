@@ -39,6 +39,11 @@ const checks: Record<
     contact: 2,
     residual: ([v], p) => (8 * p.T) / (3 * v - 1) - 3 / v ** 2 - p.P,
   },
+  'dimensional-van-der-waals': {
+    count: 3,
+    contact: 2,
+    residual: ([v], p) => (p.P + p.a / v ** 2) * (v - p.b) - p.R * p.T,
+  },
   'transcendental-folds': {
     count: 3,
     contact: 2,

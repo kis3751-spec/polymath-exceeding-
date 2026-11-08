@@ -2946,3 +2946,170 @@ test.describe('Readable manual and scientific showcase', () => {
       })
     })
 })
+
+test.describe('Calculation audit through the actual editor and Worker', () => {
+  test('pasted dimensional van der Waals constants preserve all three roots', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    const editor = page.getByRole('textbox', { name: '방정식 입력' })
+    const source =
+      'a=3.59 (L^2·bar/mol^2), b=0.0427 (L/mol), R=0.08314\nT=280 (K), P=53 (bar)\n(P+a/V^2)*(V-b)=R*T'
+    await editor.focus()
+    await editor.evaluate((el, text) => {
+      const transfer = new DataTransfer()
+      transfer.setData(
+        'text/plain',
+        '```text\r\n' + text.replace(/\n/g, '\r\n\r\n') + '\r\n```',
+      )
+      el.dispatchEvent(
+        new ClipboardEvent('paste', {
+          clipboardData: transfer,
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    }, source)
+    await expect(editor).toHaveValue(source)
+    await expect(page.locator('.line-numbers span')).toHaveCount(3)
+    await expect(page.locator('.editor-footer')).toContainText('6개 방정식')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(3)
+    const volumes = (
+      await page.locator('.solution-choice strong').allTextContents()
+    )
+      .map((s) => Number(s.match(/V = ([\d.e+-]+)/)?.[1]))
+      .sort((a, b) => a - b)
+    expect(volumes[0]).toBeCloseTo(0.085350410047135382, 9)
+    expect(volumes[1]).toBeCloseTo(0.124592685359444031, 9)
+    expect(volumes[2]).toBeCloseTo(0.27198709327266587, 9)
+  })
+  test('chained equalities solve identically in Linear and Nonlinear screens', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page
+      .getByRole('textbox', { name: '방정식 입력' })
+      .fill('2x+y=x-y+8=10')
+    await expect(page.locator('.editor-footer')).toContainText('2개 방정식')
+    await showValues(page)
+    await expect(page.locator('.solution-value strong')).toHaveText(['4', '2'])
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page
+      .getByRole('textbox', { name: '방정식 입력' })
+      .fill('2x+y=x-y+8=10')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(1)
+    await showValues(page)
+    await expect(page.locator('.solution-value strong')).toHaveText(['4', '2'])
+  })
+  for (const width of [1440, 390])
+    test(`pasted long equations and gutter stay aligned at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 1000 })
+      await page.goto('/')
+      await navigate(page, '수식·파라미터')
+      const editor = page.getByRole('textbox', { name: '방정식 입력' })
+      const source = [
+        ...Array.from(
+          { length: 20 },
+          (_, i) => `# ${i} ${'long note '.repeat(20)}`,
+        ),
+        'x+y=3',
+        'x−y=1',
+      ].join('\n')
+      await editor.focus()
+      await editor.evaluate((el, text) => {
+        const transfer = new DataTransfer()
+        transfer.setData('text/plain', text.replace(/\n/g, '\r\n\r\n'))
+        el.dispatchEvent(
+          new ClipboardEvent('paste', {
+            clipboardData: transfer,
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      }, source)
+      await expect(editor).toHaveValue(source.replace('−', '-'))
+      await expect(page.locator('.line-numbers span')).toHaveCount(22)
+      await expect(page.locator('.editor-footer')).toContainText('2개 방정식')
+      await editor.evaluate((el) => {
+        el.scrollTop = el.scrollHeight
+      })
+      await expect
+        .poll(async () =>
+          Math.abs(
+            (await editor.evaluate((el) => el.scrollTop)) -
+              (await page
+                .locator('.line-numbers')
+                .evaluate((el) => el.scrollTop)),
+          ),
+        )
+        .toBeLessThan(1)
+      const position = await editor.evaluate((el) => ({
+        top: el.getBoundingClientRect().top,
+        scroll: el.scrollTop,
+      }))
+      const last = await page.locator('.line-numbers span').last().boundingBox()
+      expect(
+        Math.abs(last!.y - (position.top + 21 * 28 - position.scroll)),
+      ).toBeLessThan(1)
+      await showValues(page)
+      await expect(page.locator('.solution-value strong')).toHaveText([
+        '2',
+        '1',
+      ])
+    })
+  test('distinct nearby roots can both be pinned instead of sharing one result', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page
+      .getByRole('textbox', { name: '방정식 입력' })
+      .fill('(x-1)*(x-1.00000001)=0')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(2)
+    await showSimulation(page)
+    await page
+      .getByRole('button', { name: '해 1 시뮬레이션 추가', exact: true })
+      .click()
+    await expect(
+      page.getByRole('button', { name: '해 2 시뮬레이션 추가', exact: true }),
+    ).toBeEnabled()
+    await page
+      .getByRole('button', { name: '해 2 시뮬레이션 추가', exact: true })
+      .click()
+    await expect(
+      page.locator('.simulation-grid .simulation-panel'),
+    ).toHaveCount(2)
+  })
+  test('manual NLE0 evaluates a comma-separated statement list', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      mode: 'nonlinear',
+      nonlinearSearch: 'manual',
+      title: '명시식 목록',
+      description: '',
+      source: 'a=2,b=4;c=max(a,b)\na+b+c',
+      parameters: [],
+      sweepName: '',
+    })
+    await showSimulation(page)
+    await expect(page.locator('.solution-value strong')).toHaveText([
+      '2',
+      '4',
+      '4',
+      '10',
+    ])
+  })
+})

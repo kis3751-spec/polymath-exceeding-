@@ -1,9 +1,13 @@
+import { normalizedModelCall } from './source-statements'
+import { sameComputedRoot } from './root-comparison'
 import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber } from './conditioning'
 import { ModelError, type SolveResult, type SolverOptions } from './index'
-import { createNonlinearSolver } from './nonlinear'
+import { createNonlinearSolver, numericalJacobian } from './nonlinear'
 import {
   compileNonlinear,
+  evaluateNonlinearExpression,
+  type NonlinearExpression,
   isNonlinearFunction,
   parseNonlinearExpression,
   type CompiledModel,
@@ -13,6 +17,7 @@ import {
   findPolynomialRealRoots,
   isRegularPolynomialFamily,
   polynomialCoefficients,
+  rationalCoefficients,
 } from './automatic-polynomial'
 import {
   markUniquePolynomialRoot,
@@ -58,6 +63,11 @@ type Prepared = {
   polynomialRoots: Map<string, { value: number; slope: number }[] | null>
   regularPolynomialFamily: boolean
   parameterPathValidator?: ParameterPathValidator
+  fixedEquations: {
+    name: string
+    row: number
+    expression: NonlinearExpression
+  }[]
 }
 const preparedCache = new Map<string, Prepared>()
 const ROOT_LIMIT = 32
@@ -104,6 +114,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
   const helpers = new Map<string, NonlinearNode>()
   let expression: NonlinearNode | undefined
   let canonical: string
+  const fixedEquations: Prepared['fixedEquations'] = []
   if (explicit) {
     for (const { text, line } of lines) {
       const root = ROOT.exec(text)
@@ -141,6 +152,12 @@ function prepare(source: string, parameterNames: string[]): Prepared {
           !variables.includes(name)
         )
           variables.push(name)
+      if (sides.length === 2 && /^[A-Za-z][A-Za-z0-9_]*$/.test(sides[0].trim()))
+        fixedEquations.push({
+          name: sides[0].trim(),
+          row: residuals.length,
+          expression: parseNonlinearExpression(sides[1], line),
+        })
       residuals.push(residual)
     }
     if (!variables.length)
@@ -168,6 +185,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
   const model = compileNonlinear(`${canonical}\n${metadata}`, parameterNames)
   const prepared = {
     source: canonical,
+    fixedEquations,
     variables: model.variables,
     model,
     expression,
@@ -193,6 +211,99 @@ function prepare(source: string, parameterNames: string[]): Prepared {
   return prepared
 }
 
+/** Eliminate exactly specified equation variables without changing what is returned.
+ * x=2 remains an equation and x remains in the result, unlike implicit helper inference. */
+function fixedReduction(
+  prepared: Prepared,
+  parameters: Record<string, number>,
+) {
+  if (prepared.variables.length < 2 || !prepared.fixedEquations.length)
+    return undefined
+  const environment = new Map(
+    Object.entries({ pi: Math.PI, e: Math.E, ...parameters }),
+  )
+  const fixed: Record<string, number> = {},
+    rows = new Set<number>()
+  for (let pass = 0; pass < prepared.variables.length; pass++) {
+    let changed = false
+    for (const candidate of prepared.fixedEquations) {
+      if (
+        !prepared.variables.includes(candidate.name) ||
+        Object.hasOwn(fixed, candidate.name)
+      )
+        continue
+      if (
+        [...candidate.expression.references].every((name) =>
+          environment.has(name),
+        )
+      ) {
+        const value = evaluateNonlinearExpression(
+          candidate.expression,
+          environment,
+        )
+        fixed[candidate.name] = value
+        environment.set(candidate.name, value)
+        rows.add(candidate.row)
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  if (!rows.size) return undefined
+  const free = prepared.variables.filter((name) => !Object.hasOwn(fixed, name))
+  const residuals = prepared.source.split('\n').filter((_, i) => !rows.has(i))
+  const source = residuals
+    .map((line, i) => `f(${free[i]}) = ${line.slice(line.indexOf('=') + 1)}`)
+    .join('\n')
+  return { fixed, free, source }
+}
+function liftFixedResult(
+  prepared: Prepared,
+  parameters: Record<string, number>,
+  fixed: Record<string, number>,
+  freeNames: string[],
+  result: SolveResult | undefined,
+  options: SolverOptions,
+): SolveResult {
+  const free = Object.fromEntries(
+    freeNames.map((name, i) => [name, result!.values[i]]),
+  )
+  const values = prepared.variables.map((name) => fixed[name] ?? free[name])
+  const evaluate = (v: number[]) => prepared.model.evaluate(v, parameters)
+  const evaluation = evaluate(values)
+  const matrix =
+    prepared.model.jacobian?.(values, parameters) ??
+    numericalJacobian(evaluate, values, evaluation.residuals)
+  const norm = options.conditionNorm ?? 'infinity'
+  let condition = NaN,
+    conditionError: string | undefined
+  if (options.computeCondition !== false) {
+    try {
+      condition = conditionNumber(matrix, norm)
+    } catch {
+      conditionError = '해에서의 Jacobian 조건수를 계산하지 못했습니다.'
+    }
+  }
+  return {
+    kind: 'nonlinear',
+    variables: prepared.variables,
+    values,
+    auxiliary: evaluation.auxiliary,
+    matrix,
+    rhs: evaluation.residuals.map((v) => -v),
+    residuals: evaluation.residuals,
+    maxResidual: Math.max(...evaluation.residuals.map(Math.abs)),
+    condition,
+    conditionNorm: norm,
+    ...(conditionError ? { conditionError } : {}),
+    engine: result?.engine ?? 'javascript',
+    iterations: result?.iterations ?? 0,
+    durationMs: result?.durationMs ?? 0,
+    method: `고정 조건 소거 · ${result?.method ?? '직접 대입'}`,
+    warnings: result?.warnings ?? [],
+  }
+}
+
 function validateParameters(parameters: Record<string, number>) {
   for (const [name, value] of Object.entries(parameters))
     if (!Number.isFinite(value))
@@ -212,18 +323,16 @@ function boundsFor(options: AutomaticOptions) {
 }
 function unique(solutions: SolveResult[], result: SolveResult) {
   if (!result.values.every(Number.isFinite)) return false
-  const duplicate = solutions.some((other) => sameSolution(result, other))
-  if (duplicate) return false
+  const duplicate = solutions.findIndex((other) =>
+    sameComputedRoot(result, other),
+  )
+  if (duplicate >= 0) {
+    if (result.maxResidual < solutions[duplicate].maxResidual)
+      solutions[duplicate] = result
+    return false
+  }
   solutions.push(result)
   return true
-}
-function sameSolution(result: SolveResult, other: SolveResult) {
-  return result.values.every(
-    (value, i) =>
-      Math.abs(value - other.values[i]) <=
-      2e-7 *
-        Math.max(Number.MIN_VALUE, Math.abs(value), Math.abs(other.values[i])),
-  )
 }
 /** Compare Euclidean distances without overflowing for large coordinates.
  * Symmetric roots use a stable positive-first tie break, independent of the
@@ -265,6 +374,8 @@ function derivative(
   value: number,
   residual: number,
 ) {
+  const exact = model.jacobian?.([value], parameters)?.[0]?.[0]
+  if (exact !== undefined && Number.isFinite(exact)) return exact
   let step = Math.cbrt(Number.EPSILON) * (Math.abs(value) || 1)
   for (let attempt = 0; attempt < 14; attempt++, step /= 4) {
     const plus = tryScalar(model, parameters, value + step)
@@ -308,6 +419,89 @@ function smallLocalResidual(
   )
 }
 
+function algebraicCoefficients(
+  prepared: Prepared,
+  parameters: Record<string, number>,
+) {
+  if (!prepared.expression) return null
+  const constants = { pi: Math.PI, e: Math.E, ...parameters }
+  const polynomial = polynomialCoefficients(
+    prepared.expression,
+    prepared.variables[0],
+    constants,
+    prepared.helpers,
+  )
+  if (polynomial) return { coefficients: polynomial, rational: false }
+  const rational = rationalCoefficients(
+    prepared.expression,
+    prepared.variables[0],
+    constants,
+    prepared.helpers,
+  )
+  return rational ? { coefficients: rational.numerator, rational: true } : null
+}
+
+function factorCandidates(
+  prepared: Prepared,
+  parameters: Record<string, number>,
+  bounds?: { min: number; max: number },
+) {
+  const candidates: number[] = []
+  const constants = { pi: Math.PI, e: Math.E, ...parameters }
+  const active = new Set<string>()
+  const visit = (node: NonlinearNode, depth = 0): void => {
+    if (depth > 128) return
+    if (
+      node.kind === 'name' &&
+      prepared.helpers.has(node.name) &&
+      !active.has(node.name)
+    ) {
+      active.add(node.name)
+      visit(prepared.helpers.get(node.name)!, depth + 1)
+      active.delete(node.name)
+      return
+    }
+    if (node.kind === 'unary') {
+      visit(node.child, depth + 1)
+      return
+    }
+    if (node.kind === 'binary') {
+      if (node.operator === '*') {
+        visit(node.left, depth + 1)
+        visit(node.right, depth + 1)
+        return
+      }
+      if (
+        node.operator === '/' ||
+        (node.operator === '^' &&
+          node.right.kind === 'number' &&
+          node.right.value > 0)
+      ) {
+        visit(node.left, depth + 1)
+        return
+      }
+      if (
+        (node.operator === '-' || node.operator === '+') &&
+        node.right.kind === 'number' &&
+        node.right.value === 0
+      ) {
+        visit(node.left, depth + 1)
+        return
+      }
+    }
+    const coefficients = polynomialCoefficients(
+      node,
+      prepared.variables[0],
+      constants,
+      prepared.helpers,
+    )
+    if (coefficients && coefficients.length > 1)
+      candidates.push(...findPolynomialRealRoots(coefficients, bounds).roots)
+  }
+  if (prepared.expression) visit(prepared.expression)
+  return candidates
+}
+
 /** Reuse the existing polynomial isolator for local corrections as well as
  * discovery. Newton differences cannot resolve a tiny root next to a large
  * additive constant, and repeated zero roots need an exact algebraic endpoint.
@@ -321,14 +515,8 @@ function polynomialNearRoots(
   )
   if (prepared.polynomialRoots.has(key))
     return prepared.polynomialRoots.get(key)!
-  const coefficients = prepared.expression
-    ? polynomialCoefficients(
-        prepared.expression,
-        prepared.variables[0],
-        { pi: Math.PI, e: Math.E, ...parameters },
-        prepared.helpers,
-      )
-    : null
+  const algebraic = algebraicCoefficients(prepared, parameters)
+  const coefficients = algebraic?.coefficients
   let roots: { value: number; slope: number }[] | null = null
   if (coefficients) {
     const isolated = findPolynomialRealRoots(coefficients)
@@ -337,17 +525,26 @@ function polynomialNearRoots(
         '이 방정식은 미지수와 무관하게 0=0이 됩니다. 해를 특정할 독립적인 방정식이 필요합니다.',
       )
     roots = []
-    for (const value of isolated.roots) {
+    for (const value of new Set([
+      ...isolated.roots,
+      ...factorCandidates(prepared, parameters),
+    ])) {
       let slope = 0
       for (let i = coefficients.length - 1; i > 0; i--)
         slope = slope * value + i * coefficients[i]
       const residual = tryScalar(prepared.model, parameters, value)
+      if (residual !== undefined)
+        slope = derivative(prepared.model, parameters, value, residual)
       if (
         residual !== undefined &&
         hasLocalVariation(prepared.model, parameters, value) &&
         (residual === 0 ||
           (slope !== 0 &&
-            smallLocalResidual(prepared.model, parameters, value, residual)))
+            smallLocalResidual(prepared.model, parameters, value, residual) &&
+            Math.abs(residual / slope) <=
+              128 *
+                Number.EPSILON *
+                Math.max(Number.MIN_VALUE, Math.abs(value))))
       )
         roots.push({ value, slope })
     }
@@ -697,6 +894,65 @@ export async function createAutomaticSolver(
     )
       throw new ModelError('조건수 계산 방법을 확인해 주세요.')
     const prepared = prepare(source, Object.keys(parameters))
+    const reduction = fixedReduction(prepared, parameters)
+    if (reduction) {
+      const bounds = boundsFor(options)
+      const partial = reduction.free.length
+        ? search(
+            reduction.source,
+            { ...parameters, ...reduction.fixed },
+            options,
+          )
+        : undefined
+      const solutions = (
+        partial
+          ? partial.solutions.map((result) =>
+              liftFixedResult(
+                prepared,
+                parameters,
+                reduction.fixed,
+                reduction.free,
+                result,
+                options,
+              ),
+            )
+          : [
+              liftFixedResult(
+                prepared,
+                parameters,
+                reduction.fixed,
+                [],
+                undefined,
+                options,
+              ),
+            ]
+      ).filter(
+        (result) =>
+          partial ||
+          !options.searchBounds ||
+          result.values.every((v) => v >= bounds.min && v <= bounds.max),
+      )
+      sortSolutions(solutions)
+      for (const result of solutions)
+        result.durationMs = performance.now() - start
+      return {
+        solutions,
+        search: partial
+          ? {
+              ...partial.search,
+              method: `고정 조건 소거 · ${partial.search.method}`,
+              note:
+                partial.search.note +
+                ' 숫자로 고정된 등식은 소거해 계산하고 해당 변수도 결과에 포함했습니다.',
+            }
+          : {
+              method: '고정 조건 직접 대입',
+              ...bounds,
+              attempts: 1,
+              note: '모든 미지수의 값이 등식으로 정해져 원래 식에 직접 대입했습니다.',
+            },
+      }
+    }
     let bounds = boundsFor(options)
     const solutions: SolveResult[] = []
     let attempts = 0,
@@ -721,17 +977,12 @@ export async function createAutomaticSolver(
     let method: string
     let note: string
     if (prepared.variables.length === 1) {
-      const constants = { pi: Math.PI, e: Math.E, ...parameters }
-      const coefficients = prepared.expression
-        ? polynomialCoefficients(
-            prepared.expression,
-            prepared.variables[0],
-            constants,
-            prepared.helpers,
-          )
-        : null
+      const algebraic = algebraicCoefficients(prepared, parameters)
+      const coefficients = algebraic?.coefficients
       if (coefficients) {
-        method = '다항식 실근 분리 · 수치 검증'
+        method = algebraic?.rational
+          ? '유리식 분자 실근 분리 · 원래 식 검증'
+          : '다항식 실근 분리 · 수치 검증'
         const isolated = findPolynomialRealRoots(
           coefficients,
           options.searchBounds,
@@ -741,12 +992,17 @@ export async function createAutomaticSolver(
           throw new ModelError(
             '이 방정식은 미지수와 무관하게 0=0이 됩니다. 해를 특정할 독립적인 방정식이 필요합니다.',
           )
-        for (const value of isolated.roots) {
+        for (const value of new Set([
+          ...isolated.roots,
+          ...factorCandidates(prepared, parameters, options.searchBounds),
+        ])) {
           attempts++
           let slope = 0
           for (let i = coefficients.length - 1; i > 0; i--)
             slope = slope * value + i * coefficients[i]
           const residual = tryScalar(prepared.model, parameters, value)
+          if (residual !== undefined)
+            slope = derivative(prepared.model, parameters, value, residual)
           // Expanded coefficient arithmetic can produce near-zero extrema
           // that are not roots of the original expression. Validate against
           // that original expression before publishing any candidate.
@@ -758,23 +1014,49 @@ export async function createAutomaticSolver(
           if (
             residual !== 0 &&
             (slope === 0 ||
-              !smallLocalResidual(prepared.model, parameters, value, residual))
+              !smallLocalResidual(
+                prepared.model,
+                parameters,
+                value,
+                residual,
+              ) ||
+              Math.abs(residual / slope) >
+                128 *
+                  Number.EPSILON *
+                  Math.max(Number.MIN_VALUE, Math.abs(value)))
           )
             continue
           add(scalarResult(prepared, parameters, value, options, 0, slope))
         }
         note =
+          (algebraic?.rational
+            ? '분자 다항식의 후보 근을 원래 유리식에 대입하고 분모 0인 지점을 제외했습니다. '
+            : '') +
           '다항식의 계수에서 계산한 범위에서 실근을 수치적으로 분리·검증했습니다. 반올림과 중근의 영향으로 수치적 완전성을 보장하지 않습니다.'
       } else {
         method = '구간 분할 · 다중 시작점 Newton'
         note =
           '표시한 범위 안에서 여러 구간과 시작점으로 유한한 실근을 탐색했습니다. 범위 밖의 해, 가까운 중근 또는 일부 해는 누락될 수 있습니다.'
-        const count = 2048
-        const grid = Array.from(
-          { length: count + 1 },
-          (_, index) =>
-            bounds.min * (1 - index / count) + bounds.max * (index / count),
+        const nodes = new Set(
+          Array.from(
+            { length: 2049 },
+            (_, index) =>
+              bounds.min * (1 - index / 2048) + bounds.max * (index / 2048),
+          ),
         )
+        for (let index = 0; index <= 800; index++) {
+          const v = -1 + index / 400
+          if (v >= bounds.min && v <= bounds.max) nodes.add(v)
+        }
+        // Logarithmic nodes resolve open domains and roots far below the global grid scale.
+        for (let exponent = -300; exponent <= 2; exponent++)
+          for (const mantissa of [1, 2, 5])
+            for (const sign of [-1, 1]) {
+              const v = sign * mantissa * 10 ** exponent
+              if (v >= bounds.min && v <= bounds.max) nodes.add(v)
+            }
+        const grid = [...nodes].sort((a, b) => a - b)
+        const count = grid.length - 1
         const sampled = new Map<number, number | undefined>()
         const sample = (value: number) => {
           if (sampled.has(value)) return sampled.get(value)
@@ -904,6 +1186,13 @@ export async function createAutomaticSolver(
       },
     }
   }) as AutomaticSolver
-  search.solveNear = solveNear
-  return search
+  const normalizedSearch = ((source, parameters, options) =>
+    normalizedModelCall(source, Object.keys(parameters), (normalized) =>
+      search(normalized, parameters, options),
+    )) as AutomaticSolver
+  normalizedSearch.solveNear = (source, parameters, seed, options) =>
+    normalizedModelCall(source, Object.keys(parameters), (normalized) =>
+      solveNear(normalized, parameters, seed, options),
+    )
+  return normalizedSearch
 }

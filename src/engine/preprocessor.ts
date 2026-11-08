@@ -1,3 +1,4 @@
+import { normalizeEquationSource } from './source-statements'
 import { ModelError } from './index'
 
 export type DefinedFunction = {
@@ -614,6 +615,7 @@ export function preprocessSolverSource(
   parameterNames: readonly string[],
   mode: 'linear' | 'nonlinear',
 ) {
+  source = normalizeEquationSource(source, parameterNames)
   const lines = source.split('\n').map((line) => line.split('#')[0].trim())
   const numbered = lines.some((line) =>
     /^f\d+\s*(?:\(\s*[A-Za-z][A-Za-z0-9_]*\s*\))?\s*=/.test(line),

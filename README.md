@@ -218,3 +218,5 @@ npm run test:e2e
 접점 차수 진단, 정의역 경계 처리, 함수·문법 공식집의 적용 범위는 [V3 통합 기록](docs/V3_INTEGRATION.md)을 참고하세요.
 
 공식집의 화면 수정과 새 과학 예제 8개의 사용 순서는 [수학·과학 예제 안내](docs/SCIENTIFIC_EXAMPLES.md)에 정리했습니다. 사이트의 Nonlinear → 예제 불러오기에서 바로 사용할 수 있습니다.
+
+다중·연쇄 등식, 단위 주석, 유리식 근 탐색과 자동미분의 적용·검증 결과는 [계산 안정화 검토](docs/CALCULATION_AUDIT.md)에 정리했습니다. 예제 메뉴의 **몰체적을 계산하는 van der Waals**에서 280 K·53 bar의 세 근을 확인할 수 있습니다.

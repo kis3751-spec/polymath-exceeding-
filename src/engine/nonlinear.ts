@@ -1,3 +1,5 @@
+import { normalizedModelCall } from './source-statements'
+import { normalizeEquationSource } from './source-statements'
 import { conditionNumber } from './conditioning'
 import { ModelError, type SolveResult, type SolverOptions } from './index'
 import { compileNonlinear, type CompiledModel } from './nonlinear-parser'
@@ -77,7 +79,11 @@ function linearStep(
 
 /** Domain-safe differences use both sides when possible, otherwise one side.
  * Shrinking before a one-sided fallback keeps log/sqrt derivatives local. */
-function jacobian(evaluate: Evaluator, values: number[], base: number[]) {
+export function numericalJacobian(
+  evaluate: Evaluator,
+  values: number[],
+  base: number[],
+) {
   const n = values.length
   const result = Array.from({ length: n }, () => Array<number>(n).fill(0))
   for (let col = 0; col < n; col++) {
@@ -202,13 +208,16 @@ function newton(
   model: CompiledModel,
   evaluate: Evaluator,
   wasm: WasmExports | null,
+  analytic: (values: number[]) => number[][] | undefined,
 ): IterationResult {
   let values = [...model.guesses!]
   const variableScales = values.map((value) => Math.abs(value) || 1)
   const stepScale = (value: number, index: number) =>
     Math.max(Math.abs(value), variableScales[index] * 1e-6, 1e-300)
   let evaluation = evaluate(values)
-  let matrix = jacobian(evaluate, values, evaluation.residuals)
+  let matrix =
+    analytic(values) ??
+    numericalJacobian(evaluate, values, evaluation.residuals)
   const rowScales = matrix.map((row, i) => {
     const gradientScale = Math.max(
       ...row.map((entry, j) => Math.abs(entry) * variableScales[j]),
@@ -294,7 +303,9 @@ function newton(
     )
     values = accepted.values
     evaluation = accepted.evaluation
-    matrix = jacobian(evaluate, values, evaluation.residuals)
+    matrix =
+      analytic(values) ??
+      numericalJacobian(evaluate, values, evaluation.residuals)
     if (lastStep === 0 && norm(evaluation.residuals) > RESIDUAL_TOLERANCE)
       throw new ModelError(
         'Newton 보정량이 수치 한계에 도달했지만 잔차가 남았습니다. 초기 추정값과 수식의 단위를 확인해 주세요.',
@@ -335,11 +346,16 @@ export async function createNonlinearSolver(
   } catch {
     // A missing or blocked WASM module has an explicitly labelled fallback.
   }
-  return (source, parameters, options = {}) => {
+  const solve = (
+    source: string,
+    parameters: Record<string, number>,
+    options: SolverOptions = {},
+  ): SolveResult => {
     const start = performance.now()
     const conditionNorm = options.conditionNorm ?? 'infinity'
     if (conditionNorm !== 'infinity' && conditionNorm !== '2')
       throw new ModelError('조건수 계산 방법을 확인해 주세요.')
+    source = normalizeEquationSource(source, Object.keys(parameters))
     const model = compileNonlinear(source, Object.keys(parameters))
     const evaluate: Evaluator = (values) => model.evaluate(values, parameters)
     if (model.kind === 'evaluation') {
@@ -368,10 +384,15 @@ export async function createNonlinearSolver(
     let solved: IterationResult
     let matrix: number[][]
     try {
-      solved = scalar ? bisect(model, evaluate) : newton(model, evaluate, wasm)
+      solved = scalar
+        ? bisect(model, evaluate)
+        : newton(model, evaluate, wasm, (values) =>
+            model.jacobian?.(values, parameters),
+          )
       matrix =
         solved.matrix ??
-        jacobian(evaluate, solved.values, solved.evaluation.residuals)
+        model.jacobian?.(solved.values, parameters) ??
+        numericalJacobian(evaluate, solved.values, solved.evaluation.residuals)
     } catch (error) {
       if (error instanceof ModelError && error.line === undefined)
         error.line = model.rootLines?.[0]
@@ -417,9 +438,17 @@ export async function createNonlinearSolver(
       ...(conditionError ? { conditionError } : {}),
       engine: !scalar && wasm ? 'wasm' : 'javascript',
       iterations: solved.iterations,
-      method: scalar ? '구간 이분법' : '감쇠 Newton · 수치 Jacobian',
+      method: scalar
+        ? '구간 이분법'
+        : model.jacobian?.(solved.values, parameters)
+          ? '감쇠 Newton · 자동미분 Jacobian'
+          : '감쇠 Newton · 수치 Jacobian',
       durationMs: performance.now() - start,
       warnings,
     }
   }
+  return (source, parameters, options) =>
+    normalizedModelCall(source, Object.keys(parameters), (normalized) =>
+      solve(normalized, parameters, options),
+    )
 }

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `d390b2fa213e1cce9f5e53a88b697eb8dd786c7357233699aea43693841c1090`
+소스 묶음 SHA-256: `469db01b9d39894a35b42f9e60fad16bcedccbbf34997114b158185488ce07c4`
 
 ## 다른 코드 묶음
 
@@ -24,19 +24,46 @@
 
 ## 포함한 원본
 
-- [src/models.ts](#source-1) · [저장소 원본](../../src/models.ts)
-- [src/showcase-examples.ts](#source-2) · [저장소 원본](../../src/showcase-examples.ts)
-- [src/solver-input.ts](#source-3) · [저장소 원본](../../src/solver-input.ts)
-- [src/use-project-persistence.ts](#source-4) · [저장소 원본](../../src/use-project-persistence.ts)
-- [src/equation-count.ts](#source-5) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-6) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-7) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-8) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/simulation-panels.ts](#source-9) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/solver.worker.ts](#source-10) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-11) · [저장소 원본](../../src/App.tsx)
+- [src/editor-input.ts](#source-1) · [저장소 원본](../../src/editor-input.ts)
+- [src/models.ts](#source-2) · [저장소 원본](../../src/models.ts)
+- [src/showcase-examples.ts](#source-3) · [저장소 원본](../../src/showcase-examples.ts)
+- [src/solver-input.ts](#source-4) · [저장소 원본](../../src/solver-input.ts)
+- [src/use-project-persistence.ts](#source-5) · [저장소 원본](../../src/use-project-persistence.ts)
+- [src/equation-count.ts](#source-6) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-7) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-8) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-9) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/simulation-panels.ts](#source-10) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/solver.worker.ts](#source-11) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-12) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
+
+## src/editor-input.ts
+
+원본: [src/editor-input.ts](../../src/editor-input.ts) · 17줄 · SHA-256: `a36c825cf048f6e4bf0b3fda4238e022da711c4b3e253de0a068a15fe8e33b8f`
+
+````typescript
+import { normalizeMathCharacters } from './engine/source-statements'
+
+/** Clipboard plain text only. Remove an enclosing code fence, preserving deliberate blank lines. */
+export function normalizeEquationPaste(text: string) {
+  text = normalizeMathCharacters(text)
+  const fence = /^\s*```[^\n]*\n([\s\S]*?)\n```\s*$/.exec(text)
+  text = fence ? fence[1] : text
+  const lines = text.split('\n')
+  const nonempty = lines.flatMap((line, i) => (line.trim() ? [i] : []))
+  // Some rich-text code blocks duplicate every line break. Do not remove ordinary paragraph gaps.
+  if (
+    nonempty.length >= 3 &&
+    nonempty.slice(1).every((index, i) => index - nonempty[i] === 2)
+  )
+    return lines.filter((line) => line.trim()).join('\n')
+  return text
+}
+````
+
+<a id="source-2"></a>
 
 ## src/models.ts
 
@@ -200,11 +227,11 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
 ]
 ```
 
-<a id="source-2"></a>
+<a id="source-3"></a>
 
 ## src/showcase-examples.ts
 
-원본: [src/showcase-examples.ts](../../src/showcase-examples.ts) · 228줄 · SHA-256: `64f3c6f3b8a9d6853b4d25ddfdd2f80bdafec719801c9bc8dde4581a2724aa1f`
+원본: [src/showcase-examples.ts](../../src/showcase-examples.ts) · 257줄 · SHA-256: `5c5510b99ecf44416d0e578859a48b9801c8f0c8e556afe3d1537043c67d80f6`
 
 ```typescript
 import type { NonlinearExample, Project } from './models'
@@ -339,6 +366,35 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
     },
   ),
   example(
+    'dimensional-van-der-waals',
+    '열역학 · L·bar·K 단위와 유리식',
+    '몰체적을 계산하는 van der Waals',
+    'a=3.59, b=0.0427, R=0.08314에서 T=280 K, P=53 bar의 세 몰체적을 풉니다. 유리식과 삼차식 표현을 비교하세요.',
+    '# V: L/mol, P: bar, T: K\n(P + a/V^2)*(V - b) = R*T',
+    [
+      parameter('a', 3.59, 3, 4, 0.01),
+      parameter('b', 0.0427, 0.03, 0.05, 0.0001),
+      parameter('R', 0.08314, 0.08, 0.09, 0.00001),
+      parameter('T', 280, 270, 310, 1),
+      parameter('P', 53, 45, 62, 0.1),
+    ],
+    'P',
+    {
+      context:
+        '예시 상수를 사용하는 van der Waals 몰 상태방정식입니다. 모든 상수는 L·bar·K·mol 단위 체계에 맞추었습니다. 임계온도는 약 299.628 K입니다.',
+      features: ['유리식의 세 근', '단위 체계', '표현식 비교'],
+      steps: [
+        '기본값의 V≈0.0853504100, 0.1245926854, 0.2719870933 L/mol을 비교하세요. 세 해 모두 V>b인지 확인하세요.',
+        '세 해를 병합해 P≈47.1563, 58.7502 bar의 분기 끝점을 살펴보세요. T를 300 K로 바꾸면 임계온도보다 높아 하나의 실근만 남습니다. 온도 변경 후에는 새 해를 선택하세요.',
+        '식 에디터를 P*V^3-(P*b+R*T)*V^2+a*V-a*b=0 으로 바꿔 같은 세 근인지 비교할 수 있습니다. 분모를 제거한 후보는 원래 식에서 검증해야 합니다.',
+      ],
+      reference: {
+        label: 'Van der Waals equation · 임계 상수',
+        url: 'https://en.wikipedia.org/wiki/Van_der_Waals_equation#Critical_point',
+      },
+    },
+  ),
+  example(
     'transcendental-folds',
     '수학 · 초월함수의 두 접점',
     '삼각·쌍곡함수의 교점 병합',
@@ -437,7 +493,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
 ]
 ```
 
-<a id="source-3"></a>
+<a id="source-4"></a>
 
 ## src/solver-input.ts
 
@@ -477,7 +533,7 @@ export const solverInputKey = (project: Project, revision: number) =>
   JSON.stringify([createSolverInput(project), revision])
 ```
 
-<a id="source-4"></a>
+<a id="source-5"></a>
 
 ## src/use-project-persistence.ts
 
@@ -540,7 +596,7 @@ export function useProjectPersistence(
 }
 ```
 
-<a id="source-5"></a>
+<a id="source-6"></a>
 
 ## src/equation-count.ts
 
@@ -581,7 +637,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-6"></a>
+<a id="source-7"></a>
 
 ## src/csv.ts
 
@@ -604,7 +660,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-8"></a>
 
 ## src/engine/sweep.ts
 
@@ -793,7 +849,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-9"></a>
 
 ## src/engine/branches.ts
 
@@ -1318,7 +1374,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-10"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -1794,13 +1850,15 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-11"></a>
 
 ## src/engine/solver.worker.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 342줄 · SHA-256: `01a4db42e3cdc49252c08d7458e452c2a91db5de03d999494c59fdc9008dbb00`
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 338줄 · SHA-256: `135f3e091a1a284dc340e6c0c6ceefdc051e847e5936e8095b1cee874883240d`
 
 ```typescript
+import { normalizeEquationSource } from './source-statements'
+import { sameComputedRoot } from './root-comparison'
 /// <reference lib="webworker" />
 import {
   createSolver,
@@ -2040,19 +2098,8 @@ async function handleRequest(work: QueuedRequest) {
           : 0
       if (selectedSimulation?.result) {
         const current = selectedSimulation.result
-        const matching = found.solutions.findIndex(
-          (candidate) =>
-            candidate.variables.join('\0') === current.variables.join('\0') &&
-            candidate.values.every(
-              (value, i) =>
-                Math.abs(value - current.values[i]) <=
-                2e-7 *
-                  Math.max(
-                    Number.MIN_VALUE,
-                    Math.abs(value),
-                    Math.abs(current.values[i]),
-                  ),
-            ),
+        const matching = found.solutions.findIndex((candidate) =>
+          sameComputedRoot(candidate, current),
         )
         if (matching >= 0) selectedSolution = matching
       }
@@ -2103,12 +2150,17 @@ async function handleRequest(work: QueuedRequest) {
     if (work.generation !== generation) return
     let calculationSource = source
     if (mode === 'nonlinear') {
-      const expanded = preprocessSolverSource(
+      const normalized = normalizeEquationSource(
         source,
+        Object.keys(parameters),
+      )
+      calculationSource = normalized
+      const expanded = preprocessSolverSource(
+        normalized,
         Object.keys(parameters),
         'nonlinear',
       )
-      if (expanded !== source) {
+      if (expanded !== normalized) {
         const conditions = expanded.split('\n').filter((line) => {
           const match =
             /^\s*([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/.exec(line)
@@ -2145,13 +2197,15 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-12"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 2,898줄 · SHA-256: `97ca13c07569bee3af9df423ade7ca257f86d018cea500ea2b2f4f76dd791e3f`
+원본: [src/App.tsx](../../src/App.tsx) · 2,932줄 · SHA-256: `f04ff789e36fd04fb04c1428f83a5ea05b73955ef7322d51d9dd34be7840bf68`
 
 ```tsx
+import { sameComputedRoot } from './engine/root-comparison'
+import { normalizeEquationPaste } from './editor-input'
 import ExampleWalkthrough from './components/ExampleWalkthrough'
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -2222,9 +2276,9 @@ const fmt = (n: number, digits = 5) =>
     : n === 0
       ? '0'
       : Math.abs(n) < 0.000001 || Math.abs(n) >= 1e9
-        ? n.toExponential(Math.min(5, digits - 1))
+        ? n.toExponential(Math.min(15, digits - 1))
         : Number(n.toPrecision(digits)).toLocaleString('en-US', {
-            maximumFractionDigits: 8,
+            maximumSignificantDigits: digits,
           })
 function validAnchor(value: unknown): value is SimulationAnchor {
   if (!value || typeof value !== 'object') return false
@@ -2388,6 +2442,7 @@ export default function App() {
   const requestId = useRef(0)
   const importRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<HTMLTextAreaElement>(null)
+  const lineNumbersRef = useRef<HTMLDivElement>(null)
   const examplesRef = useRef<HTMLDivElement>(null)
   const projectRef = useRef(project)
   projectRef.current = project
@@ -2438,18 +2493,7 @@ export default function App() {
     ? solutions.findIndex(
         (item) =>
           selectedBranch.result &&
-          item.variables.join('|') ===
-            selectedBranch.result.variables.join('|') &&
-          item.values.every(
-            (value, i) =>
-              Math.abs(value - selectedBranch.result!.values[i]) <=
-              2e-7 *
-                Math.max(
-                  Number.MIN_VALUE,
-                  Math.abs(value),
-                  Math.abs(selectedBranch.result!.values[i]),
-                ),
-          ),
+          sameComputedRoot(item, selectedBranch.result),
       )
     : (basePayload?.selectedSolution ?? solutionIndex)
   const evaluation = result?.kind === 'evaluation'
@@ -2470,7 +2514,11 @@ export default function App() {
   const sweepParam = project.parameters.find(
     (p) => p.name === project.sweepName,
   )
-  const sourceLines = project.source.split('\n')
+  const sourceLines = project.source.replace(/\r\n?/g, '\n').split('\n')
+  const editorHeight = Math.min(
+    420,
+    Math.max(164, sourceLines.length * 28 + 24),
+  )
   const equationCount = countEquations(
     project.source,
     nonlinear,
@@ -2790,13 +2838,7 @@ export default function App() {
       (panel) =>
         anchors.some((anchor) => anchor.id === panel.id) &&
         panel.result &&
-        panel.result.variables.join('|') === item.variables.join('|') &&
-        panel.result.values.every(
-          (v, i) =>
-            Math.abs(v - item.values[i]) <=
-            2e-7 *
-              Math.max(Number.MIN_VALUE, Math.abs(v), Math.abs(item.values[i])),
-        ),
+        sameComputedRoot(panel.result, item),
     )
   }
   function rootAlreadyOpen(item: SolveResult) {
@@ -3333,13 +3375,57 @@ export default function App() {
                 <div
                   className={`equation-editor ${error ? 'editor-error' : ''}`}
                 >
-                  <div className="line-numbers" aria-hidden="true">
+                  <div
+                    className="line-numbers"
+                    ref={lineNumbersRef}
+                    style={{ height: editorHeight }}
+                    aria-hidden="true"
+                  >
                     {sourceLines.map((_, i) => (
                       <span key={i}>{String(i + 1).padStart(2, '0')}</span>
                     ))}
                   </div>
                   <textarea
                     ref={editorRef}
+                    wrap="off"
+                    style={{ height: editorHeight }}
+                    onScroll={(e) => {
+                      if (lineNumbersRef.current)
+                        lineNumbersRef.current.scrollTop =
+                          e.currentTarget.scrollTop
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault()
+                      const el = e.currentTarget,
+                        start = el.selectionStart,
+                        end = el.selectionEnd
+                      const pasted = normalizeEquationPaste(
+                        e.clipboardData.getData('text/plain'),
+                      )
+                      const available = Math.max(
+                        0,
+                        30000 - project.source.length + (end - start),
+                      )
+                      const insertion = pasted.slice(0, available)
+                      setProject((p) => ({
+                        ...p,
+                        source:
+                          p.source.slice(0, start) +
+                          insertion +
+                          p.source.slice(end),
+                        selectedSolution: 0,
+                        selectedAnchor: undefined,
+                        simulations: [],
+                        mergedSets: [],
+                        individualIds: [],
+                      }))
+                      requestAnimationFrame(() => {
+                        el.selectionStart = el.selectionEnd =
+                          start + insertion.length
+                        if (lineNumbersRef.current)
+                          lineNumbersRef.current.scrollTop = el.scrollTop
+                      })
+                    }}
                     aria-label="방정식 입력"
                     spellCheck={false}
                     maxLength={30000}

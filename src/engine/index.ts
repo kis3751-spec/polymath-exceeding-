@@ -1,3 +1,4 @@
+import { normalizedModelCall } from './source-statements'
 import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber, type ConditionNorm } from './conditioning'
 export {
@@ -509,7 +510,11 @@ export async function createSolver(
   } catch {
     /* Offline browser constraints can use the same pivoted algorithm in JavaScript. */
   }
-  return (source, parameters, options = {}) => {
+  const solve = (
+    source: string,
+    parameters: Record<string, number>,
+    options: SolverOptions = {},
+  ): SolveResult => {
     source = preprocessSolverSource(source, Object.keys(parameters), 'linear')
     const start = performance.now()
     const conditionNorm = options.conditionNorm ?? 'infinity'
@@ -589,4 +594,8 @@ export async function createSolver(
       warnings,
     }
   }
+  return (source, parameters, options) =>
+    normalizedModelCall(source, Object.keys(parameters), (normalized) =>
+      solve(normalized, parameters, options),
+    )
 }

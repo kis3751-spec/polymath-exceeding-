@@ -1,3 +1,4 @@
+import { evaluateDual, type Dual } from './expression-derivative'
 import { ModelError } from './index'
 
 export type NonlinearNode =
@@ -40,6 +41,10 @@ export type CompiledModel = {
   kind: 'nonlinear' | 'evaluation'
   bounds?: { min: number; max: number }
   guesses?: number[]
+  jacobian?: (
+    values: number[],
+    parameters: Record<string, number>,
+  ) => number[][] | undefined
   evaluate(
     values: number[],
     parameters: Record<string, number>,
@@ -517,6 +522,36 @@ export function compileNonlinear(
     kind: roots.length ? 'nonlinear' : 'evaluation',
     bounds,
     guesses,
+    jacobian(values, parameterValues) {
+      const matrix = Array.from({ length: roots.length }, () =>
+        Array<number>(variables.length).fill(0),
+      )
+      for (let col = 0; col < variables.length; col++) {
+        const environment = new Map<string, Dual>([
+          ['pi', { value: Math.PI, derivative: 0 }],
+          ['e', { value: Math.E, derivative: 0 }],
+        ])
+        for (const name of parameters)
+          environment.set(name, { value: parameterValues[name], derivative: 0 })
+        variables.forEach((name, i) =>
+          environment.set(name, {
+            value: values[i],
+            derivative: i === col ? 1 : 0,
+          }),
+        )
+        for (const assignment of sorted) {
+          const dual = evaluateDual(assignment.node, environment)
+          if (!dual) return undefined
+          environment.set(assignment.name, dual)
+        }
+        for (let row = 0; row < roots.length; row++) {
+          const dual = evaluateDual(roots[row].node, environment)
+          if (!dual) return undefined
+          matrix[row][col] = dual.derivative
+        }
+      }
+      return matrix
+    },
     evaluate(values, parameterValues) {
       if (values.length !== roots.length || !values.every(Number.isFinite))
         throw new ModelError(

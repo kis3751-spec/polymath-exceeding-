@@ -32,6 +32,9 @@ const books = [
     files: [
       'src/engine/index.ts',
       'src/engine/nonlinear-parser.ts',
+      'src/engine/expression-derivative.ts',
+      'src/engine/root-comparison.ts',
+      'src/engine/source-statements.ts',
       'src/engine/preprocessor.ts',
       'src/engine/nonlinear.ts',
       'src/engine/automatic-polynomial.ts',
@@ -54,6 +57,7 @@ const books = [
       '탐색 변수의 현재값은 곡선 위의 현재 지점을 가리킵니다. 같은 기준 해·다른 고정 파라미터·범위·간격에서는 현재 탐색 변수만 움직여도 기준 곡선이 달라지지 않도록 계산과 표시를 구분합니다. 다른 고정 파라미터, 선택한 해 또는 탐색 범위가 바뀌면 곡선을 다시 계산할 수 있습니다.',
     ],
     files: [
+      'src/editor-input.ts',
       'src/models.ts',
       'src/showcase-examples.ts',
       'src/solver-input.ts',

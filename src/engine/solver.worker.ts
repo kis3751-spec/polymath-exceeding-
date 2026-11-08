@@ -1,3 +1,5 @@
+import { normalizeEquationSource } from './source-statements'
+import { sameComputedRoot } from './root-comparison'
 /// <reference lib="webworker" />
 import {
   createSolver,
@@ -237,19 +239,8 @@ async function handleRequest(work: QueuedRequest) {
           : 0
       if (selectedSimulation?.result) {
         const current = selectedSimulation.result
-        const matching = found.solutions.findIndex(
-          (candidate) =>
-            candidate.variables.join('\0') === current.variables.join('\0') &&
-            candidate.values.every(
-              (value, i) =>
-                Math.abs(value - current.values[i]) <=
-                2e-7 *
-                  Math.max(
-                    Number.MIN_VALUE,
-                    Math.abs(value),
-                    Math.abs(current.values[i]),
-                  ),
-            ),
+        const matching = found.solutions.findIndex((candidate) =>
+          sameComputedRoot(candidate, current),
         )
         if (matching >= 0) selectedSolution = matching
       }
@@ -300,12 +291,17 @@ async function handleRequest(work: QueuedRequest) {
     if (work.generation !== generation) return
     let calculationSource = source
     if (mode === 'nonlinear') {
-      const expanded = preprocessSolverSource(
+      const normalized = normalizeEquationSource(
         source,
+        Object.keys(parameters),
+      )
+      calculationSource = normalized
+      const expanded = preprocessSolverSource(
+        normalized,
         Object.keys(parameters),
         'nonlinear',
       )
-      if (expanded !== source) {
+      if (expanded !== normalized) {
         const conditions = expanded.split('\n').filter((line) => {
           const match =
             /^\s*([A-Za-z][A-Za-z0-9_]*)\(\s*(min|max|0)\s*\)\s*=/.exec(line)

@@ -598,7 +598,9 @@ h2 {
   overflow: hidden;
 }
 .line-numbers {
-  padding: 0 12px 0 13px;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 0 12px 24px 13px;
   display: flex;
   flex-direction: column;
   font-size: 12px;
@@ -608,10 +610,11 @@ h2 {
   text-align: right;
 }
 .equation-editor textarea {
-  resize: vertical;
-  min-height: 122px;
-  height: 122px;
-  max-height: 500px;
+  resize: none;
+  min-height: 140px;
+  max-height: 420px;
+  display: block;
+  margin: 0;
   line-height: 28px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 13px;
@@ -1895,6 +1898,8 @@ h2 {
     font-size: 14px;
   }
   .line-numbers {
+    overflow: hidden;
+    flex-shrink: 0;
     padding-left: 9px;
     padding-right: 8px;
   }
@@ -2208,6 +2213,8 @@ h2 {
     min-height: 123px;
   }
   .line-numbers {
+    overflow: hidden;
+    flex-shrink: 0;
     padding-inline: 11px;
   }
   .editor-toolbar {
@@ -3650,4 +3657,10 @@ h2 {
     margin: 7px 0 0;
     line-height: 1.7;
   }
+}
+
+.line-numbers > span {
+  flex: 0 0 28px;
+  height: 28px;
+  line-height: 28px;
 }

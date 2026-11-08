@@ -119,7 +119,6 @@ describe('safe expression validation', () => {
   )
   it.each([
     'x =',
-    'x = y = 3',
     'x + y',
     'x + *y = 2',
     'x y = 2',
