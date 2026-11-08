@@ -8,6 +8,7 @@ export function createSolverInput(project: Project) {
     conditionNorm: project.conditionNorm ?? 'infinity',
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',
+    certifyRoots: project.certifyRoots ?? false,
     searchBounds: project.searchBounds,
     variableBounds: project.variableBounds,
     solutionIndex: project.selectedSolution ?? 0,

@@ -24,6 +24,7 @@ export type Project = {
   sweepName: string
   conditionNorm?: ConditionNorm
   nonlinearSearch?: 'auto' | 'manual'
+  certifyRoots?: boolean
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   selectedSolution?: number

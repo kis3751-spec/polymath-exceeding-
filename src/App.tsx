@@ -1,4 +1,10 @@
 import { normalizeAutomaticModel } from './engine/automatic'
+import {
+  certificateSummary,
+  certificateReport,
+  unresolvedReason,
+  type RootCertificate,
+} from './engine/interval-certification'
 import type { VariableBounds, SearchWindow } from './engine/search-analysis'
 import { sameComputedRoot } from './engine/root-comparison'
 import { normalizeEquationPaste } from './editor-input'
@@ -154,6 +160,7 @@ function isProject(value: unknown): value is Project {
     (p.nonlinearSearch === undefined ||
       p.nonlinearSearch === 'auto' ||
       p.nonlinearSearch === 'manual') &&
+    (p.certifyRoots === undefined || typeof p.certifyRoots === 'boolean') &&
     (p.selectedSolution === undefined ||
       (Number.isInteger(p.selectedSolution) &&
         p.selectedSolution >= 0 &&
@@ -463,6 +470,7 @@ export default function App() {
     nonlinearSearch,
     project.searchBounds,
     project.variableBounds,
+    project.certifyRoots,
     solutionIndex,
     project.simulations,
     project.selectedAnchor,
@@ -871,6 +879,9 @@ export default function App() {
         coverage
           ? `탐색: ${coverage.method}\n\n범위: ${coverage.min} ~ ${coverage.max}\n\n${coverage.note}`
           : '',
+        coverage?.certification
+          ? certificateReport(coverage.certification)
+          : (coverage?.certificationUnavailable ?? ''),
         target.method
           ? `방법: ${target.method} · 반복 ${target.iterations ?? 0}회`
           : '',
@@ -1342,23 +1353,38 @@ export default function App() {
                         <option value="manual">초기 조건으로 한 해 찾기</option>
                       </select>
                       {automatic ? (
-                        <SearchBoundsEditor
-                          bounds={project.searchBounds}
-                          variables={boundsVariables}
-                          variableBounds={project.variableBounds}
-                          window={
-                            searchInfo?.window ?? basePayload?.search?.window
-                          }
-                          onApply={(bounds, variableBounds) =>
-                            setProject((p) => ({
-                              ...p,
-                              searchBounds: bounds,
-                              variableBounds,
-                              selectedAnchor: undefined,
-                              selectedSolution: 0,
-                            }))
-                          }
-                        />
+                        <>
+                          <label className="certification-toggle">
+                            <input
+                              type="checkbox"
+                              checked={project.certifyRoots ?? false}
+                              onChange={(e) =>
+                                setProject((p) => ({
+                                  ...p,
+                                  certifyRoots: e.target.checked,
+                                }))
+                              }
+                            />
+                            구간 검증 사용 (단일 변수·추가 계산)
+                          </label>
+                          <SearchBoundsEditor
+                            bounds={project.searchBounds}
+                            variables={boundsVariables}
+                            variableBounds={project.variableBounds}
+                            window={
+                              searchInfo?.window ?? basePayload?.search?.window
+                            }
+                            onApply={(bounds, variableBounds) =>
+                              setProject((p) => ({
+                                ...p,
+                                searchBounds: bounds,
+                                variableBounds,
+                                selectedAnchor: undefined,
+                                selectedSolution: 0,
+                              }))
+                            }
+                          />
+                        </>
                       ) : (
                         <p>
                           f(x)=잔차식과 x(min)·x(max), 또는 연립식의 각 x(0)을
@@ -2850,7 +2876,80 @@ function SearchCoverage({ search }: { search: SearchSummary }) {
               .join(' · ')}
           </p>
         )}
+      {search.certification && (
+        <IntervalCertificateView certificate={search.certification} />
+      )}
+      {search.certificationUnavailable && (
+        <p>{search.certificationUnavailable}</p>
+      )}
     </div>
+  )
+}
+function IntervalCertificateView({
+  certificate: c,
+}: {
+  certificate: RootCertificate
+}) {
+  return (
+    <details className="interval-certificate">
+      <summary>{certificateSummary(c)}</summary>
+      <p>
+        검증 범위: {c.variable} ∈ [{String(c.domain.min)},{' '}
+        {String(c.domain.max)}]. 유일한 단순근 구간 {c.uniqueRootCount}개 ·
+        정의역 제외 구간 {c.excludedDomainCount}개.
+      </p>
+      <p>
+        길이 비율은 근을 모두 찾았을 확률이 아닙니다. 미결정 구간이 하나라도
+        있으면 전체 실근 검증은 보류됩니다. 입력한 Float64 상수의 실수 모델을
+        검증하며 측정 오차는 포함하지 않습니다.
+      </p>
+      {c.complete && (
+        <p>
+          {c.allRootsRepresented
+            ? '분리한 모든 근 구간에 계산 결과가 대응합니다.'
+            : '분리한 근 구간과 표시된 계산 결과의 대응을 확인하지 못했습니다.'}
+        </p>
+      )}
+      {c.rootIntervals.length > 0 && (
+        <details>
+          <summary>유일근 분리 구간 보기</summary>
+          <ul>
+            {c.rootIntervals.slice(0, 24).map((i, n) => (
+              <li key={n}>
+                [{String(i.lo)}, {String(i.hi)}]
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {c.unresolved.length > 0 && (
+        <ul>
+          {c.unresolved.slice(0, 24).map((i, n) => (
+            <li key={n}>
+              [{String(i.lo)}, {String(i.hi)}] · {unresolvedReason(i.reason)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {c.unresolved.length > 24 && (
+        <p>
+          나머지 {c.unresolved.length - 24}곳은 내려받은 리포트에서 확인하세요.
+        </p>
+      )}
+      <button
+        type="button"
+        className="outline-button"
+        onClick={() =>
+          downloadFile(
+            'polymath-interval-verification.md',
+            certificateReport(c),
+            'text/markdown;charset=utf-8',
+          )
+        }
+      >
+        구간 검증 저장
+      </button>
+    </details>
   )
 }
 function SearchBoundsEditor({

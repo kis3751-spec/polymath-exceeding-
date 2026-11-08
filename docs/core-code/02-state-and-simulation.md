@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `c5efdc600b8df92cd4e1c3b0d4503e04474e3effc16b5f9241d3c466e0ee95cb`
+소스 묶음 SHA-256: `8b090532183b2dc5763d6d769626ce8ac34afc855934067bc31fb1e6aebfba89`
 
 ## 다른 코드 묶음
 
@@ -67,7 +67,7 @@ export function normalizeEquationPaste(text: string) {
 
 ## src/models.ts
 
-원본: [src/models.ts](../../src/models.ts) · 157줄 · SHA-256: `88902a0db773c2e64d32ef5afc6a9bdd230ee4772079c2fb69d17066b336623d`
+원본: [src/models.ts](../../src/models.ts) · 158줄 · SHA-256: `0779298c48673d487f18b09713b7fa8aed8fe31e0b97c8da7c457a5d152252ab`
 
 ```typescript
 import type { VariableBounds } from './engine/search-analysis'
@@ -96,6 +96,7 @@ export type Project = {
   sweepName: string
   conditionNorm?: ConditionNorm
   nonlinearSearch?: 'auto' | 'manual'
+  certifyRoots?: boolean
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   selectedSolution?: number
@@ -499,7 +500,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
 
 ## src/solver-input.ts
 
-원본: [src/solver-input.ts](../../src/solver-input.ts) · 32줄 · SHA-256: `92e1929946c92be8a0447cf47a9324a6b2819107e0314f9df9f24328752514b4`
+원본: [src/solver-input.ts](../../src/solver-input.ts) · 33줄 · SHA-256: `3ca2bb87c4650b981380ff1a890ba8304a10c7ae5d12f87523b38abbc68cc9a2`
 
 ```typescript
 import type { Project } from './models'
@@ -512,6 +513,7 @@ export function createSolverInput(project: Project) {
     conditionNorm: project.conditionNorm ?? 'infinity',
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',
+    certifyRoots: project.certifyRoots ?? false,
     searchBounds: project.searchBounds,
     variableBounds: project.variableBounds,
     solutionIndex: project.selectedSolution ?? 0,
@@ -1859,7 +1861,7 @@ export function detectMergedBranchEvents(
 
 ## src/engine/solver.worker.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 351줄 · SHA-256: `447a150a99e7b23ba67045b35f11d2234212658bdf799e6188b8cc327918e87f`
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 361줄 · SHA-256: `dcfab689b0f55d09067010dfe6b2271687f13bde79a19106b62d4095f96e2e03`
 
 ```typescript
 import type { VariableBounds } from './search-analysis'
@@ -1891,6 +1893,7 @@ type Request = {
   conditionNorm?: ConditionNorm
   mode?: 'linear' | 'nonlinear'
   nonlinearSearch?: 'auto' | 'manual'
+  certifyRoots?: boolean
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   solutionIndex?: number
@@ -1922,6 +1925,7 @@ const sortedParameters = (parameters: Record<string, number>) =>
 
 function discoveryKey(request: Request) {
   return JSON.stringify([
+    request.certifyRoots ?? false,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -1939,6 +1943,7 @@ function discoveryKey(request: Request) {
 // discovery before the UI presents a new root list.
 function discoveryContext(request: Request) {
   return JSON.stringify([
+    request.certifyRoots ?? false,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -1999,6 +2004,7 @@ async function handleRequest(work: QueuedRequest) {
     conditionNorm,
     mode,
     nonlinearSearch,
+    certifyRoots,
     searchBounds,
     variableBounds,
     solutionIndex,
@@ -2071,6 +2077,7 @@ async function handleRequest(work: QueuedRequest) {
       let found = searches.get(key)
       if (!found) {
         found = search(source, parameters, {
+          certifyRoots,
           conditionNorm,
           searchBounds,
           variableBounds,
@@ -2098,12 +2105,17 @@ async function handleRequest(work: QueuedRequest) {
           )[0]
         : undefined
       if (!found.solutions.length && !selectedSimulation?.result) {
+        const certificate = found.search.certification
         self.postMessage({
           id,
           ok: false,
           discoveryPending: false,
           error:
-            '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
+            certificate?.complete && certificate.uniqueRootCount === 0
+              ? `구간 검증 범위 [${certificate.domain.min}, ${certificate.domain.max}]에서 정의된 실수 해가 없습니다. 범위 밖의 해는 판정하지 않았습니다.`
+              : certificate?.uniqueRootCount
+                ? '구간 검증에서 유일근 구간을 분리했지만 표시할 근의 수치 보정에 실패했습니다. 구간 검증 내역을 확인하세요.'
+                : '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
           search: found.search,
           ...(simulations ? { simulations } : {}),
           ...(selectedSimulation ? { selectedSimulation } : {}),
@@ -2219,10 +2231,16 @@ async function handleRequest(work: QueuedRequest) {
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,134줄 · SHA-256: `0df943d552cc4cb1bad86f738cd30d64d74eb2fbe531887dd903f53937d631db`
+원본: [src/App.tsx](../../src/App.tsx) · 3,233줄 · SHA-256: `9a79d650a02a2f0792979fb97ede7f28d337c4e90e016f9698474df8053dc2fc`
 
 ```tsx
 import { normalizeAutomaticModel } from './engine/automatic'
+import {
+  certificateSummary,
+  certificateReport,
+  unresolvedReason,
+  type RootCertificate,
+} from './engine/interval-certification'
 import type { VariableBounds, SearchWindow } from './engine/search-analysis'
 import { sameComputedRoot } from './engine/root-comparison'
 import { normalizeEquationPaste } from './editor-input'
@@ -2378,6 +2396,7 @@ function isProject(value: unknown): value is Project {
     (p.nonlinearSearch === undefined ||
       p.nonlinearSearch === 'auto' ||
       p.nonlinearSearch === 'manual') &&
+    (p.certifyRoots === undefined || typeof p.certifyRoots === 'boolean') &&
     (p.selectedSolution === undefined ||
       (Number.isInteger(p.selectedSolution) &&
         p.selectedSolution >= 0 &&
@@ -2687,6 +2706,7 @@ export default function App() {
     nonlinearSearch,
     project.searchBounds,
     project.variableBounds,
+    project.certifyRoots,
     solutionIndex,
     project.simulations,
     project.selectedAnchor,
@@ -3095,6 +3115,9 @@ export default function App() {
         coverage
           ? `탐색: ${coverage.method}\n\n범위: ${coverage.min} ~ ${coverage.max}\n\n${coverage.note}`
           : '',
+        coverage?.certification
+          ? certificateReport(coverage.certification)
+          : (coverage?.certificationUnavailable ?? ''),
         target.method
           ? `방법: ${target.method} · 반복 ${target.iterations ?? 0}회`
           : '',
@@ -3566,23 +3589,38 @@ export default function App() {
                         <option value="manual">초기 조건으로 한 해 찾기</option>
                       </select>
                       {automatic ? (
-                        <SearchBoundsEditor
-                          bounds={project.searchBounds}
-                          variables={boundsVariables}
-                          variableBounds={project.variableBounds}
-                          window={
-                            searchInfo?.window ?? basePayload?.search?.window
-                          }
-                          onApply={(bounds, variableBounds) =>
-                            setProject((p) => ({
-                              ...p,
-                              searchBounds: bounds,
-                              variableBounds,
-                              selectedAnchor: undefined,
-                              selectedSolution: 0,
-                            }))
-                          }
-                        />
+                        <>
+                          <label className="certification-toggle">
+                            <input
+                              type="checkbox"
+                              checked={project.certifyRoots ?? false}
+                              onChange={(e) =>
+                                setProject((p) => ({
+                                  ...p,
+                                  certifyRoots: e.target.checked,
+                                }))
+                              }
+                            />
+                            구간 검증 사용 (단일 변수·추가 계산)
+                          </label>
+                          <SearchBoundsEditor
+                            bounds={project.searchBounds}
+                            variables={boundsVariables}
+                            variableBounds={project.variableBounds}
+                            window={
+                              searchInfo?.window ?? basePayload?.search?.window
+                            }
+                            onApply={(bounds, variableBounds) =>
+                              setProject((p) => ({
+                                ...p,
+                                searchBounds: bounds,
+                                variableBounds,
+                                selectedAnchor: undefined,
+                                selectedSolution: 0,
+                              }))
+                            }
+                          />
+                        </>
                       ) : (
                         <p>
                           f(x)=잔차식과 x(min)·x(max), 또는 연립식의 각 x(0)을
@@ -5074,7 +5112,80 @@ function SearchCoverage({ search }: { search: SearchSummary }) {
               .join(' · ')}
           </p>
         )}
+      {search.certification && (
+        <IntervalCertificateView certificate={search.certification} />
+      )}
+      {search.certificationUnavailable && (
+        <p>{search.certificationUnavailable}</p>
+      )}
     </div>
+  )
+}
+function IntervalCertificateView({
+  certificate: c,
+}: {
+  certificate: RootCertificate
+}) {
+  return (
+    <details className="interval-certificate">
+      <summary>{certificateSummary(c)}</summary>
+      <p>
+        검증 범위: {c.variable} ∈ [{String(c.domain.min)},{' '}
+        {String(c.domain.max)}]. 유일한 단순근 구간 {c.uniqueRootCount}개 ·
+        정의역 제외 구간 {c.excludedDomainCount}개.
+      </p>
+      <p>
+        길이 비율은 근을 모두 찾았을 확률이 아닙니다. 미결정 구간이 하나라도
+        있으면 전체 실근 검증은 보류됩니다. 입력한 Float64 상수의 실수 모델을
+        검증하며 측정 오차는 포함하지 않습니다.
+      </p>
+      {c.complete && (
+        <p>
+          {c.allRootsRepresented
+            ? '분리한 모든 근 구간에 계산 결과가 대응합니다.'
+            : '분리한 근 구간과 표시된 계산 결과의 대응을 확인하지 못했습니다.'}
+        </p>
+      )}
+      {c.rootIntervals.length > 0 && (
+        <details>
+          <summary>유일근 분리 구간 보기</summary>
+          <ul>
+            {c.rootIntervals.slice(0, 24).map((i, n) => (
+              <li key={n}>
+                [{String(i.lo)}, {String(i.hi)}]
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {c.unresolved.length > 0 && (
+        <ul>
+          {c.unresolved.slice(0, 24).map((i, n) => (
+            <li key={n}>
+              [{String(i.lo)}, {String(i.hi)}] · {unresolvedReason(i.reason)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {c.unresolved.length > 24 && (
+        <p>
+          나머지 {c.unresolved.length - 24}곳은 내려받은 리포트에서 확인하세요.
+        </p>
+      )}
+      <button
+        type="button"
+        className="outline-button"
+        onClick={() =>
+          downloadFile(
+            'polymath-interval-verification.md',
+            certificateReport(c),
+            'text/markdown;charset=utf-8',
+          )
+        }
+      >
+        구간 검증 저장
+      </button>
+    </details>
   )
 }
 function SearchBoundsEditor({

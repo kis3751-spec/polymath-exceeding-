@@ -35,6 +35,8 @@ const books = [
       'src/engine/expression-derivative.ts',
       'src/engine/root-comparison.ts',
       'src/engine/search-analysis.ts',
+      'src/engine/interval-arithmetic.ts',
+      'src/engine/interval-certification.ts',
       'src/engine/derivative-free.ts',
       'src/engine/square-free.ts',
       'src/engine/source-statements.ts',

@@ -1,4 +1,5 @@
 import type { VariableBounds, SearchWindow } from './search-analysis'
+import type { RootCertificate } from './interval-certification'
 import { normalizedModelCall } from './source-statements'
 import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber, type ConditionNorm } from './conditioning'
@@ -47,6 +48,8 @@ export type SweepPoint = {
   error?: string
 }
 export type SearchSummary = {
+  certification?: RootCertificate
+  certificationUnavailable?: string
   variableBounds?: VariableBounds
   window?: SearchWindow
   nonIsolated?: boolean

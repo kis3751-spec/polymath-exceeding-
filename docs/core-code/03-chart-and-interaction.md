@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `3503fc91686b50aff9af77542c08db3f1348334ac5cccf85f49ca179e4a04b11`
+소스 묶음 SHA-256: `1c3018dcdf87ddebb83ec8413e8d19a9fd5a58d75d70f3c63cc6bb0638aac907`
 
 ## 다른 코드 묶음
 
@@ -286,7 +286,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/EquationReference.tsx
 
-원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 177줄 · SHA-256: `b60ad2bc742d1a5e91860e9acd5ace37794fe82be2b89d28746ead6d79219359`
+원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 185줄 · SHA-256: `85ff5bf77fcc25ac6e17518c5e9a020a9d5c1c8128afdc7611f4dd2854b50b6e`
 
 ```tsx
 const functions = [
@@ -445,6 +445,14 @@ export default function EquationReference() {
           다변수계의 미분 없는 탐색은 아직 지원하지 않습니다.
         </p>
         <h4>계산·시뮬레이션 읽기</h4>
+        <p>
+          고급 탐색 설정의 ‘구간 검증 사용’을 켜면 현재 탐색 범위를 작은
+          구간으로 나누어 해 부재와 단순근의 유일성을 추가 검증합니다. 결과
+          탐색과 리포트에서 검증 범위·유일근 구간·미결정 구간을 확인하고 ‘구간
+          검증 저장’으로 내보낼 수 있습니다. 검증한 길이 비율은 해를 모두 찾았을
+          확률이 아닙니다. 미결정 구간이 있으면 전체 검증은 보류되며,
+          연립식·일부 연산은 아직 구간 검증을 지원하지 않습니다.
+        </p>
         <p>
           조절할 상수는 파라미터에 등록합니다. 값은 연속 조절하며 샘플 포인트
           간격은 표·CSV·그래프 마커에만 적용합니다. 병합 세트는 여러 해를 색으로
@@ -4259,7 +4267,7 @@ export function WorkspaceNavigation({
 
 ## src/styles.css
 
-원본: [src/styles.css](../../src/styles.css) · 3,696줄 · SHA-256: `5c257678cb5d3b46cc541bb3896ba2ff931d729f2c192c5af22ae08f60cc0b20`
+원본: [src/styles.css](../../src/styles.css) · 3,725줄 · SHA-256: `a8fa168484925c6070d45c4a4ec30980c40cd3e847d7e6c3d45a635f6a726821`
 
 ```css
 :root {
@@ -7486,6 +7494,35 @@ h2 {
   color: #8fa07f;
   font-size: 9px;
   line-height: 1.9;
+}
+.certification-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.certification-toggle input {
+  width: auto;
+}
+.interval-certificate {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #d9e3d6;
+  border-radius: 8px;
+}
+.interval-certificate summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.interval-certificate p,
+.interval-certificate li {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.interval-certificate ul {
+  padding-left: 20px;
+  max-height: 240px;
+  overflow: auto;
 }
 .search-summary > div {
   display: flex;

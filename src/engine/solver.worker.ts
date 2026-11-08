@@ -27,6 +27,7 @@ type Request = {
   conditionNorm?: ConditionNorm
   mode?: 'linear' | 'nonlinear'
   nonlinearSearch?: 'auto' | 'manual'
+  certifyRoots?: boolean
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   solutionIndex?: number
@@ -58,6 +59,7 @@ const sortedParameters = (parameters: Record<string, number>) =>
 
 function discoveryKey(request: Request) {
   return JSON.stringify([
+    request.certifyRoots ?? false,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -75,6 +77,7 @@ function discoveryKey(request: Request) {
 // discovery before the UI presents a new root list.
 function discoveryContext(request: Request) {
   return JSON.stringify([
+    request.certifyRoots ?? false,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -135,6 +138,7 @@ async function handleRequest(work: QueuedRequest) {
     conditionNorm,
     mode,
     nonlinearSearch,
+    certifyRoots,
     searchBounds,
     variableBounds,
     solutionIndex,
@@ -207,6 +211,7 @@ async function handleRequest(work: QueuedRequest) {
       let found = searches.get(key)
       if (!found) {
         found = search(source, parameters, {
+          certifyRoots,
           conditionNorm,
           searchBounds,
           variableBounds,
@@ -234,12 +239,17 @@ async function handleRequest(work: QueuedRequest) {
           )[0]
         : undefined
       if (!found.solutions.length && !selectedSimulation?.result) {
+        const certificate = found.search.certification
         self.postMessage({
           id,
           ok: false,
           discoveryPending: false,
           error:
-            '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
+            certificate?.complete && certificate.uniqueRootCount === 0
+              ? `구간 검증 범위 [${certificate.domain.min}, ${certificate.domain.max}]에서 정의된 실수 해가 없습니다. 범위 밖의 해는 판정하지 않았습니다.`
+              : certificate?.uniqueRootCount
+                ? '구간 검증에서 유일근 구간을 분리했지만 표시할 근의 수치 보정에 실패했습니다. 구간 검증 내역을 확인하세요.'
+                : '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
           search: found.search,
           ...(simulations ? { simulations } : {}),
           ...(selectedSimulation ? { selectedSimulation } : {}),

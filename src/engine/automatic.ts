@@ -1,4 +1,10 @@
 import { squareFreeCoefficients } from './square-free'
+import {
+  certifyScalarRoots,
+  refineCertifiedRoot,
+  type RootCertificate,
+} from './interval-certification'
+import { evaluateIntervalJet } from './interval-arithmetic'
 import { derivativeFreeRoots } from './derivative-free'
 import {
   nodeText,
@@ -38,6 +44,8 @@ import {
 import { createParameterPathValidator } from './parameter-path'
 
 export type SearchSummary = {
+  certification?: RootCertificate
+  certificationUnavailable?: string
   method: string
   min: number
   max: number
@@ -49,6 +57,7 @@ export type SearchSummary = {
   nonIsolated?: boolean
 }
 export type AutomaticOptions = SolverOptions & {
+  certifyRoots?: boolean
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
 }
@@ -76,6 +85,7 @@ type Prepared = {
   originalModel?: CompiledModel
   nonsmooth: boolean
   expression?: NonlinearNode
+  originalExpression?: NonlinearNode
   helpers: Map<string, NonlinearNode>
   polynomialRoots: Map<string, { value: number; slope: number }[] | null>
   regularPolynomialFamily: boolean
@@ -201,6 +211,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
   // expression syntax; these synthetic conditions are only for compilation.
   let model = compileNonlinear(`${canonical}\n${metadata}`, parameterNames)
   const originalModel = model
+  const originalExpression = expression
   if (model.variables.length === 1 && expression) {
     const peeled = peelZeroPower(expression)
     if (peeled !== expression) {
@@ -222,6 +233,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     originalModel: originalModel === model ? undefined : originalModel,
     nonsmooth: nonsmoothSource(canonical),
     expression,
+    originalExpression,
     helpers,
     polynomialRoots: new Map(),
     regularPolynomialFamily:
@@ -1443,6 +1455,82 @@ export async function createAutomaticSolver(
       if (found.search.window?.reason === 'density')
         found.search.note +=
           ' 발견한 근의 밀도로 탐색 창을 줄였습니다. 이 관찰만으로 모든 근의 발견을 보장하지 않습니다.'
+      if (options.certifyRoots) {
+        const prepared = prepare(normalized, Object.keys(parameters))
+        if (variables.length !== 1 || !prepared.originalExpression) {
+          found.search.certificationUnavailable =
+            '현재 구간 검증은 단일 미지수 방정식에 적용합니다. 연립식 전체의 완전성은 검증하지 않습니다.'
+        } else {
+          const verificationStart = performance.now()
+          const node = prepared.originalExpression
+          const certificate = certifyScalarRoots(
+            node,
+            variables[0],
+            parameters,
+            prepared.helpers,
+            { min: found.search.min, max: found.search.max },
+          )
+          certificate.model = {
+            source: prepared.source,
+            parameters: { ...parameters },
+          }
+          const inside = (x: number, interval: { lo: number; hi: number }) =>
+            x >= interval.lo && x <= interval.hi
+          for (const bracket of certificate.rootIntervals) {
+            if (found.solutions.some((r) => inside(r.values[0], bracket)))
+              continue
+            const seed = refineCertifiedRoot(bracket, (x) =>
+              evaluateIntervalJet(
+                node,
+                variables[0],
+                x,
+                parameters,
+                prepared.helpers,
+              ),
+            )
+            try {
+              const refined = scalarNear(prepared, parameters, seed, {
+                min: bracket.lo,
+                max: bracket.hi,
+              })
+              if (refined && inside(refined.value, bracket))
+                unique(
+                  found.solutions,
+                  scalarResult(
+                    prepared,
+                    parameters,
+                    refined.value,
+                    options,
+                    refined.iterations,
+                  ),
+                )
+            } catch (error) {
+              if (!(error instanceof ModelError)) throw error
+            }
+          }
+          sortSolutions(found.solutions)
+          if (found.solutions.length > ROOT_LIMIT) {
+            found.solutions.length = ROOT_LIMIT
+            found.search.truncated = true
+          }
+          certificate.allRootsRepresented =
+            certificate.complete &&
+            found.solutions.length === certificate.uniqueRootCount &&
+            certificate.rootIntervals.every(
+              (b) =>
+                found.solutions.filter((r) => inside(r.values[0], b)).length ===
+                1,
+            ) &&
+            found.solutions.every(
+              (r) =>
+                certificate.rootIntervals.filter((b) => inside(r.values[0], b))
+                  .length === 1,
+            )
+          found.search.certification = certificate
+          for (const result of found.solutions)
+            result.durationMs += performance.now() - verificationStart
+        }
+      }
       return found
     })) as AutomaticSolver
   normalizedSearch.solveNear = (source, parameters, seed, options) =>

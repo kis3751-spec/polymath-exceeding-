@@ -121,7 +121,7 @@ async function showSimulation(page: Page) {
   const roots = page.locator('.solutions-section')
   if (await roots.count()) {
     if (!(await roots.evaluate((element) => element.hasAttribute('open'))))
-      await roots.locator('summary').click()
+      await roots.locator(':scope > summary').click()
   }
   const data = page.locator(
     '.selected-simulation-workspace .simulation-panel-data',
@@ -3207,5 +3207,108 @@ test.describe('Bounded windows and independent variable boxes', () => {
     )
     await expect(page.locator('.search-summary')).toContainText('대표값')
     await expect(page.locator('.sc-bifurcation-banner')).toHaveCount(0)
+  })
+})
+
+test.describe('Interval verification', () => {
+  async function start(page: Page, source: string) {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill(source)
+    await setSearchMode(page, 'auto')
+    await page
+      .getByRole('checkbox', { name: '구간 검증 사용 (단일 변수·추가 계산)' })
+      .check()
+    await showSimulation(page)
+  }
+  test('certifies simple roots, exports their model and retains the option after reload', async ({
+    page,
+  }) => {
+    await start(page, 'x^2=2')
+    const summary = page.locator('.interval-certificate > summary')
+    await expect(summary).toContainText('구간 검증 완료 · 단순 실근 2개')
+    await summary.click()
+    await expect(page.locator('.interval-certificate')).toContainText(
+      '모든 근 구간에 계산 결과가 대응',
+    )
+    const event = page.waitForEvent('download')
+    await page
+      .getByRole('button', { name: '구간 검증 저장', exact: true })
+      .click()
+    const download = await event,
+      report = await readFile((await download.path())!, 'utf8')
+    expect(report).toContain('입력 모델')
+    expect(report).toContain('유일근 분리 구간 2개')
+    expect(report).not.toContain('포획 신뢰도')
+    await page.reload()
+    await showSimulation(page)
+    await expect(summary).toContainText('단순 실근 2개')
+    await setSearchMode(page, 'auto')
+    await expect(
+      page.getByRole('checkbox', {
+        name: '구간 검증 사용 (단일 변수·추가 계산)',
+      }),
+    ).toBeChecked()
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill('(x-2)^6=0')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(1)
+    await expect(summary).toContainText('구간 검증 보류')
+    await expect(summary).not.toContainText('100.000%')
+    await setSearchMode(page, 'auto')
+    await page
+      .getByRole('checkbox', { name: '구간 검증 사용 (단일 변수·추가 계산)' })
+      .uncheck()
+    await showSimulation(page)
+    await expect(page.locator('.interval-certificate')).toHaveCount(0)
+  })
+  test('distinguishes proven absence from an unresolved pole and exports without a selected root', async ({
+    page,
+  }) => {
+    await start(page, 'x^2+1=0')
+    await expect(page.locator('.error-state')).toContainText(
+      '정의된 실수 해가 없습니다',
+    )
+    await expect(page.locator('.interval-certificate > summary')).toContainText(
+      '단순 실근 0개',
+    )
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill('1/x=0')
+    await showSimulation(page)
+    const summary = page.locator('.interval-certificate > summary')
+    await expect(summary).toContainText('구간 검증 보류')
+    await summary.click()
+    await expect(page.locator('.interval-certificate')).toContainText(
+      '분모 특이점',
+    )
+    const event = page.waitForEvent('download')
+    await page
+      .getByRole('button', { name: '구간 검증 저장', exact: true })
+      .click()
+    const download = await event,
+      report = await readFile((await download.path())!, 'utf8')
+    expect(report).toContain('미결정 구간')
+    expect(report).not.toContain('100.000%')
+  })
+  test('certifies named transcendental functions and keeps rational singularities unresolved', async ({
+    page,
+  }) => {
+    await start(
+      page,
+      'f1(x)=cos((3/pi)*x)\nf2(x)=sinh(x)/3+0.95\nf1(x)-f2(x)=0',
+    )
+    await expect(page.locator('.solution-choice')).toHaveCount(3)
+    await expect(page.locator('.interval-certificate > summary')).toContainText(
+      '구간 검증 완료 · 단순 실근 3개',
+    )
+    await navigate(page, '수식·파라미터')
+    await page
+      .getByRole('textbox', { name: '방정식 입력' })
+      .fill('(53+3.59/V^2)*(V-0.0427)=0.08314*280')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(3)
+    await expect(page.locator('.interval-certificate > summary')).toContainText(
+      '구간 검증 보류',
+    )
   })
 })
