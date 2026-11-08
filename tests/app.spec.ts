@@ -1434,7 +1434,7 @@ test.describe('Equation Solver workspace', () => {
     await navigate(page, '수식·파라미터')
     await page.getByRole('textbox', { name: '방정식 입력' }).fill('sin(x) = 0')
     await showSimulation(page)
-    await expect(page.locator('.solution-choice')).toHaveCount(32)
+    await expect(page.locator('.solution-choice')).toHaveCount(29)
     const roots = (
       await page.locator('.solution-choice strong').allTextContents()
     ).map((text) => Number(text.split('=')[1]))
@@ -3111,5 +3111,101 @@ test.describe('Calculation audit through the actual editor and Worker', () => {
       '4',
       '10',
     ])
+  })
+})
+
+test.describe('Bounded windows and independent variable boxes', () => {
+  test('limits a high-frequency window and moves its center without widening it', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page
+      .getByRole('textbox', { name: '방정식 입력' })
+      .fill('sin(1000*x)=0')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(29)
+    await expect(page.locator('.search-summary')).toContainText('최대 폭')
+    await setSearchMode(page, 'auto')
+    await page.getByRole('spinbutton', { name: '자동 탐색 최솟값' }).fill('-1')
+    await page.getByRole('spinbutton', { name: '자동 탐색 최댓값' }).fill('1')
+    await page.getByRole('button', { name: '범위 적용', exact: true }).click()
+    await expect(
+      page.locator('.search-bounds-form [role=alert]'),
+    ).toContainText('최대 폭')
+    await page
+      .getByRole('spinbutton', { name: '탐색 창 중심', exact: true })
+      .fill('10')
+    await page
+      .getByRole('button', { name: '탐색 창 이동', exact: true })
+      .click()
+    await showSimulation(page)
+    await expect
+      .poll(async () =>
+        (await page.locator('.solution-choice strong').allTextContents()).every(
+          (s) => Number(s.split('=')[1]) > 9.9,
+        ),
+      )
+      .toBe(true)
+    await expect(page.locator('.solution-choice')).toHaveCount(28)
+    await expect(page.locator('.search-summary')).toContainText('최대 폭')
+  })
+  test('independent bounds survive JSON export and reload and invalidate old discovery', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page
+      .getByRole('textbox', { name: '방정식 입력' })
+      .fill('x^2+y^2=5\nx+y=0')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(2)
+    await setSearchMode(page, 'auto')
+    await page.locator('.variable-bounds summary').click()
+    for (const [name, value] of [
+      ['x 탐색 최솟값', '1'],
+      ['x 탐색 최댓값', '2'],
+      ['y 탐색 최솟값', '-3'],
+      ['y 탐색 최댓값', '-1'],
+    ])
+      await page.getByRole('spinbutton', { name, exact: true }).fill(value)
+    await page.getByRole('button', { name: '범위 적용', exact: true }).click()
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(1)
+    await expect(page.locator('.solution-choice')).toContainText('x = 1.581')
+    const downloadEvent = page.waitForEvent('download')
+    await page
+      .getByRole('button', { name: '프로젝트 저장', exact: true })
+      .click()
+    const file = await downloadEvent,
+      saved = JSON.parse(await readFile((await file.path())!, 'utf8'))
+    expect(saved.variableBounds).toEqual({
+      x: { min: 1, max: 2 },
+      y: { min: -3, max: -1 },
+    })
+    await page.reload()
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(1)
+  })
+  test('a sixth power is one root and floor displays an interval representative', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill('(x-2)^6=0')
+    await showSimulation(page)
+    await expect(page.locator('.solution-choice')).toHaveCount(1)
+    await expect(page.locator('.solution-choice')).toContainText('x = 2')
+    await navigate(page, '수식·파라미터')
+    await page.getByRole('textbox', { name: '방정식 입력' }).fill('floor(x)=2')
+    await showSimulation(page)
+    await expect(page.locator('.solution-count')).toHaveText(
+      '구간 해 대표값 1개',
+    )
+    await expect(page.locator('.search-summary')).toContainText('대표값')
+    await expect(page.locator('.sc-bifurcation-banner')).toHaveCount(0)
   })
 })

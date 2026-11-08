@@ -3664,3 +3664,33 @@ h2 {
   height: 28px;
   line-height: 28px;
 }
+
+.variable-bounds {
+  margin-top: 12px;
+  width: 100%;
+}
+.variable-bounds summary {
+  cursor: pointer;
+}
+.variable-bounds > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+.variable-bounds input {
+  max-width: 120px;
+}
+.search-window-controls {
+  border: 1px solid #c8dace;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+}
+.search-window-controls input {
+  max-width: 150px;
+}
+.search-window-note {
+  color: #206a57;
+}

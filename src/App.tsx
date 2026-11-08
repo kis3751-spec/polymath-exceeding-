@@ -1,7 +1,9 @@
+import { normalizeAutomaticModel } from './engine/automatic'
+import type { VariableBounds, SearchWindow } from './engine/search-analysis'
 import { sameComputedRoot } from './engine/root-comparison'
 import { normalizeEquationPaste } from './editor-input'
 import ExampleWalkthrough from './components/ExampleWalkthrough'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import {
   Activity,
   ArrowDownToLine,
@@ -156,6 +158,20 @@ function isProject(value: unknown): value is Project {
       (Number.isInteger(p.selectedSolution) &&
         p.selectedSolution >= 0 &&
         p.selectedSolution < 32)) &&
+    (p.variableBounds === undefined ||
+      (p.variableBounds &&
+        typeof p.variableBounds === 'object' &&
+        !Array.isArray(p.variableBounds) &&
+        Object.keys(p.variableBounds).length <= 64 &&
+        Object.entries(p.variableBounds).every(
+          ([name, b]) =>
+            /^[A-Za-z][A-Za-z0-9_]*$/.test(name) &&
+            b &&
+            Number.isFinite(b.min) &&
+            Number.isFinite(b.max) &&
+            Number.isFinite(b.max - b.min) &&
+            b.min < b.max,
+        ))) &&
     (p.searchBounds === undefined ||
       (!!p.searchBounds &&
         Number.isFinite(p.searchBounds.min) &&
@@ -308,6 +324,16 @@ export default function App() {
   const sweepParam = project.parameters.find(
     (p) => p.name === project.sweepName,
   )
+  const boundsVariables = useMemo(() => {
+    try {
+      return normalizeAutomaticModel(
+        project.source,
+        project.parameters.map((p) => p.name),
+      ).variables
+    } catch {
+      return Object.keys(project.variableBounds ?? {})
+    }
+  }, [project.source, project.parameters.map((p) => p.name).join('|')])
   const sourceLines = project.source.replace(/\r\n?/g, '\n').split('\n')
   const editorHeight = Math.min(
     420,
@@ -436,6 +462,7 @@ export default function App() {
     mode,
     nonlinearSearch,
     project.searchBounds,
+    project.variableBounds,
     solutionIndex,
     project.simulations,
     project.selectedAnchor,
@@ -1317,10 +1344,17 @@ export default function App() {
                       {automatic ? (
                         <SearchBoundsEditor
                           bounds={project.searchBounds}
-                          onApply={(bounds) =>
+                          variables={boundsVariables}
+                          variableBounds={project.variableBounds}
+                          window={
+                            searchInfo?.window ?? basePayload?.search?.window
+                          }
+                          onApply={(bounds, variableBounds) =>
                             setProject((p) => ({
                               ...p,
                               searchBounds: bounds,
+                              variableBounds,
+                              selectedAnchor: undefined,
                               selectedSolution: 0,
                             }))
                           }
@@ -1601,7 +1635,9 @@ export default function App() {
                       <h3 className="solution-count">
                         {discoveryPending
                           ? '해 목록 갱신 중'
-                          : `발견한 실수 해 ${solutions.length}개`}
+                          : basePayload?.search?.nonIsolated
+                            ? `구간 해 대표값 ${solutions.length}개`
+                            : `발견한 실수 해 ${solutions.length}개`}
                       </h3>
                       <span>
                         해 선택 · 시뮬레이션 추가 <ChevronDown size={14} />
@@ -2797,20 +2833,90 @@ function SearchCoverage({ search }: { search: SearchSummary }) {
         </strong>
       </div>
       <p>{search.note}</p>
+      {search.window && (
+        <p className="search-window-note">
+          탐색 창 {fmt(search.window.min, 10)} ~ {fmt(search.window.max, 10)} ·
+          최대 폭 {fmt(search.window.maxWidth, 10)} ·{' '}
+          {search.window.reason === 'periodic'
+            ? '주기 분석 기준'
+            : '관찰 밀도 기준 (완전성 보장 아님)'}
+        </p>
+      )}
+      {search.variableBounds &&
+        Object.keys(search.variableBounds).length > 1 && (
+          <p>
+            {Object.entries(search.variableBounds)
+              .map(([name, b]) => `${name}: ${b.min} ~ ${b.max}`)
+              .join(' · ')}
+          </p>
+        )}
     </div>
   )
 }
 function SearchBoundsEditor({
   bounds,
+  variables,
+  variableBounds,
+  window,
   onApply,
 }: {
   bounds?: { min: number; max: number }
-  onApply: (bounds: { min: number; max: number } | undefined) => void
+  variables: string[]
+  variableBounds?: VariableBounds
+  window?: SearchWindow
+  onApply: (
+    bounds: { min: number; max: number } | undefined,
+    variableBounds?: VariableBounds,
+  ) => void
 }) {
   const [min, setMin] = useState(bounds ? String(bounds.min) : '')
   const [max, setMax] = useState(bounds ? String(bounds.max) : '')
+  const [custom, setCustom] = useState<
+    Record<string, { min: string; max: string }>
+  >({})
+  const [center, setCenter] = useState('0')
   const [error, setError] = useState('')
   useEffect(() => {
+    setCustom(
+      Object.fromEntries(
+        Object.entries(variableBounds ?? {}).map(([v, b]) => [
+          v,
+          { min: String(b.min), max: String(b.max) },
+        ]),
+      ),
+    )
+  }, [JSON.stringify(variableBounds)])
+  useEffect(() => {
+    if (window) {
+      setMin(String(window.min))
+      setMax(String(window.max))
+      setCenter(String(window.min / 2 + window.max / 2))
+    }
+  }, [window?.min, window?.max])
+  const readCustom = () => {
+    const out: VariableBounds = {}
+    for (const [name, b] of Object.entries(custom)) {
+      if (!b.min.trim() && !b.max.trim()) continue
+      const min = Number(b.min),
+        max = Number(b.max)
+      if (
+        !b.min.trim() ||
+        !b.max.trim() ||
+        ![min, max, max - min].every(Number.isFinite) ||
+        min >= max
+      )
+        throw new Error(`${name}의 최솟값과 최댓값을 확인하세요.`)
+      if (
+        window?.variable === name &&
+        max - min > window.maxWidth * (1 + 1e-12)
+      )
+        throw new Error('탐색 창의 최대 폭을 초과했습니다. 위치를 옮겨 주세요.')
+      out[name] = { min, max }
+    }
+    return Object.keys(out).length ? out : undefined
+  }
+  useEffect(() => {
+    if (window) return
     setMin(bounds ? String(bounds.min) : '')
     setMax(bounds ? String(bounds.max) : '')
     setError('')
@@ -2820,24 +2926,33 @@ function SearchBoundsEditor({
       className="search-bounds-form"
       onSubmit={(e) => {
         e.preventDefault()
-        if (!min.trim() && !max.trim()) {
-          onApply(undefined)
+        try {
+          const chosen = readCustom()
+          if (!min.trim() && !max.trim()) {
+            onApply(undefined, chosen)
+            setError('')
+            return
+          }
+          const a = Number(min),
+            b = Number(max)
+          if (
+            !min.trim() ||
+            !max.trim() ||
+            ![a, b, b - a].every(Number.isFinite) ||
+            a >= b
+          ) {
+            setError('최솟값보다 큰 유한한 최댓값을 입력하세요.')
+            return
+          }
+          if (window && b - a > window.maxWidth * (1 + 1e-12))
+            throw new Error(
+              '탐색 창의 최대 폭을 초과했습니다. 폭을 줄이거나 중심 위치를 옮겨 주세요.',
+            )
+          onApply({ min: a, max: b }, chosen)
           setError('')
-          return
+        } catch (e) {
+          setError(e instanceof Error ? e.message : '범위를 확인하세요.')
         }
-        const a = Number(min),
-          b = Number(max)
-        if (
-          !min.trim() ||
-          !max.trim() ||
-          ![a, b, b - a].every(Number.isFinite) ||
-          a >= b
-        ) {
-          setError('최솟값보다 큰 유한한 최댓값을 입력하세요.')
-          return
-        }
-        onApply({ min: a, max: b })
-        setError('')
       }}
     >
       <p>
@@ -2869,6 +2984,93 @@ function SearchBoundsEditor({
         </label>
         <button type="submit">범위 적용</button>
       </div>
+      <details className="variable-bounds">
+        <summary>미지수별 탐색 범위</summary>
+        {variables.map((name) => (
+          <div key={name}>
+            <b>{name}</b>
+            {(['min', 'max'] as const).map((key) => (
+              <label key={key}>
+                {key === 'min' ? '최솟값' : '최댓값'}
+                <input
+                  type="number"
+                  step="any"
+                  aria-label={`${name} 탐색 ${key === 'min' ? '최솟값' : '최댓값'}`}
+                  placeholder="공통 범위"
+                  value={custom[name]?.[key] ?? ''}
+                  onChange={(e) =>
+                    setCustom((p) => ({
+                      ...p,
+                      [name]: {
+                        ...(p[name] ?? { min: '', max: '' }),
+                        [key]: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        ))}
+      </details>
+      {window && (
+        <div className="search-window-controls">
+          <p>
+            탐색 창 · 최대 폭 {fmt(window.maxWidth, 10)}. 더 넓힐 수 없으며
+            중심을 이동할 수 있습니다.
+            {window.reason === 'density'
+              ? ' 일반 함수의 모든 근을 보장하지 않습니다.'
+              : ''}
+          </p>
+          <label>
+            탐색 창 중심
+            <input
+              aria-label="탐색 창 중심"
+              type="number"
+              step="any"
+              value={center}
+              onChange={(e) => setCenter(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const c = Number(center)
+              if (!center.trim() || !Number.isFinite(c)) {
+                setError('유한한 중심 위치를 입력하세요.')
+                return
+              }
+              const b = {
+                min: c - window.maxWidth / 2,
+                max: c + window.maxWidth / 2,
+              }
+              if (
+                ![b.min, b.max, b.max - b.min].every(Number.isFinite) ||
+                b.min >= b.max
+              ) {
+                setError(
+                  '이 위치에서는 Float64로 탐색 창의 폭을 표현할 수 없습니다. 중심 위치를 줄여 주세요.',
+                )
+                return
+              }
+              try {
+                const vars = readCustom()
+                onApply(
+                  b,
+                  vars?.[window.variable]
+                    ? { ...vars, [window.variable]: b }
+                    : vars,
+                )
+                setError('')
+              } catch (e) {
+                setError((e as Error).message)
+              }
+            }}
+          >
+            탐색 창 이동
+          </button>
+        </div>
+      )}
       {error && <span role="alert">{error}</span>}
     </form>
   )

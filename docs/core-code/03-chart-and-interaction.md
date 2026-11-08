@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `549c20e2216b3281c0c6b2cd7e99a5e904c72f44ab8039a0ce24c5c32ea6deff`
+소스 묶음 SHA-256: `3503fc91686b50aff9af77542c08db3f1348334ac5cccf85f49ca179e4a04b11`
 
 ## 다른 코드 묶음
 
@@ -286,7 +286,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/EquationReference.tsx
 
-원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 158줄 · SHA-256: `65885a221d31d58b0ba7ae4145398112a0bc4b38a72b3da6919e920838a5251a`
+원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 177줄 · SHA-256: `b60ad2bc742d1a5e91860e9acd5ace37794fe82be2b89d28746ead6d79219359`
 
 ```tsx
 const functions = [
@@ -425,6 +425,25 @@ export default function EquationReference() {
             </tbody>
           </table>
         </div>
+        <h4>탐색 창과 비매끄러운 식</h4>
+        <p>
+          고급 탐색 설정에서 미지수별 최솟값·최댓값을 지정할 수 있습니다.
+          지정하지 않으면 공통 범위를 따릅니다. 일반 함수의 기본 범위는
+          −100~100이며, 다항식·유리식은 계수 기반 자동 범위도 사용합니다.
+        </p>
+        <p>
+          <code>sin(1000*x)=0</code>처럼 분석 가능한 주기식은 최대 32개 표시
+          한도에 맞춰 탐색 창을 줄입니다. 표시된 최대 폭을 넘길 수 없고 ‘탐색 창
+          중심’으로 위치를 옮길 수 있습니다. 일반 함수는 관찰한 근의 밀도로 줄일
+          수 있지만 모든 근을 찾았다는 증명은 아닙니다.
+        </p>
+        <p>
+          <code>floor(x)</code>는 내림, <code>ceil(x)</code>은 올림,{' '}
+          <code>sign(x)</code>은 부호입니다. abs·min·max 등을 포함한 비매끄러운
+          스칼라 식에는 미분 없는 탐색을 사용합니다. 0이 이어지는 구간은
+          대표값으로 표시하며, 매끄러운 접점 차수를 붙이지 않습니다. 비매끄러운
+          다변수계의 미분 없는 탐색은 아직 지원하지 않습니다.
+        </p>
         <h4>계산·시뮬레이션 읽기</h4>
         <p>
           조절할 상수는 파라미터에 등록합니다. 값은 연속 조절하며 샘플 포인트
@@ -4240,7 +4259,7 @@ export function WorkspaceNavigation({
 
 ## src/styles.css
 
-원본: [src/styles.css](../../src/styles.css) · 3,666줄 · SHA-256: `380507dd0905de2f7bbe7471f43b2724235774a62abc7bddd74f0be99dbd5477`
+원본: [src/styles.css](../../src/styles.css) · 3,696줄 · SHA-256: `5c257678cb5d3b46cc541bb3896ba2ff931d729f2c192c5af22ae08f60cc0b20`
 
 ```css
 :root {
@@ -7908,6 +7927,36 @@ h2 {
   flex: 0 0 28px;
   height: 28px;
   line-height: 28px;
+}
+
+.variable-bounds {
+  margin-top: 12px;
+  width: 100%;
+}
+.variable-bounds summary {
+  cursor: pointer;
+}
+.variable-bounds > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+.variable-bounds input {
+  max-width: 120px;
+}
+.search-window-controls {
+  border: 1px solid #c8dace;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+}
+.search-window-controls input {
+  max-width: 150px;
+}
+.search-window-note {
+  color: #206a57;
 }
 ```
 

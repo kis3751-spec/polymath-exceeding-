@@ -12,6 +12,9 @@ export type DefinedFunction = {
 }
 
 const RESERVED_MATH_FUNCS = new Set([
+  'floor',
+  'ceil',
+  'sign',
   'sin',
   'cos',
   'tan',

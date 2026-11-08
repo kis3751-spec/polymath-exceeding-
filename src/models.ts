@@ -1,3 +1,4 @@
+import type { VariableBounds } from './engine/search-analysis'
 import { SHOWCASE_EXAMPLES } from './showcase-examples'
 import type {
   ConditionNorm,
@@ -24,6 +25,7 @@ export type Project = {
   conditionNorm?: ConditionNorm
   nonlinearSearch?: 'auto' | 'manual'
   searchBounds?: { min: number; max: number }
+  variableBounds?: VariableBounds
   selectedSolution?: number
   selectedAnchor?: SimulationAnchor
   simulations?: SimulationAnchor[]

@@ -166,18 +166,15 @@ describe('bounded general real equation search', () => {
     expect(result.search).toMatchObject({ min: -10, max: 10 })
   })
 
-  it('labels a capped default sine search as truncated', () => {
+  it('shrinks a dense default sine search to a complete phase window', () => {
     const result = search('sin(x)=0', {})
-    expect(result.solutions).toHaveLength(32)
-    expect(result.search).toMatchObject({
-      min: -100,
-      max: 100,
-      truncated: true,
-    })
+    expect(result.solutions).toHaveLength(29)
+    expect(result.search.window?.maxWidth).toBeCloseTo(28 * Math.PI, 10)
+    expect(result.search.truncated).toBeUndefined()
     const expected = [0]
-    for (let index = 1; expected.length < 32; index++) {
+    for (let index = 1; expected.length < 29; index++) {
       expected.push(index * Math.PI)
-      if (expected.length < 32) expected.push(-index * Math.PI)
+      if (expected.length < 29) expected.push(-index * Math.PI)
     }
     result.solutions.forEach((solution, index) =>
       expect(solution.values[0]).toBeCloseTo(expected[index], 8),
@@ -191,14 +188,16 @@ describe('bounded general real equation search', () => {
       {},
       { searchBounds: { min: -180, max: 30 } },
     )
-    expect(result.solutions).toHaveLength(32)
-    expect(result.solutions[0].values).toEqual([0])
-    for (const [index, solution] of result.solutions.entries()) {
-      const multiple =
-        index === 0 ? 0 : Math.ceil(index / 2) * (index % 2 ? 1 : -1)
-      expect(solution.values[0]).toBeCloseTo((multiple * Math.PI) / 2, 8)
+    expect(result.search.window?.reason).toBe('density')
+    expect(result.solutions.length).toBeGreaterThan(0)
+    expect(result.solutions.length).toBeLessThanOrEqual(32)
+    for (const solution of result.solutions) {
+      const x = solution.values[0]
+      expect(Math.abs(Math.sin(x) * Math.cos(x))).toBeLessThan(1e-11)
+      expect(x).toBeGreaterThanOrEqual(result.search.min)
+      expect(x).toBeLessThanOrEqual(result.search.max)
     }
-    expect(result.search.truncated).toBe(true)
+    expect(result.search.note).toContain('보장하지')
   })
 
   it.each(['1/(x-.1)=0', 'exp(-100*x)=0'])(

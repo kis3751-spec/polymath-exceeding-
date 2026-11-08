@@ -1,3 +1,4 @@
+import type { VariableBounds } from './search-analysis'
 import { normalizeEquationSource } from './source-statements'
 import { sameComputedRoot } from './root-comparison'
 /// <reference lib="webworker" />
@@ -27,6 +28,7 @@ type Request = {
   mode?: 'linear' | 'nonlinear'
   nonlinearSearch?: 'auto' | 'manual'
   searchBounds?: { min: number; max: number }
+  variableBounds?: VariableBounds
   solutionIndex?: number
   simulationAnchors?: SimulationAnchor[]
   selectedAnchor?: SimulationAnchor
@@ -57,6 +59,9 @@ const sortedParameters = (parameters: Record<string, number>) =>
 function discoveryKey(request: Request) {
   return JSON.stringify([
     request.source,
+    Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
+      a.localeCompare(b),
+    ),
     sortedParameters(request.parameters),
     request.conditionNorm ?? 'infinity',
     request.searchBounds
@@ -71,6 +76,9 @@ function discoveryKey(request: Request) {
 function discoveryContext(request: Request) {
   return JSON.stringify([
     request.source,
+    Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
+      a.localeCompare(b),
+    ),
     sortedParameters(request.parameters).filter(
       ([name]) => name !== request.sweep?.name,
     ),
@@ -128,6 +136,7 @@ async function handleRequest(work: QueuedRequest) {
     mode,
     nonlinearSearch,
     searchBounds,
+    variableBounds,
     solutionIndex,
     simulationAnchors,
     selectedAnchor,
@@ -197,7 +206,11 @@ async function handleRequest(work: QueuedRequest) {
       }
       let found = searches.get(key)
       if (!found) {
-        found = search(source, parameters, { conditionNorm, searchBounds })
+        found = search(source, parameters, {
+          conditionNorm,
+          searchBounds,
+          variableBounds,
+        })
         if (searches.size >= 8) searches.delete(searches.keys().next().value!)
         searches.set(key, found)
       }

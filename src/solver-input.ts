@@ -9,6 +9,7 @@ export function createSolverInput(project: Project) {
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',
     searchBounds: project.searchBounds,
+    variableBounds: project.variableBounds,
     solutionIndex: project.selectedSolution ?? 0,
     simulationAnchors: project.simulations,
     selectedAnchor: project.selectedAnchor,

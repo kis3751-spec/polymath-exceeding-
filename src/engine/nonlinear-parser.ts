@@ -56,6 +56,9 @@ const FUNCTIONS: Record<
   string,
   { arity: number; compute: (...args: number[]) => number }
 > = {
+  floor: { arity: 1, compute: Math.floor },
+  ceil: { arity: 1, compute: Math.ceil },
+  sign: { arity: 1, compute: Math.sign },
   sin: { arity: 1, compute: Math.sin },
   cos: { arity: 1, compute: Math.cos },
   tan: { arity: 1, compute: Math.tan },

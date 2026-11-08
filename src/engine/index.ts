@@ -1,3 +1,4 @@
+import type { VariableBounds, SearchWindow } from './search-analysis'
 import { normalizedModelCall } from './source-statements'
 import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber, type ConditionNorm } from './conditioning'
@@ -46,6 +47,9 @@ export type SweepPoint = {
   error?: string
 }
 export type SearchSummary = {
+  variableBounds?: VariableBounds
+  window?: SearchWindow
+  nonIsolated?: boolean
   method: string
   min: number
   max: number

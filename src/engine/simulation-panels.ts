@@ -1,3 +1,4 @@
+import { nonsmoothSource } from './search-analysis'
 import { normalizeAutomaticModel } from './automatic'
 import { compileNonlinear } from './nonlinear-parser'
 import { adaptiveDerivative, verifyScalarTangency } from './tangency'
@@ -212,6 +213,7 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
           if (
             sweep &&
             reference.kind === 'nonlinear' &&
+            !nonsmoothSource(source) &&
             reference.variables.length === 1
           ) {
             try {

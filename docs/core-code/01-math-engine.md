@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `353c3ee28d837f9a051bd3c1ca652a037f9e78eaa6218bf43972ff8fb9451479`
+소스 묶음 SHA-256: `fa270613590e0580815c41d98b03982f8997c1578f737514ab77593d819105ff`
 
 ## 다른 코드 묶음
 
@@ -28,25 +28,29 @@
 - [src/engine/nonlinear-parser.ts](#source-2) · [저장소 원본](../../src/engine/nonlinear-parser.ts)
 - [src/engine/expression-derivative.ts](#source-3) · [저장소 원본](../../src/engine/expression-derivative.ts)
 - [src/engine/root-comparison.ts](#source-4) · [저장소 원본](../../src/engine/root-comparison.ts)
-- [src/engine/source-statements.ts](#source-5) · [저장소 원본](../../src/engine/source-statements.ts)
-- [src/engine/preprocessor.ts](#source-6) · [저장소 원본](../../src/engine/preprocessor.ts)
-- [src/engine/nonlinear.ts](#source-7) · [저장소 원본](../../src/engine/nonlinear.ts)
-- [src/engine/automatic-polynomial.ts](#source-8) · [저장소 원본](../../src/engine/automatic-polynomial.ts)
-- [src/engine/parameter-path.ts](#source-9) · [저장소 원본](../../src/engine/parameter-path.ts)
-- [src/engine/tangency.ts](#source-10) · [저장소 원본](../../src/engine/tangency.ts)
-- [src/engine/automatic.ts](#source-11) · [저장소 원본](../../src/engine/automatic.ts)
-- [src/engine/root-isolation.ts](#source-12) · [저장소 원본](../../src/engine/root-isolation.ts)
-- [src/engine/conditioning.ts](#source-13) · [저장소 원본](../../src/engine/conditioning.ts)
-- [src/engine/solver.wat](#source-14) · [저장소 원본](../../src/engine/solver.wat)
-- [scripts/build-wasm.mjs](#source-15) · [저장소 원본](../../scripts/build-wasm.mjs)
+- [src/engine/search-analysis.ts](#source-5) · [저장소 원본](../../src/engine/search-analysis.ts)
+- [src/engine/derivative-free.ts](#source-6) · [저장소 원본](../../src/engine/derivative-free.ts)
+- [src/engine/square-free.ts](#source-7) · [저장소 원본](../../src/engine/square-free.ts)
+- [src/engine/source-statements.ts](#source-8) · [저장소 원본](../../src/engine/source-statements.ts)
+- [src/engine/preprocessor.ts](#source-9) · [저장소 원본](../../src/engine/preprocessor.ts)
+- [src/engine/nonlinear.ts](#source-10) · [저장소 원본](../../src/engine/nonlinear.ts)
+- [src/engine/automatic-polynomial.ts](#source-11) · [저장소 원본](../../src/engine/automatic-polynomial.ts)
+- [src/engine/parameter-path.ts](#source-12) · [저장소 원본](../../src/engine/parameter-path.ts)
+- [src/engine/tangency.ts](#source-13) · [저장소 원본](../../src/engine/tangency.ts)
+- [src/engine/automatic.ts](#source-14) · [저장소 원본](../../src/engine/automatic.ts)
+- [src/engine/root-isolation.ts](#source-15) · [저장소 원본](../../src/engine/root-isolation.ts)
+- [src/engine/conditioning.ts](#source-16) · [저장소 원본](../../src/engine/conditioning.ts)
+- [src/engine/solver.wat](#source-17) · [저장소 원본](../../src/engine/solver.wat)
+- [scripts/build-wasm.mjs](#source-18) · [저장소 원본](../../scripts/build-wasm.mjs)
 
 <a id="source-1"></a>
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 601줄 · SHA-256: `0052ad83c7a65208255f696f70582c3655049416b189793d70e19a2401865891`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 605줄 · SHA-256: `6af19c4f8195bc4663d985a325e8829bc4bf877f7d610e6f3ff15a33c8fe2ee4`
 
 ```typescript
+import type { VariableBounds, SearchWindow } from './search-analysis'
 import { normalizedModelCall } from './source-statements'
 import { preprocessSolverSource } from './preprocessor'
 import { conditionNumber, type ConditionNorm } from './conditioning'
@@ -95,6 +99,9 @@ export type SweepPoint = {
   error?: string
 }
 export type SearchSummary = {
+  variableBounds?: VariableBounds
+  window?: SearchWindow
+  nonIsolated?: boolean
   method: string
   min: number
   max: number
@@ -654,7 +661,7 @@ export async function createSolver(
 
 ## src/engine/nonlinear-parser.ts
 
-원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 601줄 · SHA-256: `713185327714a686a1e9dbc2d95ef017862afafb3bbed0311219fad05eb5adf5`
+원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 604줄 · SHA-256: `3d57f324ce2a4536f8ee72c9c0cc8fb1aa796f667612801584b923c3294503d6`
 
 ```typescript
 import { evaluateDual, type Dual } from './expression-derivative'
@@ -715,6 +722,9 @@ const FUNCTIONS: Record<
   string,
   { arity: number; compute: (...args: number[]) => number }
 > = {
+  floor: { arity: 1, compute: Math.floor },
+  ceil: { arity: 1, compute: Math.ceil },
+  sign: { arity: 1, compute: Math.sign },
   sin: { arity: 1, compute: Math.sin },
   cos: { arity: 1, compute: Math.cos },
   tan: { arity: 1, compute: Math.tan },
@@ -1478,6 +1488,431 @@ export function sameComputedRoot(a: SolveResult, b: SolveResult) {
 
 <a id="source-5"></a>
 
+## src/engine/search-analysis.ts
+
+원본: [src/engine/search-analysis.ts](../../src/engine/search-analysis.ts) · 175줄 · SHA-256: `0ce9050171e15c06103d2fedd702b6d7d3c5313e97f142d559ce0e70c88d80d5`
+
+```typescript
+import { polynomialCoefficients } from './automatic-polynomial'
+import type { NonlinearNode as Node } from './nonlinear-parser'
+export type Bounds = { min: number; max: number }
+export type VariableBounds = Record<string, Bounds>
+export type SearchWindow = {
+  min: number
+  max: number
+  maxWidth: number
+  requestedMin: number
+  requestedMax: number
+  reason: 'periodic' | 'density'
+  variable: string
+}
+export const nonsmoothSource = (source: string) =>
+  /\b(abs|min|max|floor|ceil|sign)\s*\(/i.test(source)
+export function nodeText(n: Node): string {
+  if (n.kind === 'number') return String(n.value)
+  if (n.kind === 'name') return n.name
+  if (n.kind === 'unary') return `(${n.sign}${nodeText(n.child)})`
+  if (n.kind === 'call') return `${n.name}(${n.args.map(nodeText).join(',')})`
+  return `(${nodeText(n.left)}${n.operator}${nodeText(n.right)})`
+}
+export function peelZeroPower(n: Node): Node {
+  if (n.kind === 'unary') return peelZeroPower(n.child)
+  if (
+    n.kind === 'binary' &&
+    (n.operator === '+' || n.operator === '-') &&
+    n.right.kind === 'number' &&
+    n.right.value === 0
+  )
+    return peelZeroPower(n.left)
+  if (
+    n.kind === 'binary' &&
+    n.operator === '^' &&
+    n.right.kind === 'number' &&
+    Number.isInteger(n.right.value) &&
+    n.right.value > 0
+  )
+    return peelZeroPower(n.left)
+  if (
+    n.kind === 'call' &&
+    n.name === 'pow' &&
+    n.args[1].kind === 'number' &&
+    Number.isInteger(n.args[1].value) &&
+    n.args[1].value > 0
+  )
+    return peelZeroPower(n.args[0])
+  return n
+}
+/** A single sin/cos/tan with affine phase and constant affine outer operations. */
+export function periodicFamily(
+  node: Node,
+  variable: string,
+  constants: Record<string, number>,
+  helpers: Map<string, Node>,
+) {
+  type Form = { call?: Node & { kind: 'call' }; scale: number; offset: number }
+  const active = new Set<string>()
+  const visit = (n: Node): Form | undefined => {
+    const c = polynomialCoefficients(n, variable, constants, helpers)
+    if (c?.length === 1) return { scale: 0, offset: c[0] }
+    if (n.kind === 'name' && helpers.has(n.name) && !active.has(n.name)) {
+      active.add(n.name)
+      const r = visit(helpers.get(n.name)!)
+      active.delete(n.name)
+      return r
+    }
+    if (n.kind === 'call' && ['sin', 'cos', 'tan'].includes(n.name))
+      return { call: n, scale: 1, offset: 0 }
+    if (n.kind === 'unary') {
+      const a = visit(n.child)
+      return a
+        ? {
+            ...a,
+            scale: a.scale * (n.sign === '-' ? -1 : 1),
+            offset: a.offset * (n.sign === '-' ? -1 : 1),
+          }
+        : undefined
+    }
+    if (n.kind !== 'binary') return undefined
+    const a = visit(n.left),
+      b = visit(n.right)
+    if (!a || !b || (a.call && b.call)) return undefined
+    if (n.operator === '+' || n.operator === '-') {
+      const sign = n.operator === '-' ? -1 : 1
+      return {
+        call: a.call ?? b.call,
+        scale: a.scale + sign * b.scale,
+        offset: a.offset + sign * b.offset,
+      }
+    }
+    if (n.operator === '*')
+      return {
+        call: a.call ?? b.call,
+        scale: a.call ? a.scale * b.offset : b.scale * a.offset,
+        offset: a.offset * b.offset,
+      }
+    if (n.operator === '/' && !b.call && b.offset !== 0)
+      return {
+        call: a.call,
+        scale: a.scale / b.offset,
+        offset: a.offset / b.offset,
+      }
+    return undefined
+  }
+  const f = visit(node)
+  if (!f?.call || !f.scale || !Number.isFinite(f.scale)) return undefined
+  const phase = polynomialCoefficients(
+    f.call.args[0],
+    variable,
+    constants,
+    helpers,
+  )
+  if (phase?.length !== 2 || !phase[1] || !phase.every(Number.isFinite))
+    return undefined
+  const target = -f.offset / f.scale,
+    a = phase[1],
+    b = phase[0],
+    name = f.call.name
+  if (!Number.isFinite(target)) return undefined
+  const period = name === 'tan' ? Math.PI : 2 * Math.PI
+  const angles =
+    name === 'sin'
+      ? Math.abs(target) <= 1
+        ? [Math.asin(target), Math.PI - Math.asin(target)]
+        : []
+      : name === 'cos'
+        ? Math.abs(target) <= 1
+          ? [Math.acos(target), -Math.acos(target)]
+          : []
+        : [Math.atan(target)]
+  const phases = angles.filter(
+    (v, i) =>
+      angles.findIndex(
+        (w) => Math.abs(Math.sin((v - w) / 2)) < 8 * Number.EPSILON,
+      ) === i,
+  )
+  return {
+    a,
+    b,
+    target,
+    period,
+    phases,
+    maxWidth: (28 * Math.PI) / Math.abs(a),
+    name,
+    residualScale: Math.abs(f.scale),
+  }
+}
+export function periodicWindow(
+  f: NonNullable<ReturnType<typeof periodicFamily>>,
+  bounds: Bounds,
+  variable: string,
+): SearchWindow | undefined {
+  if (!Number.isFinite(f.maxWidth) || f.maxWidth <= 0) return undefined
+  const center = bounds.min / 2 + bounds.max / 2
+  const width = Math.min(bounds.max - bounds.min, f.maxWidth)
+  const min = center - width / 2,
+    max = center + width / 2
+  if (
+    !Number.isFinite(min) ||
+    !Number.isFinite(max) ||
+    min === max ||
+    Math.max(Math.abs(f.a * min + f.b), Math.abs(f.a * max + f.b)) > 1e8
+  )
+    return undefined
+  return {
+    min,
+    max,
+    maxWidth: f.maxWidth,
+    requestedMin: bounds.min,
+    requestedMax: bounds.max,
+    reason: 'periodic',
+    variable,
+  }
+}
+```
+
+<a id="source-6"></a>
+
+## src/engine/derivative-free.ts
+
+원본: [src/engine/derivative-free.ts](../../src/engine/derivative-free.ts) · 120줄 · SHA-256: `7d59e37f9666c201c42f38ce6901c86b75d6670040c36a390d965c25ac22e885`
+
+```typescript
+import type { Bounds } from './search-analysis'
+/** No derivative calls: bracketed sign roots and local minimization of |F|.
+ * A sign jump alone never counts as a zero. Zero plateaus produce representatives. */
+export function derivativeFreeRoots(
+  evaluate: (x: number) => number | undefined,
+  bounds: Bounds,
+  resolution = 4096,
+  deadline = performance.now() + 1800,
+) {
+  const nodes = new Set(
+    Array.from(
+      { length: resolution + 1 },
+      (_, i) =>
+        bounds.min * (1 - i / resolution) + bounds.max * (i / resolution),
+    ),
+  )
+  for (let i = 0; resolution >= 1024 && i <= 800; i++) {
+    const x = -1 + i / 400
+    if (x >= bounds.min && x <= bounds.max) nodes.add(x)
+  }
+  const grid = [...nodes].sort((a, b) => a - b),
+    samples: (number | undefined)[] = [],
+    roots: number[] = []
+  let truncated = false
+  for (const x of grid) {
+    if (performance.now() > deadline) {
+      truncated = true
+      break
+    }
+    samples.push(evaluate(x))
+  }
+  let plateau = false,
+    run = false
+  const add = (x: number) => {
+    if (
+      !roots.some(
+        (r) =>
+          Math.abs(r - x) <=
+          128 *
+            Number.EPSILON *
+            Math.max(Number.MIN_VALUE, Math.abs(x), Math.abs(r)),
+      )
+    )
+      roots.push(x)
+  }
+  for (let i = 0; i < grid.length; i++) {
+    if (performance.now() > deadline) {
+      truncated = true
+      break
+    }
+    const f = samples[i]
+    if (f === 0) {
+      if (!run) add(grid[i])
+      else plateau = true
+      run = true
+    } else run = false
+    if (
+      i &&
+      f !== undefined &&
+      samples[i - 1] !== undefined &&
+      f !== 0 &&
+      samples[i - 1] !== 0 &&
+      Math.sign(f) !== Math.sign(samples[i - 1]!)
+    ) {
+      let lo = grid[i - 1],
+        hi = grid[i],
+        fl = samples[i - 1]!,
+        baseline = Math.min(Math.abs(fl), Math.abs(f))
+      for (let k = 0; k < 160; k++) {
+        const mid = lo / 2 + hi / 2,
+          fm = evaluate(mid)
+        if (fm === undefined) break
+        if (fm === 0) {
+          add(mid)
+          break
+        }
+        if (mid === lo || mid === hi) {
+          if (Math.abs(fm) <= baseline * 1e-11) add(mid)
+          break
+        }
+        if (Math.sign(fm) === Math.sign(fl)) {
+          lo = mid
+          fl = fm
+        } else hi = mid
+      }
+    }
+    if (
+      i > 0 &&
+      i + 1 < grid.length &&
+      f !== undefined &&
+      f !== 0 &&
+      samples[i - 1] !== undefined &&
+      samples[i + 1] !== undefined &&
+      Math.abs(f) < Math.abs(samples[i - 1]!) &&
+      Math.abs(f) < Math.abs(samples[i + 1]!)
+    ) {
+      let lo = grid[i - 1],
+        hi = grid[i + 1]
+      for (let k = 0; k < 160; k++) {
+        const a = lo + (hi - lo) * 0.3819660112501051,
+          b = lo + (hi - lo) * 0.6180339887498949
+        const fa = evaluate(a),
+          fb = evaluate(b)
+        if (fa === 0) {
+          add(a)
+          break
+        }
+        if (fb === 0) {
+          add(b)
+          break
+        }
+        if (fa === undefined || fb === undefined || a === lo || b === hi) break
+        if (Math.abs(fa) < Math.abs(fb)) hi = b
+        else lo = a
+      }
+      for (const x of [lo, hi, lo / 2 + hi / 2]) if (evaluate(x) === 0) add(x)
+    }
+  }
+  return { roots, plateau, truncated }
+}
+```
+
+<a id="source-7"></a>
+
+## src/engine/square-free.ts
+
+원본: [src/engine/square-free.ts](../../src/engine/square-free.ts) · 103줄 · SHA-256: `75b09dc355506a1443e807aaeeec09a682d3a1fa64457c204efeddd97d28a76c`
+
+```typescript
+// Exact integer polynomial GCD on the decimal representation of Float64
+// coefficients. This removes repeated factors of the coefficient polynomial;
+// the original expression remains the final authority for domain/residuals.
+const abs = (n: bigint) => (n < 0n ? -n : n)
+const gcd = (a: bigint, b: bigint): bigint => {
+  a = abs(a)
+  b = abs(b)
+  while (b) {
+    ;[a, b] = [b, a % b]
+  }
+  return a
+}
+function trim(a: bigint[]) {
+  while (a.length > 1 && a.at(-1) === 0n) a.pop()
+  return a
+}
+function primitive(a: bigint[]) {
+  trim(a)
+  let g = 0n
+  for (const c of a) g = gcd(g, c)
+  if (!g) return [0n]
+  if (a.at(-1)! < 0n) g = -g
+  return a.map((c) => c / g)
+}
+function limited(a: bigint[]) {
+  if (a.some((c) => abs(c).toString(2).length > 32768))
+    throw new Error('gcd budget')
+  return a
+}
+function remainder(a: bigint[], b: bigint[]) {
+  a = [...a]
+  while (a.length >= b.length && a.some((c) => c !== 0n)) {
+    const c = a.at(-1)!,
+      lead = b.at(-1)!,
+      d = a.length - b.length
+    a = a.map((v) => v * lead)
+    b.forEach((v, i) => (a[i + d] -= v * c))
+    a = primitive(limited(a))
+  }
+  return a
+}
+export function squareFreeCoefficients(
+  coefficients: number[],
+): number[] | undefined {
+  if (
+    coefficients.length < 5 ||
+    coefficients.length > 13 ||
+    !coefficients.every(Number.isFinite)
+  )
+    return undefined
+  try {
+    const parts = coefficients.map((n) => {
+      const [mantissa, exponent = '0'] = n.toString().split('e')
+      const places = (mantissa.split('.')[1] ?? '').length
+      return {
+        n: BigInt(mantissa.replace('.', '')),
+        e: Number(exponent) - places,
+      }
+    })
+    const min = Math.min(...parts.map((p) => p.e))
+    const original = primitive(parts.map((p) => p.n * 10n ** BigInt(p.e - min)))
+    let a = original,
+      b = primitive(original.slice(1).map((v, i) => v * BigInt(i + 1)))
+    while (b.some((c) => c !== 0n)) {
+      const r = remainder(a, b)
+      a = b
+      b = r
+    }
+    const divisor = primitive(a)
+    if (divisor.length <= 1) return undefined
+    let r = [...original],
+      q = Array<bigint>(original.length - divisor.length + 1).fill(0n)
+    while (r.length >= divisor.length && r.some((c) => c !== 0n)) {
+      const lead = divisor.at(-1)!,
+        c = r.at(-1)!,
+        d = r.length - divisor.length
+      q = q.map((v) => v * lead)
+      q[d] += c
+      r = r.map((v) => v * lead)
+      divisor.forEach((v, i) => (r[i + d] -= c * v))
+      trim(limited(r))
+      limited(q)
+    }
+    if (r.some((c) => c !== 0n)) return undefined
+    q = primitive(q)
+    const digits = Math.max(...q.map((v) => abs(v).toString().length))
+    const out = q.map((v) => {
+      if (!v) return 0
+      const text = abs(v).toString()
+      return (
+        (v < 0n ? -1 : 1) *
+        Number(text.slice(0, 16)) *
+        10 ** (text.length - Math.min(16, text.length) - digits)
+      )
+    })
+    return out.every(Number.isFinite) &&
+      out.every((v, i) => v !== 0 || q[i] === 0n)
+      ? out
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+```
+
+<a id="source-8"></a>
+
 ## src/engine/source-statements.ts
 
 원본: [src/engine/source-statements.ts](../../src/engine/source-statements.ts) · 180줄 · SHA-256: `f4fd3d3c7bdba4f63dab6d019c249c124b9a58a95febdd60a7f8878b75121c99`
@@ -1665,11 +2100,11 @@ export function normalizedModelCall<T>(
 }
 ```
 
-<a id="source-6"></a>
+<a id="source-9"></a>
 
 ## src/engine/preprocessor.ts
 
-원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 631줄 · SHA-256: `8a715d7976930370e441e89eca25be2d36c11ed341b1c84cf0b5a7fee0b990cd`
+원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 634줄 · SHA-256: `fe1256087b35e01af6d1cf8c7af73d950db855c7f3642b123104619a9fdb242e`
 
 ```typescript
 import { normalizeEquationSource } from './source-statements'
@@ -1686,6 +2121,9 @@ export type DefinedFunction = {
 }
 
 const RESERVED_MATH_FUNCS = new Set([
+  'floor',
+  'ceil',
+  'sign',
   'sin',
   'cos',
   'tan',
@@ -2305,13 +2743,15 @@ export function preprocessSolverSource(
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-10"></a>
 
 ## src/engine/nonlinear.ts
 
-원본: [src/engine/nonlinear.ts](../../src/engine/nonlinear.ts) · 454줄 · SHA-256: `477d55c208a233df4cccf966dff1ac72e3285edab55e2824890ae807c36b2e54`
+원본: [src/engine/nonlinear.ts](../../src/engine/nonlinear.ts) · 489줄 · SHA-256: `911d6154a2165e625353470e0ee2ac7852b6e77c27b29b745269e96ce29eb1dc`
 
 ```typescript
+import { nonsmoothSource } from './search-analysis'
+import { derivativeFreeRoots } from './derivative-free'
 import { normalizedModelCall } from './source-statements'
 import { normalizeEquationSource } from './source-statements'
 import { conditionNumber } from './conditioning'
@@ -2695,18 +3135,43 @@ export async function createNonlinearSolver(
       }
     }
     const scalar = model.variables.length === 1
+    const nonsmooth = nonsmoothSource(source)
+    if (nonsmooth && !scalar)
+      throw new ModelError(
+        '비매끄러운 연립식의 미분 없는 다변수 탐색은 아직 지원하지 않습니다.',
+      )
     let solved: IterationResult
     let matrix: number[][]
     try {
-      solved = scalar
-        ? bisect(model, evaluate)
-        : newton(model, evaluate, wasm, (values) =>
-            model.jacobian?.(values, parameters),
+      if (nonsmooth) {
+        const found = derivativeFreeRoots((x) => {
+          try {
+            return evaluate([x]).residuals[0]
+          } catch {
+            return undefined
+          }
+        }, model.bounds!)
+        if (!found.roots.length || found.truncated)
+          throw new ModelError(
+            '지정 구간에서 미분 없이 실근을 찾지 못했습니다.',
           )
-      matrix =
-        solved.matrix ??
-        model.jacobian?.(solved.values, parameters) ??
-        numericalJacobian(evaluate, solved.values, solved.evaluation.residuals)
+        const x = found.roots.sort((a, b) => Math.abs(a) - Math.abs(b))[0]
+        solved = { values: [x], evaluation: evaluate([x]), iterations: 0 }
+      } else
+        solved = scalar
+          ? bisect(model, evaluate)
+          : newton(model, evaluate, wasm, (values) =>
+              model.jacobian?.(values, parameters),
+            )
+      matrix = nonsmooth
+        ? [[NaN]]
+        : (solved.matrix ??
+          model.jacobian?.(solved.values, parameters) ??
+          numericalJacobian(
+            evaluate,
+            solved.values,
+            solved.evaluation.residuals,
+          ))
     } catch (error) {
       if (error instanceof ModelError && error.line === undefined)
         error.line = model.rootLines?.[0]
@@ -2724,6 +3189,12 @@ export async function createNonlinearSolver(
       }
     }
     const warnings: string[] = []
+    if (nonsmooth) {
+      conditionError = '비매끄러운 식은 미분 기반 조건수를 적용하지 않습니다.'
+      warnings.push(
+        '미분 없는 수치 탐색 결과입니다. 구간 해가 있으면 대표값을 표시할 수 있습니다.',
+      )
+    }
     if (!scalar && !wasm)
       warnings.push(
         'WebAssembly를 사용할 수 없어 JavaScript Newton 솔버로 계산했습니다.',
@@ -2752,11 +3223,13 @@ export async function createNonlinearSolver(
       ...(conditionError ? { conditionError } : {}),
       engine: !scalar && wasm ? 'wasm' : 'javascript',
       iterations: solved.iterations,
-      method: scalar
-        ? '구간 이분법'
-        : model.jacobian?.(solved.values, parameters)
-          ? '감쇠 Newton · 자동미분 Jacobian'
-          : '감쇠 Newton · 수치 Jacobian',
+      method: nonsmooth
+        ? '미분 없는 구간 탐색'
+        : scalar
+          ? '구간 이분법'
+          : model.jacobian?.(solved.values, parameters)
+            ? '감쇠 Newton · 자동미분 Jacobian'
+            : '감쇠 Newton · 수치 Jacobian',
       durationMs: performance.now() - start,
       warnings,
     }
@@ -2768,13 +3241,14 @@ export async function createNonlinearSolver(
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-11"></a>
 
 ## src/engine/automatic-polynomial.ts
 
-원본: [src/engine/automatic-polynomial.ts](../../src/engine/automatic-polynomial.ts) · 587줄 · SHA-256: `901c8cceaae324771fbe7e463e2f6cdca81c252131bb7ef17fa1ea9e4042a4e2`
+원본: [src/engine/automatic-polynomial.ts](../../src/engine/automatic-polynomial.ts) · 588줄 · SHA-256: `1c6b3ff337b00ad40d5d1c378a7033b3ba4b7fc7e38663258ff87f8f9a537bc7`
 
 ```typescript
+import { squareFreeCoefficients } from './square-free'
 import {
   evaluateNonlinearExpression,
   type NonlinearNode,
@@ -3054,7 +3528,7 @@ export function findPolynomialRealRoots(
   coefficients: number[],
   bounds?: { min: number; max: number },
 ): { roots: number[]; min: number; max: number; identicallyZero?: boolean } {
-  const original = trim(coefficients)
+  const original = trim(squareFreeCoefficients(coefficients) ?? coefficients)
   const scale = Math.max(...original.map(Math.abs))
   // Retain very small coefficients if global normalization would erase them.
   const normalized =
@@ -3364,7 +3838,7 @@ export function rationalCoefficients(
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-12"></a>
 
 ## src/engine/parameter-path.ts
 
@@ -3630,7 +4104,7 @@ export function createParameterPathValidator(
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-13"></a>
 
 ## src/engine/tangency.ts
 
@@ -3857,13 +4331,24 @@ export function tangencyLabel(t: TangencyVerification): string {
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-14"></a>
 
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,198줄 · SHA-256: `340892efe621efb9a5236d9b83065f377826a50ca36b8e8ff7b8e3f3c8ddb7d5`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,453줄 · SHA-256: `0cbcedb6dde3f9d7428846bd5e6a0d3663a9c00610a68655fa8f69a5d3ae809a`
 
 ```typescript
+import { squareFreeCoefficients } from './square-free'
+import { derivativeFreeRoots } from './derivative-free'
+import {
+  nodeText,
+  peelZeroPower,
+  periodicFamily,
+  periodicWindow,
+  nonsmoothSource,
+  type VariableBounds,
+  type SearchWindow,
+} from './search-analysis'
 import { normalizedModelCall } from './source-statements'
 import { sameComputedRoot } from './root-comparison'
 import { preprocessSolverSource } from './preprocessor'
@@ -3899,9 +4384,13 @@ export type SearchSummary = {
   attempts: number
   note: string
   truncated?: boolean
+  variableBounds?: VariableBounds
+  window?: SearchWindow
+  nonIsolated?: boolean
 }
 export type AutomaticOptions = SolverOptions & {
   searchBounds?: { min: number; max: number }
+  variableBounds?: VariableBounds
 }
 export type AutomaticSearchResult = {
   solutions: SolveResult[]
@@ -3924,6 +4413,8 @@ type Prepared = {
   source: string
   variables: string[]
   model: CompiledModel
+  originalModel?: CompiledModel
+  nonsmooth: boolean
   expression?: NonlinearNode
   helpers: Map<string, NonlinearNode>
   polynomialRoots: Map<string, { value: number; slope: number }[] | null>
@@ -4048,12 +4539,28 @@ function prepare(source: string, parameterNames: string[]): Prepared {
       : variables.map((name) => `${name}(0) = 1`).join('\n')
   // The existing strict compiler validates names, helper dependencies and safe
   // expression syntax; these synthetic conditions are only for compilation.
-  const model = compileNonlinear(`${canonical}\n${metadata}`, parameterNames)
+  let model = compileNonlinear(`${canonical}\n${metadata}`, parameterNames)
+  const originalModel = model
+  if (model.variables.length === 1 && expression) {
+    const peeled = peelZeroPower(expression)
+    if (peeled !== expression) {
+      expression = peeled
+      const working = canonical
+        .split('\n')
+        .map((line) =>
+          ROOT.test(line) ? `f(${variables[0]}) = ${nodeText(peeled)}` : line,
+        )
+        .join('\n')
+      model = compileNonlinear(`${working}\n${metadata}`, parameterNames)
+    }
+  }
   const prepared = {
     source: canonical,
     fixedEquations,
     variables: model.variables,
     model,
+    originalModel: originalModel === model ? undefined : originalModel,
+    nonsmooth: nonsmoothSource(canonical),
     expression,
     helpers,
     polynomialRoots: new Map(),
@@ -4137,9 +4644,10 @@ function liftFixedResult(
   const values = prepared.variables.map((name) => fixed[name] ?? free[name])
   const evaluate = (v: number[]) => prepared.model.evaluate(v, parameters)
   const evaluation = evaluate(values)
-  const matrix =
-    prepared.model.jacobian?.(values, parameters) ??
-    numericalJacobian(evaluate, values, evaluation.residuals)
+  const matrix = prepared.nonsmooth
+    ? values.map(() => values.map(() => NaN))
+    : (prepared.model.jacobian?.(values, parameters) ??
+      numericalJacobian(evaluate, values, evaluation.residuals))
   const norm = options.conditionNorm ?? 'infinity'
   let condition = NaN,
     conditionError: string | undefined
@@ -4175,11 +4683,19 @@ function validateParameters(parameters: Record<string, number>) {
     if (!Number.isFinite(value))
       throw new ModelError(`파라미터 '${name}'에 유한한 숫자가 필요합니다.`)
 }
-function boundsFor(options: AutomaticOptions) {
-  const bounds = options.searchBounds ?? { min: -100, max: 100 }
+function ownBounds(options: AutomaticOptions, variable: string) {
+  return options.variableBounds &&
+    Object.hasOwn(options.variableBounds, variable)
+    ? options.variableBounds[variable]
+    : undefined
+}
+function boundsFor(options: AutomaticOptions, variable?: string) {
+  const bounds = (variable ? ownBounds(options, variable) : undefined) ??
+    options.searchBounds ?? { min: -100, max: 100 }
   if (
     !Number.isFinite(bounds.min) ||
     !Number.isFinite(bounds.max) ||
+    !Number.isFinite(bounds.max - bounds.min) ||
     bounds.min >= bounds.max
   )
     throw new ModelError(
@@ -4403,7 +4919,8 @@ function polynomialNearRoots(
         slope = derivative(prepared.model, parameters, value, residual)
       if (
         residual !== undefined &&
-        hasLocalVariation(prepared.model, parameters, value) &&
+        (hasLocalVariation(prepared.model, parameters, value) ||
+          (residual === 0 && !!squareFreeCoefficients(coefficients))) &&
         (residual === 0 ||
           (slope !== 0 &&
             smallLocalResidual(prepared.model, parameters, value, residual) &&
@@ -4498,10 +5015,12 @@ function scalarResult(
   slopeOverride?: number,
 ): SolveResult {
   const start = performance.now()
-  const evaluation = prepared.model.evaluate([value], parameters)
-  const slope =
-    slopeOverride ??
-    derivative(prepared.model, parameters, value, evaluation.residuals[0])
+  const resultModel = prepared.originalModel ?? prepared.model
+  const evaluation = resultModel.evaluate([value], parameters)
+  const slope = prepared.nonsmooth
+    ? NaN
+    : ((!prepared.originalModel ? slopeOverride : undefined) ??
+      derivative(resultModel, parameters, value, evaluation.residuals[0]))
   const matrix = [[slope]]
   let condition = NaN
   let conditionError: string | undefined
@@ -4515,6 +5034,9 @@ function scalarResult(
       conditionError = '해에서의 Jacobian 조건수를 계산하지 못했습니다.'
     }
   }
+  if (prepared.nonsmooth)
+    conditionError =
+      '비매끄러운 식은 미분 기반 조건수·접점 분류를 적용하지 않습니다.'
   const warnings = [
     '자동 탐색에서 검증한 실근입니다. 수치 탐색은 임의의 함수에 대한 모든 해를 보장하지 않습니다.',
   ]
@@ -4551,39 +5073,45 @@ function radicalInverse(index: number, base: number) {
   }
   return result
 }
-function systemSeeds(size: number, bounds: { min: number; max: number }) {
-  const seeds: number[][] = []
-  const add = (values: number[]) => {
+function systemSeeds(variables: string[], box: { min: number; max: number }[]) {
+  const n = variables.length,
+    seeds: number[][] = []
+  const middle = box.map((b) => b.min / 2 + b.max / 2)
+  const add = (v: number[]) => {
     if (
-      values.every((value) => value >= bounds.min && value <= bounds.max) &&
-      !seeds.some((seed) => seed.every((value, i) => value === values[i]))
+      v.every((x, i) => x >= box[i].min && x <= box[i].max) &&
+      !seeds.some((s) => s.every((x, i) => x === v[i]))
     )
-      seeds.push(values)
+      seeds.push(v)
   }
-  const middle = bounds.min / 2 + bounds.max / 2
-  const width = bounds.max / 2 - bounds.min / 2
-  for (const value of [0, 1, -1, middle, bounds.min, bounds.max])
-    add(Array(size).fill(value))
-  if (size === 2) {
-    const coordinates = [
+  add(middle)
+  for (const x of [0, 1, -1])
+    add(box.map((b) => Math.max(b.min, Math.min(b.max, x))))
+  add(box.map((b) => b.min))
+  add(box.map((b) => b.max))
+  for (let i = 0; i < n; i++)
+    for (const x of [box[i].min, box[i].max])
+      add(middle.map((v, j) => (i === j ? x : v)))
+  if (n === 2) {
+    const coordinates = box.map((b, i) => [
       ...new Set(
-        [bounds.min, bounds.max, middle, -10, -3, -1, 0, 1, 3, 10].filter(
-          (value) => value >= bounds.min && value <= bounds.max,
+        [b.min, b.max, middle[i], -10, -3, -1, 0, 1, 3, 10].filter(
+          (v) => v >= b.min && v <= b.max,
         ),
       ),
-    ]
-    for (const x of coordinates) for (const y of coordinates) add([x, y])
+    ])
+    for (const x of coordinates[0]) for (const y of coordinates[1]) add([x, y])
   }
   const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53]
-  const limit = size <= 2 ? 128 : size <= 4 ? 80 : 48
-  for (let index = 1; seeds.length < limit && index <= limit * 8; index++)
+  for (let i = 1; seeds.length < 160 && i <= 1920; i++)
     add(
-      Array.from(
-        { length: size },
-        (_, j) => middle + width * (2 * radicalInverse(index, primes[j]) - 1),
+      box.map(
+        (b, j) =>
+          b.min * (1 - radicalInverse(i, primes[j])) +
+          b.max * radicalInverse(i, primes[j]),
       ),
     )
-  return seeds.sort(compareFromOrigin).slice(0, limit)
+  return seeds.sort(compareFromOrigin).slice(0, 160)
 }
 
 /** Search is deterministic and bounded. It returns discovered finite real
@@ -4607,6 +5135,22 @@ export async function createAutomaticSolver(
     )
       throw new ModelError('추적할 해의 미지수 값이 올바르지 않습니다.')
     if (prepared.variables.length === 1) {
+      if (prepared.nonsmooth) {
+        const span = Math.max(1, Math.abs(values[0]))
+        const found = derivativeFreeRoots(
+          (x) => tryScalar(prepared.model, parameters, x),
+          { min: values[0] - span, max: values[0] + span },
+          64,
+        )
+        if (!found.roots.length || found.truncated)
+          throw new ModelError(
+            '미분 없는 국소 탐색에서 현재 분기를 추적하지 못했습니다.',
+          )
+        const x = found.roots.reduce((a, b) =>
+          Math.abs(a - values[0]) <= Math.abs(b - values[0]) ? a : b,
+        )
+        return scalarResult(prepared, parameters, x, options)
+      }
       const roots = polynomialNearRoots(prepared, parameters)
       if (roots && roots.length > 0) {
         let closest = roots[0]
@@ -4760,6 +5304,15 @@ export async function createAutomaticSolver(
     )
       throw new ModelError('조건수 계산 방법을 확인해 주세요.')
     const prepared = prepare(source, Object.keys(parameters))
+    for (const [name, b] of Object.entries(options.variableBounds ?? {})) {
+      if (
+        !/^[A-Za-z][A-Za-z0-9_]*$/.test(name) ||
+        !b ||
+        ![b.min, b.max, b.max - b.min].every(Number.isFinite) ||
+        b.min >= b.max
+      )
+        throw new ModelError(`미지수 '${name}'의 탐색 범위를 확인하세요.`)
+    }
     const reduction = fixedReduction(prepared, parameters)
     if (reduction) {
       const bounds = boundsFor(options)
@@ -4792,11 +5345,15 @@ export async function createAutomaticSolver(
                 options,
               ),
             ]
-      ).filter(
-        (result) =>
-          partial ||
-          !options.searchBounds ||
-          result.values.every((v) => v >= bounds.min && v <= bounds.max),
+      ).filter((result) =>
+        result.values.every((v, i) => {
+          const b = ownBounds(options, result.variables[i])
+          return b
+            ? v >= b.min && v <= b.max
+            : partial ||
+                !options.searchBounds ||
+                (v >= bounds.min && v <= bounds.max)
+        }),
       )
       sortSolutions(solutions)
       for (const result of solutions)
@@ -4819,17 +5376,26 @@ export async function createAutomaticSolver(
             },
       }
     }
-    let bounds = boundsFor(options)
+    if (prepared.nonsmooth && prepared.variables.length > 1)
+      throw new ModelError(
+        '비매끄러운 연립식의 미분 없는 다변수 탐색은 아직 지원하지 않습니다. 고정 조건을 분리하거나 단일 미지수 식으로 작성하세요.',
+      )
+    let bounds = boundsFor(
+      options,
+      prepared.variables.length === 1 ? prepared.variables[0] : undefined,
+    )
     const solutions: SolveResult[] = []
     let attempts = 0,
       truncated = false
     const timedOut = () => performance.now() - start > TIME_BUDGET_MS
     const inBounds = (values: number[]) =>
-      values.every(
-        (value) =>
-          value >= bounds.min - 1e-9 * Math.max(1, Math.abs(bounds.min)) &&
-          value <= bounds.max + 1e-9 * Math.max(1, Math.abs(bounds.max)),
-      )
+      values.every((v, i) => {
+        const b =
+          prepared.variables.length === 1
+            ? bounds
+            : boundsFor(options, prepared.variables[i])
+        return v >= b.min && v <= b.max
+      })
     const add = (result: SolveResult) => {
       if (!inBounds(result.values)) return
       if (unique(solutions, result)) {
@@ -4842,16 +5408,95 @@ export async function createAutomaticSolver(
     }
     let method: string
     let note: string
+    let window: SearchWindow | undefined
+    let nonIsolated = false
     if (prepared.variables.length === 1) {
       const algebraic = algebraicCoefficients(prepared, parameters)
       const coefficients = algebraic?.coefficients
-      if (coefficients) {
+      const periodic =
+        prepared.expression && !prepared.nonsmooth
+          ? periodicFamily(
+              prepared.expression,
+              prepared.variables[0],
+              { pi: Math.PI, e: Math.E, ...parameters },
+              prepared.helpers,
+            )
+          : undefined
+      const candidateWindow = periodic
+        ? periodicWindow(periodic, bounds, prepared.variables[0])
+        : undefined
+      if (periodic && !candidateWindow)
+        throw new ModelError(
+          '위상이나 창 위치가 Float64의 안전한 분석 범위를 벗어났습니다. 탐색 중심 또는 주파수를 줄여 주세요.',
+        )
+      if (periodic && candidateWindow) {
+        window = candidateWindow
+        bounds = { min: window.min, max: window.max }
+        method = '선형 위상 주기식 · 위상별 영점 열거'
+        note =
+          '분석한 위상에서 후보를 열거하고 원래 식을 수치 검증했습니다. Float64 위상 오차의 영향은 남고 수치 검증에서 일부 근은 누락될 수 있습니다. 범위 밖의 해와 일반 함수의 모든 해를 보장하지 않습니다.'
+        if (window.requestedMax - window.requestedMin > window.maxWidth)
+          note +=
+            ' 근이 많아 탐색 창을 자동 축소했습니다. 최대 폭 이내에서 위치를 옮길 수 있습니다.'
+        for (const phase of periodic.phases) {
+          const q0 = Math.min(
+              periodic.a * bounds.min + periodic.b,
+              periodic.a * bounds.max + periodic.b,
+            ),
+            q1 = Math.max(
+              periodic.a * bounds.min + periodic.b,
+              periodic.a * bounds.max + periodic.b,
+            )
+          const k0 = Math.ceil(
+              (q0 - phase) / periodic.period - 8 * Number.EPSILON,
+            ),
+            k1 = Math.floor((q1 - phase) / periodic.period + 8 * Number.EPSILON)
+          for (let k = k0; k <= k1 && k - k0 < 64; k++) {
+            const q = phase + k * periodic.period,
+              value = (q - periodic.b) / periodic.a
+            const residual = tryScalar(prepared.model, parameters, value)
+            const phaseError =
+              64 *
+              Number.EPSILON *
+              Math.max(1, Math.abs(q), Math.abs(periodic.b))
+            if (
+              residual !== undefined &&
+              Math.abs(residual) / periodic.residualScale <=
+                phaseError * Math.max(1, Math.abs(periodic.target))
+            ) {
+              add(scalarResult(prepared, parameters, value, options))
+              attempts++
+            }
+          }
+        }
+      } else if (prepared.nonsmooth) {
+        method = '비매끄러운 식 · 미분 없는 구간 탐색'
+        note =
+          '부호 구간과 절댓값의 국소 최솟값을 탐색했습니다. 접점 차수나 미분 기반 소멸을 판정하지 않습니다.'
+        const found = derivativeFreeRoots(
+          (x) => tryScalar(prepared.model, parameters, x),
+          bounds,
+        )
+        nonIsolated = found.plateau
+        truncated ||= found.truncated
+        for (const x of found.roots) {
+          add(scalarResult(prepared, parameters, x, options))
+          attempts++
+        }
+        if (nonIsolated)
+          note +=
+            ' 0이 이어지는 구간을 관찰했습니다. 고립된 근 전체가 아니라 구간 해의 대표값을 표시합니다.'
+      } else if (coefficients) {
         method = algebraic?.rational
           ? '유리식 분자 실근 분리 · 원래 식 검증'
           : '다항식 실근 분리 · 수치 검증'
         const isolated = findPolynomialRealRoots(
           coefficients,
-          options.searchBounds,
+          ownBounds(options, prepared.variables[0]) ??
+            options.searchBounds ??
+            (Object.keys(options.variableBounds ?? {}).length
+              ? boundsFor(options, prepared.variables[0])
+              : undefined),
         )
         bounds = { min: isolated.min, max: isolated.max }
         if (isolated.identicallyZero)
@@ -4860,7 +5505,15 @@ export async function createAutomaticSolver(
           )
         for (const value of new Set([
           ...isolated.roots,
-          ...factorCandidates(prepared, parameters, options.searchBounds),
+          ...factorCandidates(
+            prepared,
+            parameters,
+            ownBounds(options, prepared.variables[0]) ??
+              options.searchBounds ??
+              (Object.keys(options.variableBounds ?? {}).length
+                ? boundsFor(options, prepared.variables[0])
+                : undefined),
+          ),
         ])) {
           attempts++
           let slope = 0
@@ -4874,7 +5527,10 @@ export async function createAutomaticSolver(
           // that original expression before publishing any candidate.
           if (
             residual === undefined ||
-            !hasLocalVariation(prepared.model, parameters, value)
+            !(
+              hasLocalVariation(prepared.model, parameters, value) ||
+              (residual === 0 && !!squareFreeCoefficients(coefficients))
+            )
           )
             continue
           if (
@@ -4905,9 +5561,9 @@ export async function createAutomaticSolver(
           '표시한 범위 안에서 여러 구간과 시작점으로 유한한 실근을 탐색했습니다. 범위 밖의 해, 가까운 중근 또는 일부 해는 누락될 수 있습니다.'
         const nodes = new Set(
           Array.from(
-            { length: 2049 },
+            { length: 4097 },
             (_, index) =>
-              bounds.min * (1 - index / 2048) + bounds.max * (index / 2048),
+              bounds.min * (1 - index / 4096) + bounds.max * (index / 4096),
           ),
         )
         for (let index = 0; index <= 800; index++) {
@@ -5023,7 +5679,10 @@ export async function createAutomaticSolver(
       method = '다중 시작점 감쇠 Newton'
       note =
         '표시한 범위의 여러 시작점에서 수렴한 실수 해를 모았습니다. 수치 탐색으로 모든 해를 보장하지 않으며 특이한 해나 작은 수렴 영역의 해는 누락될 수 있습니다.'
-      for (const seed of systemSeeds(prepared.variables.length, bounds)) {
+      for (const seed of systemSeeds(
+        prepared.variables,
+        prepared.variables.map((v) => boundsFor(options, v)),
+      )) {
         if (timedOut()) {
           truncated = true
           break
@@ -5046,16 +5705,86 @@ export async function createAutomaticSolver(
       search: {
         method,
         ...bounds,
+        ...(window ? { window } : {}),
+        ...(nonIsolated ? { nonIsolated: true } : {}),
+        variableBounds: Object.fromEntries(
+          prepared.variables.map((v) => [v, boundsFor(options, v)]),
+        ),
         attempts,
         note,
         ...(truncated ? { truncated: true } : {}),
       },
     }
   }) as AutomaticSolver
-  const normalizedSearch = ((source, parameters, options) =>
-    normalizedModelCall(source, Object.keys(parameters), (normalized) =>
-      search(normalized, parameters, options),
-    )) as AutomaticSolver
+  const densityLimits = new Map<string, SearchWindow>()
+  const normalizedSearch = ((source, parameters, options = {}) =>
+    normalizedModelCall(source, Object.keys(parameters), (normalized) => {
+      const variables = prepare(normalized, Object.keys(parameters)).variables
+      const key = JSON.stringify([
+        normalized,
+        Object.entries(parameters).sort(([a], [b]) => a.localeCompare(b)),
+      ])
+      const previous = densityLimits.get(key)
+      const requested = boundsFor(options, variables[0])
+      let applied = options
+      if (previous && requested.max - requested.min > previous.maxWidth) {
+        const center = requested.min / 2 + requested.max / 2,
+          b = {
+            min: center - previous.maxWidth / 2,
+            max: center + previous.maxWidth / 2,
+          }
+        applied = {
+          ...options,
+          variableBounds: { ...options.variableBounds, [variables[0]]: b },
+        }
+      }
+      let found = search(normalized, parameters, applied)
+      if (
+        variables.length === 1 &&
+        !found.search.window &&
+        !found.search.nonIsolated &&
+        found.search.truncated &&
+        found.solutions.length === 32
+      ) {
+        const values = found.solutions.map((r) => r.values[0]),
+          span = Math.max(...values) - Math.min(...values)
+        const maxWidth = Math.min(
+          (found.search.max - found.search.min) / 2,
+          span * 0.7,
+        )
+        const center = found.search.min / 2 + found.search.max / 2
+        if (maxWidth > 0 && Number.isFinite(maxWidth)) {
+          const w: SearchWindow = {
+            min: center - maxWidth / 2,
+            max: center + maxWidth / 2,
+            maxWidth,
+            requestedMin: requested.min,
+            requestedMax: requested.max,
+            variable: variables[0],
+            reason: 'density',
+          }
+          found = search(normalized, parameters, {
+            ...options,
+            variableBounds: { ...options.variableBounds, [variables[0]]: w },
+          })
+          if (densityLimits.size >= 16)
+            densityLimits.delete(densityLimits.keys().next().value!)
+          densityLimits.set(key, w)
+          found.search.window = w
+        }
+      } else if (previous && !found.search.window)
+        found.search.window = {
+          ...previous,
+          min: found.search.min,
+          max: found.search.max,
+          requestedMin: requested.min,
+          requestedMax: requested.max,
+        }
+      if (found.search.window?.reason === 'density')
+        found.search.note +=
+          ' 발견한 근의 밀도로 탐색 창을 줄였습니다. 이 관찰만으로 모든 근의 발견을 보장하지 않습니다.'
+      return found
+    })) as AutomaticSolver
   normalizedSearch.solveNear = (source, parameters, seed, options) =>
     normalizedModelCall(source, Object.keys(parameters), (normalized) =>
       solveNear(normalized, parameters, seed, options),
@@ -5064,7 +5793,7 @@ export async function createAutomaticSolver(
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-15"></a>
 
 ## src/engine/root-isolation.ts
 
@@ -5114,7 +5843,7 @@ export function isUniquePolynomialRoot(result: SolveResult): boolean {
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-16"></a>
 
 ## src/engine/conditioning.ts
 
@@ -5240,7 +5969,7 @@ export function conditionNumber(
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-17"></a>
 
 ## src/engine/solver.wat
 
@@ -5335,7 +6064,7 @@ export function conditionNumber(
 )
 ```
 
-<a id="source-15"></a>
+<a id="source-18"></a>
 
 ## scripts/build-wasm.mjs
 

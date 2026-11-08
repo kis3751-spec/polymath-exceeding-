@@ -1,3 +1,5 @@
+import { nonsmoothSource } from './search-analysis'
+import { derivativeFreeRoots } from './derivative-free'
 import { normalizedModelCall } from './source-statements'
 import { normalizeEquationSource } from './source-statements'
 import { conditionNumber } from './conditioning'
@@ -381,18 +383,43 @@ export async function createNonlinearSolver(
       }
     }
     const scalar = model.variables.length === 1
+    const nonsmooth = nonsmoothSource(source)
+    if (nonsmooth && !scalar)
+      throw new ModelError(
+        '비매끄러운 연립식의 미분 없는 다변수 탐색은 아직 지원하지 않습니다.',
+      )
     let solved: IterationResult
     let matrix: number[][]
     try {
-      solved = scalar
-        ? bisect(model, evaluate)
-        : newton(model, evaluate, wasm, (values) =>
-            model.jacobian?.(values, parameters),
+      if (nonsmooth) {
+        const found = derivativeFreeRoots((x) => {
+          try {
+            return evaluate([x]).residuals[0]
+          } catch {
+            return undefined
+          }
+        }, model.bounds!)
+        if (!found.roots.length || found.truncated)
+          throw new ModelError(
+            '지정 구간에서 미분 없이 실근을 찾지 못했습니다.',
           )
-      matrix =
-        solved.matrix ??
-        model.jacobian?.(solved.values, parameters) ??
-        numericalJacobian(evaluate, solved.values, solved.evaluation.residuals)
+        const x = found.roots.sort((a, b) => Math.abs(a) - Math.abs(b))[0]
+        solved = { values: [x], evaluation: evaluate([x]), iterations: 0 }
+      } else
+        solved = scalar
+          ? bisect(model, evaluate)
+          : newton(model, evaluate, wasm, (values) =>
+              model.jacobian?.(values, parameters),
+            )
+      matrix = nonsmooth
+        ? [[NaN]]
+        : (solved.matrix ??
+          model.jacobian?.(solved.values, parameters) ??
+          numericalJacobian(
+            evaluate,
+            solved.values,
+            solved.evaluation.residuals,
+          ))
     } catch (error) {
       if (error instanceof ModelError && error.line === undefined)
         error.line = model.rootLines?.[0]
@@ -410,6 +437,12 @@ export async function createNonlinearSolver(
       }
     }
     const warnings: string[] = []
+    if (nonsmooth) {
+      conditionError = '비매끄러운 식은 미분 기반 조건수를 적용하지 않습니다.'
+      warnings.push(
+        '미분 없는 수치 탐색 결과입니다. 구간 해가 있으면 대표값을 표시할 수 있습니다.',
+      )
+    }
     if (!scalar && !wasm)
       warnings.push(
         'WebAssembly를 사용할 수 없어 JavaScript Newton 솔버로 계산했습니다.',
@@ -438,11 +471,13 @@ export async function createNonlinearSolver(
       ...(conditionError ? { conditionError } : {}),
       engine: !scalar && wasm ? 'wasm' : 'javascript',
       iterations: solved.iterations,
-      method: scalar
-        ? '구간 이분법'
-        : model.jacobian?.(solved.values, parameters)
-          ? '감쇠 Newton · 자동미분 Jacobian'
-          : '감쇠 Newton · 수치 Jacobian',
+      method: nonsmooth
+        ? '미분 없는 구간 탐색'
+        : scalar
+          ? '구간 이분법'
+          : model.jacobian?.(solved.values, parameters)
+            ? '감쇠 Newton · 자동미분 Jacobian'
+            : '감쇠 Newton · 수치 Jacobian',
       durationMs: performance.now() - start,
       warnings,
     }

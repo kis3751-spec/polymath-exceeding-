@@ -1,3 +1,4 @@
+import { squareFreeCoefficients } from './square-free'
 import {
   evaluateNonlinearExpression,
   type NonlinearNode,
@@ -277,7 +278,7 @@ export function findPolynomialRealRoots(
   coefficients: number[],
   bounds?: { min: number; max: number },
 ): { roots: number[]; min: number; max: number; identicallyZero?: boolean } {
-  const original = trim(coefficients)
+  const original = trim(squareFreeCoefficients(coefficients) ?? coefficients)
   const scale = Math.max(...original.map(Math.abs))
   // Retain very small coefficients if global normalization would erase them.
   const normalized =
