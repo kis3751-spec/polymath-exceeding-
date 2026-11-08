@@ -262,6 +262,10 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
                   evaluate,
                   seed.values![0],
                   seed.parameter,
+                  model.jacobian?.(seed.values!, {
+                    ...referenceParameters,
+                    [sweep.name]: seed.parameter,
+                  })?.[0]?.[0],
                 )
                 if (
                   !verified ||
@@ -437,9 +441,17 @@ export function detectMergedBranchEvents(
       })
       const sameFold =
         sameVerifiedEvent(a, b) &&
-        a.tangency?.bifurcationOrder !== 3 &&
-        a.tangency?.bifurcationOrder !== 'boundary'
-      if (((sameParam && sameValues) || sameFold) && converging) {
+        a.tangency?.geometry !== 'degenerate' &&
+        typeof a.tangency?.bifurcationOrder === 'number' &&
+        a.tangency.bifurcationOrder % 2 === 0
+      const nonFold = [a, b].some(
+        (ev) =>
+          ev.tangency?.verified &&
+          (ev.tangency.geometry === 'degenerate' ||
+            (typeof ev.tangency.bifurcationOrder === 'number' &&
+              ev.tangency.bifurcationOrder % 2 === 1)),
+      )
+      if (!nonFold && ((sameParam && sameValues) || sameFold) && converging) {
         matchedIndex = j
         break
       }

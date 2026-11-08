@@ -1,3 +1,15 @@
+import AnalysisSummary from './components/AnalysisSummary'
+import { rootStructureLabel, tangencyOrderLabel } from './engine/tangency'
+import {
+  reportDiagnostics,
+  coveragePercent,
+  searchConclusion,
+} from './engine/report-diagnostics'
+import {
+  uniqueBranchEvents,
+  branchEventLabel,
+  eventLocation,
+} from './engine/branch-events'
 import { normalizeAutomaticModel } from './engine/automatic'
 import { equationProject } from './equation-project'
 import {
@@ -79,7 +91,7 @@ const fmt = (n: number, digits = 5) =>
     : n === 0
       ? '0'
       : Math.abs(n) < 0.000001 || Math.abs(n) >= 1e9
-        ? n.toExponential(Math.min(15, digits - 1))
+        ? n.toExponential(Math.min(16, digits - 1))
         : Number(n.toPrecision(digits)).toLocaleString('en-US', {
             maximumSignificantDigits: digits,
           })
@@ -238,6 +250,8 @@ export default function App() {
   const [searchInfo, setSearchInfo] = useState<SearchSummary | null>(null)
   const [pending, setPending] = useState(false)
   const [discoveryPending, setDiscoveryPending] = useState(false)
+  const solutionsRef = useRef<HTMLDetailsElement>(null)
+  const [solutionsHeight, setSolutionsHeight] = useState(0)
   const [workerReady, setWorkerReady] = useState(false)
   const [revision, setRevision] = useState(0)
   const [screen, setScreen] = useState<WorkspaceScreen>('home')
@@ -320,7 +334,8 @@ export default function App() {
       (w) =>
         !(
           nonlinear &&
-          (w.startsWith('지정 구간에서 찾은 하나의 근') ||
+          (w.startsWith('자동 탐색에서 검증한 실근') ||
+            w.startsWith('지정 구간에서 찾은 하나의 근') ||
             w.startsWith('초기 추정값에서 찾은 하나의 해'))
         ),
     ) ?? []
@@ -445,6 +460,8 @@ export default function App() {
       setDiscoveryPending(false)
       return
     }
+    const list = solutionsRef.current
+    setSolutionsHeight(list?.open ? list.getBoundingClientRect().height : 0)
     setPending(true)
     setDiscoveryPending(false)
     setError('')
@@ -588,10 +605,14 @@ export default function App() {
     return () => document.removeEventListener('pointerdown', close)
   }, [examplesOpen])
   function navigate(next: WorkspaceScreen) {
+    // Adding another panel is an in-place action, including in fullscreen.
+    if (next === screen) return
     setScreen(next)
     setExpanded(false)
     setExamplesOpen(false)
     setParamOpen(false)
+    if (next === 'report' && automatic && boundsVariables.length === 1)
+      setProject((p) => ({ ...p, certifyRoots: true }))
     requestAnimationFrame(() =>
       window.scrollTo({ top: 0, behavior: 'instant' }),
     )
@@ -872,13 +893,26 @@ export default function App() {
     branchLabel?: string,
   ) {
     const isEvaluation = target.kind === 'evaluation'
+    const diagnostics = reportDiagnostics(
+      target,
+      project.source,
+      Object.fromEntries(project.parameters.map((p) => [p.name, p.value])),
+      coverage,
+    )
+    const critical = uniqueBranchEvents(
+      (index === undefined
+        ? selectedBranch?.events
+        : simulationResults.find(
+            (panel) => panel.result && sameComputedRoot(panel.result, target),
+          )?.events) ?? [],
+    )
     return (
       [
         `# ${project.title}${branchLabel ? ` · ${branchLabel}` : index === undefined ? '' : ` · 해 ${index + 1}`}`,
         project.description,
         `유형: ${nonlinear ? 'Nonlinear' : 'Linear'}`,
         coverage
-          ? `탐색: ${coverage.method}\n\n범위: ${coverage.min} ~ ${coverage.max}\n\n${coverage.note}`
+          ? `탐색: ${coverage.method}\n\n범위: ${coverage.min} ~ ${coverage.max}\n\n${coverage.certification ? searchConclusion(coverage) : coverage.note}`
           : '',
         coverage?.certification
           ? certificateReport(coverage.certification)
@@ -886,12 +920,23 @@ export default function App() {
         target.method
           ? `방법: ${target.method} · 반복 ${target.iterations ?? 0}회`
           : '',
-        nonlinear && !isEvaluation
-          ? '발견한 하나의 실수 해입니다. 다른 해가 존재할 수 있으며 조건수는 해 주변 Jacobian의 국소 값입니다.'
+        !isEvaluation
+          ? `## 해의 품질\n\n${searchConclusion(coverage, !nonlinear)}\n\n근 종류: ${rootStructureLabel(target.rootStructure)}\n\n정규화 등식 오차: ${diagnostics.normalizedError ?? '해당 없음'}\n\n${diagnostics.errorBound !== undefined ? `해의 절대 오차 상한: ${diagnostics.errorBound} (포함 구간 [${diagnostics.enclosure!.lo}, ${diagnostics.enclosure!.hi}])` : `국소 보정량 |J⁻¹F|: ${diagnostics.correction?.join(', ') ?? '선형 보정 적용 불가'}`}\n\n등식 절대 오차 증폭률 ||J⁻¹||∞: ${diagnostics.amplification ?? '중근·특이계 또는 미분 적용 불가'}\n\n${diagnostics.powerResponse ? `${diagnostics.powerResponse.order}중근 변화 크기: |Δx| ≈ (${diagnostics.powerResponse.coefficient}·δ)^(1/${diagnostics.powerResponse.order}). 오차 방향에 따라 실근이 사라질 수 있습니다.` : ''}\n\n탐색 구간 검증률: ${coveragePercent(coverage) ?? '미실행'} (구간 길이 비율이며 발견 확률이 아닙니다.)\n\n포함 구간은 검증된 오차 범위, 보정량과 증폭률은 현재 단위에서의 국소 추정입니다.`
+          : '',
+        diagnostics.parameterSensitivity.length
+          ? `## 파라미터별 변화율 dx/dp\n\n${diagnostics.parameterSensitivity.map((p) => `- ${p.name}: ${target.variables.map((v, i) => `${v} ${p.derivatives[i]}`).join(', ')}`).join('\n')}`
+          : '',
+        critical.length
+          ? `## 기준 곡선의 특별한 지점\n\n${critical
+              .map((ev) => {
+                const at = eventLocation(ev)
+                return `- ${branchEventLabel(ev)}${ev.tangency?.verified ? ` (${tangencyOrderLabel(ev.tangency)})` : ''}: ${project.sweepName}=${at.parameter}, 해=[${at.values.join(', ')}]. ${ev.tangency?.geometricSummary ?? ev.description}`
+              })
+              .join('\n')}`
           : '',
         `## 입력 수식\n\n\`\`\`text\n${project.source}\n\`\`\``,
         `## 파라미터\n\n${project.parameters.map((p) => `- ${p.name} = ${p.value}`).join('\n') || '없음'}`,
-        `## 해\n\n| 변수 | 값 |\n| --- | ---: |\n${target.variables.map((name, i) => `| ${name} | ${target.values[i].toPrecision(12)} |`).join('\n')}`,
+        `## 해\n\n| 변수 | 값 |\n| --- | ---: |\n${target.variables.map((name, i) => `| ${name} | ${target.values[i].toPrecision(17)} |`).join('\n')}`,
         target.auxiliary && Object.keys(target.auxiliary).length
           ? `## 보조식 계산값\n\n${Object.entries(target.auxiliary)
               .map(([name, value]) => `- ${name} = ${value.toPrecision(12)}`)
@@ -899,11 +944,13 @@ export default function App() {
           : '',
         `최대 절대 등식 오차: ${isEvaluation ? '해당 없음' : target.maxResidual.toExponential(5)}`,
         `조건수 (${target.conditionNorm === '2' ? '2-norm · SVD' : '∞-norm'}): ${isEvaluation ? '해당 없음' : Number.isNaN(target.condition) ? '계산 불가' : target.condition.toPrecision(8)}`,
-        `민감도: ${isEvaluation ? '해당 없음' : classifyCondition(target.condition).label}`,
+        `행렬 조건수 참고 등급: ${isEvaluation ? '해당 없음' : classifyCondition(target.condition).label}`,
         '참고 기준: κ < 10^4 안정, 10^4 ≤ κ < 10^8 민감, κ ≥ 10^8 매우 민감. 참고 범위이며 입력 오차와 단위에 따라 해석해야 합니다.',
         target.conditionError || '',
         `계산 엔진: ${target.engine}`,
-        target.warnings.join('\n'),
+        target.warnings
+          .filter((w) => !w.startsWith('자동 탐색에서 검증한 실근'))
+          .join('\n'),
       ]
         .filter(Boolean)
         .join('\n\n') + '\n'
@@ -916,7 +963,7 @@ export default function App() {
       buildReport(
         result,
         automatic && !selectedBranch ? solutionIndex : undefined,
-        selectedBranch ? null : searchInfo,
+        searchInfo,
         selectedBranch ? project.selectedAnchor?.label : undefined,
       ),
       'text/markdown;charset=utf-8',
@@ -1588,7 +1635,7 @@ export default function App() {
               hidden={screen !== 'simulation' && screen !== 'report'}
             >
               <section
-                className={`panel results-panel ${automatic && view === 'simulation' ? 'automatic-simulation-view' : ''} ${automatic && anchors.length > 0 && view === 'simulation' ? 'multi-simulation-view' : ''}`}
+                className={`panel results-panel ${view === 'report' ? 'analysis-view' : ''} ${automatic && view === 'simulation' ? 'automatic-simulation-view' : ''} ${automatic && anchors.length > 0 && view === 'simulation' ? 'multi-simulation-view' : ''}`}
               >
                 <div className="results-heading">
                   <div className="section-label">
@@ -1651,14 +1698,20 @@ export default function App() {
                     <span>최대 6개 세트 · 해별 색상 비교</span>
                   </div>
                 )}
-                {automatic && discoveryPending && (
-                  <p className="discovery-status" role="status">
-                    현재 해를 표시하고 있습니다. 전체 해 목록을 갱신하는
-                    중입니다.
-                  </p>
-                )}
                 {automatic && (solutions.length > 0 || discoveryPending) && (
-                  <details className="solutions-section">
+                  <details
+                    className="solutions-section"
+                    ref={solutionsRef}
+                    style={{
+                      minHeight:
+                        (pending || discoveryPending) && solutionsHeight
+                          ? solutionsHeight
+                          : undefined,
+                    }}
+                    onToggle={(e) => {
+                      if (!e.currentTarget.open) setSolutionsHeight(0)
+                    }}
+                  >
                     <summary className="solutions-title">
                       <h3 className="solution-count">
                         {discoveryPending
@@ -1671,6 +1724,12 @@ export default function App() {
                         해 선택 · 시뮬레이션 추가 <ChevronDown size={14} />
                       </span>
                     </summary>
+                    {automatic && discoveryPending && (
+                      <p className="discovery-status" role="status">
+                        현재 해를 표시하고 있습니다. 전체 해 목록을 갱신하는
+                        중입니다.
+                      </p>
+                    )}
                     <div className="solution-list" aria-label="발견한 실수 해">
                       {solutions.map((item, i) => (
                         <div className="solution-item" key={i}>
@@ -1804,8 +1863,17 @@ export default function App() {
                               />
                               <span>{v}</span>
                             </div>
-                            <strong>{fmt(result.values[i], 7)}</strong>
-                            <span className="value-caption">계산된 값</span>
+                            <strong>
+                              {fmt(
+                                result.values[i],
+                                view === 'report' ? 17 : 7,
+                              )}
+                            </strong>
+                            <span className="value-caption">
+                              {nonlinear
+                                ? rootStructureLabel(result.rootStructure)
+                                : '계산된 값'}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1829,7 +1897,7 @@ export default function App() {
                           {evaluation
                             ? '명시식을 계산한 결과입니다.'
                             : automatic
-                              ? '현재 선택한 실수 해의 결과입니다. 발견하지 못한 해가 더 존재할 수 있습니다.'
+                              ? searchConclusion(searchInfo)
                               : '초기값·탐색 구간에 따라 다른 해에 수렴할 수 있습니다. 이 결과가 전체 해의 유일성을 뜻하지는 않습니다.'}
                         </p>
                       </div>
@@ -2058,6 +2126,19 @@ export default function App() {
                           </button>
                         )}
                         {!evaluation && (
+                          <AnalysisSummary
+                            result={result}
+                            source={project.source}
+                            parameters={Object.fromEntries(
+                              project.parameters.map((p) => [p.name, p.value]),
+                            )}
+                            search={searchInfo}
+                            events={selectedBranch?.events}
+                            sweepName={project.sweepName}
+                            pending={pending || discoveryPending}
+                          />
+                        )}
+                        {!evaluation && (
                           <div className="condition-controls">
                             <div>
                               <label htmlFor="condition-norm">
@@ -2089,115 +2170,123 @@ export default function App() {
                             </div>
                           </div>
                         )}
-                        <div
-                          className={`report-metrics ${evaluation ? 'evaluation-metrics' : ''}`}
-                        >
-                          <div>
-                            <span>
-                              {evaluation ? '계산 항목' : '최대 절대 등식 오차'}
-                            </span>
-                            <strong>
-                              {evaluation
-                                ? `${result.variables.length}개`
-                                : result.maxResidual.toExponential(3)}
-                            </strong>
-                          </div>
-                          {!evaluation && (
+                        <details className="analysis-details technical-diagnostics">
+                          <summary>
+                            조건수·등식 오차·계산 시간 자세히 보기
+                          </summary>
+                          <div
+                            className={`report-metrics ${evaluation ? 'evaluation-metrics' : ''}`}
+                          >
                             <div>
                               <span>
-                                조건수 ·{' '}
-                                {result.conditionNorm === '2'
-                                  ? '2-norm'
-                                  : '∞-norm'}
-                                {nonlinear && !evaluation ? ' · 국소' : ''}
+                                {evaluation
+                                  ? '계산 항목'
+                                  : '최대 절대 등식 오차'}
                               </span>
-                              <strong className="condition-value">
-                                {fmt(result.condition, 7)}
+                              <strong>
+                                {evaluation
+                                  ? `${result.variables.length}개`
+                                  : result.maxResidual.toExponential(3)}
                               </strong>
-                              <span
-                                className="condition-badge"
-                                data-level={sensitivity?.level}
-                                role="status"
-                                aria-live="polite"
-                                aria-busy={pending}
+                            </div>
+                            {!evaluation && (
+                              <div>
+                                <span>
+                                  조건수 ·{' '}
+                                  {result.conditionNorm === '2'
+                                    ? '2-norm'
+                                    : '∞-norm'}
+                                  {nonlinear && !evaluation ? ' · 국소' : ''}
+                                </span>
+                                <strong className="condition-value">
+                                  {fmt(result.condition, 7)}
+                                </strong>
+                                <span
+                                  className="condition-badge"
+                                  data-level={sensitivity?.level}
+                                  role="status"
+                                  aria-live="polite"
+                                  aria-busy={pending}
+                                >
+                                  <i />
+                                  {sensitivity?.label}
+                                </span>
+                              </div>
+                            )}
+                            <div>
+                              <span>계산 시간</span>
+                              <strong>
+                                {fmt(result.durationMs, 3)}
+                                <small> ms</small>
+                              </strong>
+                            </div>
+                          </div>
+                          {!evaluation && (
+                            <div
+                              className="condition-explanation"
+                              data-level={sensitivity?.level}
+                            >
+                              <p>
+                                {result.conditionError ||
+                                  sensitivity?.description}
+                              </p>
+                              <div
+                                className="condition-thresholds"
+                                aria-label="조건수 민감도 참고 범위"
                               >
-                                <i />
-                                {sensitivity?.label}
-                              </span>
+                                <span>
+                                  <i className="condition-dot stable" />
+                                  <b>안정</b> κ &lt; 10⁴
+                                </span>
+                                <span>
+                                  <i className="condition-dot sensitive" />
+                                  <b>민감</b> 10⁴ ≤ κ &lt; 10⁸
+                                </span>
+                                <span>
+                                  <i className="condition-dot very-sensitive" />
+                                  <b>매우 민감</b> κ ≥ 10⁸
+                                </span>
+                              </div>
+                              {nonlinear && (
+                                <p className="local-condition-note">
+                                  {evaluation
+                                    ? '명시식 계산에는 조건수가 적용되지 않습니다.'
+                                    : '조건수는 수렴점의 Jacobian에 대한 국소 진단입니다. 1×1 비영 Jacobian의 조건수는 항상 1이므로 단일근의 민감도는 도함수 크기도 함께 확인하세요. 전체 영역의 안정성은 보장하지 않습니다.'}
+                                </p>
+                              )}
+                              <p className="condition-caveat">
+                                위 범위는 참고 기준입니다. 실제 신뢰도는 측정
+                                오차와 단위·스케일에 따라 달라지며, 작은 등식
+                                오차만으로 해의 정확도를 보장하지는 않습니다.
+                              </p>
+                              <details className="condition-guide">
+                                <summary>
+                                  계산 방식의 차이 알아보기
+                                  <ChevronDown size={12} />
+                                </summary>
+                                <p>
+                                  <b>∞-norm</b>은 A와 A⁻¹의 최대 절댓값 행 합을
+                                  곱합니다. <b>2-norm</b>은 직접 SVD로 구한
+                                  최대·최소 특이값의 비율 σmax / σmin입니다.
+                                </p>
+                                <p>
+                                  두 방식은 서로 다른 norm으로 민감도를
+                                  측정하므로 값이 달라질 수 있습니다. 2-norm
+                                  선택이 해 자체의 계산 정밀도를 높이는 것은
+                                  아닙니다.
+                                </p>
+                                <p>
+                                  {nonlinear
+                                    ? '조건수는 수렴점에서 계산한 Jacobian J를 기준으로 합니다.'
+                                    : '조건수는 수식에서 추출한 계수 행렬 A를 기준으로 합니다.'}{' '}
+                                  식이나 변수의 단위를 바꾸면 값이 달라질 수
+                                  있습니다. 계산 방식 선택은 진단에 적용되며,
+                                  해를 구하는 솔버는 동일합니다.
+                                </p>
+                              </details>
                             </div>
                           )}
-                          <div>
-                            <span>계산 시간</span>
-                            <strong>
-                              {fmt(result.durationMs, 3)}
-                              <small> ms</small>
-                            </strong>
-                          </div>
-                        </div>
-                        {!evaluation && (
-                          <div
-                            className="condition-explanation"
-                            data-level={sensitivity?.level}
-                          >
-                            <p>
-                              {result.conditionError ||
-                                sensitivity?.description}
-                            </p>
-                            <div
-                              className="condition-thresholds"
-                              aria-label="조건수 민감도 참고 범위"
-                            >
-                              <span>
-                                <i className="condition-dot stable" />
-                                <b>안정</b> κ &lt; 10⁴
-                              </span>
-                              <span>
-                                <i className="condition-dot sensitive" />
-                                <b>민감</b> 10⁴ ≤ κ &lt; 10⁸
-                              </span>
-                              <span>
-                                <i className="condition-dot very-sensitive" />
-                                <b>매우 민감</b> κ ≥ 10⁸
-                              </span>
-                            </div>
-                            {nonlinear && (
-                              <p className="local-condition-note">
-                                {evaluation
-                                  ? '명시식 계산에는 조건수가 적용되지 않습니다.'
-                                  : '조건수는 수렴점의 Jacobian에 대한 국소 진단입니다. 1×1 비영 Jacobian의 조건수는 항상 1이므로 단일근의 민감도는 도함수 크기도 함께 확인하세요. 전체 영역의 안정성은 보장하지 않습니다.'}
-                              </p>
-                            )}
-                            <p className="condition-caveat">
-                              위 범위는 참고 기준입니다. 실제 신뢰도는 측정
-                              오차와 단위·스케일에 따라 달라지며, 작은 등식
-                              오차만으로 해의 정확도를 보장하지는 않습니다.
-                            </p>
-                            <details className="condition-guide">
-                              <summary>
-                                계산 방식의 차이 알아보기
-                                <ChevronDown size={12} />
-                              </summary>
-                              <p>
-                                <b>∞-norm</b>은 A와 A⁻¹의 최대 절댓값 행 합을
-                                곱합니다. <b>2-norm</b>은 직접 SVD로 구한
-                                최대·최소 특이값의 비율 σmax / σmin입니다.
-                              </p>
-                              <p>
-                                두 방식은 서로 다른 norm으로 민감도를 측정하므로
-                                값이 달라질 수 있습니다. 2-norm 선택이 해 자체의
-                                계산 정밀도를 높이는 것은 아닙니다.
-                              </p>
-                              <p>
-                                {nonlinear
-                                  ? '조건수는 수렴점에서 계산한 Jacobian J를 기준으로 합니다.'
-                                  : '조건수는 수식에서 추출한 계수 행렬 A를 기준으로 합니다.'}{' '}
-                                식이나 변수의 단위를 바꾸면 값이 달라질 수
-                                있습니다. 계산 방식 선택은 진단에 적용되며, 해를
-                                구하는 솔버는 동일합니다.
-                              </p>
-                            </details>
-                          </div>
-                        )}
+                        </details>
                         <h4>01 / 입력 모델</h4>
                         <pre>{project.source}</pre>
                         <h4>02 / 파라미터</h4>

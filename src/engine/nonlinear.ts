@@ -1,3 +1,4 @@
+import { classifyScalarRoot } from './tangency'
 import { nonsmoothSource } from './search-analysis'
 import { derivativeFreeRoots } from './derivative-free'
 import { normalizedModelCall } from './source-statements'
@@ -482,6 +483,26 @@ export async function createNonlinearSolver(
     )
     return {
       kind: 'nonlinear',
+      ...(scalar && options.computeCondition !== false
+        ? {
+            rootStructure: nonsmooth
+              ? {
+                  kind: 'nonsmooth' as const,
+                  evidence: '미분하지 않고 원래 등식에서 검증했습니다.',
+                }
+              : classifyScalarRoot(
+                  (x) => {
+                    try {
+                      return evaluate([x]).residuals[0]
+                    } catch {
+                      return undefined
+                    }
+                  },
+                  solved.values[0],
+                  model.jacobian?.(solved.values, parameters)?.[0]?.[0],
+                ),
+          }
+        : {}),
       variables: model.variables,
       values: solved.values,
       auxiliary: solved.evaluation.auxiliary,

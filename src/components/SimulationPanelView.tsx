@@ -1,3 +1,4 @@
+import { rootStructureLabel } from '../engine/tangency'
 import { useEffect, useRef, useState } from 'react'
 import { Download, FileText, X } from 'lucide-react'
 import type { Parameter, SimulationAnchor, SimulationPanel } from '../engine'
@@ -131,7 +132,11 @@ export default function SimulationPanelView({
       </header>
 
       <div className="simulation-panel-current">
-        <span>현재 해</span>
+        <span>
+          현재 해
+          {panel.result?.rootStructure &&
+            ` · ${rootStructureLabel(panel.result.rootStructure)}`}
+        </span>
         <strong>
           {panel.result
             ? vectorText(panel.result.variables, panel.result.values)

@@ -192,7 +192,21 @@ async function selectSolution(page: Page, values: string[]) {
   await button.click()
   await expect(button).toHaveAttribute('aria-pressed', 'true')
   await showValues(page)
-  await expect(page.locator('.solution-value strong')).toHaveText(values)
+  const displayed = page.locator('.solution-value strong')
+  await expect(displayed).toHaveCount(values.length)
+  for (let i = 0; i < values.length; i++) {
+    const expected = Number(values[i].replaceAll(',', ''))
+    await expect
+      .poll(async () =>
+        Math.abs(
+          Number((await displayed.nth(i).innerText()).replaceAll(',', '')) -
+            expected,
+        ),
+      )
+      .toBeLessThanOrEqual(
+        Math.max(Number.MIN_VALUE, Math.abs(expected) * 5e-7),
+      )
+  }
   await expect(page.locator('.engine-status')).toHaveText(
     /WebAssembly|JavaScript/,
   )
@@ -200,6 +214,9 @@ async function selectSolution(page: Page, values: string[]) {
 }
 
 async function conditionValue(page: Page) {
+  const details = page.locator('.technical-diagnostics')
+  if (!(await details.evaluate((el) => el.hasAttribute('open'))))
+    await details.locator(':scope > summary').click()
   return Number(
     (await page.locator('.report-content .condition-value').innerText())
       .replace(/,/g, '')
@@ -411,7 +428,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
     const reportDownload = await report
     expect(reportDownload.suggestedFilename()).toBe('polymath-report.md')
     const reportText = await readFile((await reportDownload.path())!, 'utf8')
-    expect(reportText).toContain('| x | 50.0000000000 |')
+    expect(reportText).toMatch(/\| x \| 50\.0+ \|/)
     expect(reportText).toContain('계산 엔진: wasm')
     const saved = page.waitForEvent('download')
     await page.getByRole('button', { name: '프로젝트 저장' }).click()
@@ -3362,7 +3379,8 @@ test.describe('Plain equations and consistent merge messages', () => {
         .allTextContents()
       for (const text of texts) {
         expect(text.match(/근 병합/g)).toHaveLength(1)
-        expect(text).not.toMatch(/중근|접점|확인됨/)
+        expect(text.match(/2중근/g)).toHaveLength(1)
+        expect(text).not.toMatch(/확인됨/)
       }
       const coordinates = await merged
         .locator('.sc-curve')
@@ -3377,4 +3395,149 @@ test.describe('Plain equations and consistent merge messages', () => {
           .evaluateAll((els) => els.map((el) => el.getAttribute('d'))),
       ).toEqual(coordinates)
     })
+})
+
+test.describe('Stable scroll and useful analysis reports', () => {
+  const model = {
+    mode: 'nonlinear',
+    title: '여러 해 비교',
+    description: '',
+    source: 'x^3-3*x=p',
+    parameters: [{ id: 'p', name: 'p', value: 0, min: -3, max: 3, step: 0.1 }],
+    sweepName: 'p',
+  }
+  test('adding panels and clicking a partly visible chart preserve page and fullscreen scroll', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 650 })
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, model)
+    await showSimulation(page)
+    await expect(page.locator('.solutions-section')).toBeVisible()
+    if (
+      !(await page
+        .locator('.solutions-section')
+        .evaluate((el) => el.hasAttribute('open')))
+    )
+      await page.locator('.solutions-section > summary').click()
+    const add = page.getByRole('button', {
+      name: '해 1 시뮬레이션 추가',
+      exact: true,
+    })
+    await add.scrollIntoViewIfNeeded()
+    await page.evaluate(() => window.scrollTo(0, 180))
+    const beforeAdd = await page.evaluate(() => scrollY)
+    // Use actual coordinates; locator.click could mask the bug by scrolling first.
+    const box = (await add.boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator('.engine-status')).toHaveText(
+      /WebAssembly|JavaScript/,
+    )
+    expect(
+      Math.abs((await page.evaluate(() => scrollY)) - beforeAdd),
+    ).toBeLessThan(3)
+    const svg = page.locator('.simulation-panel .solution-chart svg').first()
+    await svg.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+    await page.evaluate(() => window.scrollBy(0, 100))
+    const beforeClick = await page.evaluate(() => scrollY)
+    const point = await plotLocation(svg, 0.57, 0.6)
+    await page.mouse.click(point.x, point.y)
+    await expect(page.locator('.engine-status')).toHaveText(
+      /WebAssembly|JavaScript/,
+    )
+    await expect(
+      page.getByRole('spinbutton', { name: 'p 값', exact: true }),
+    ).not.toHaveValue('0')
+    expect(
+      Math.abs((await page.evaluate(() => scrollY)) - beforeClick),
+    ).toBeLessThan(3)
+    await page
+      .getByRole('button', { name: '결과 화면 확대', exact: true })
+      .click()
+    const expanded = page.locator('.results-expanded')
+    await svg.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+    const beforeExpanded = await expanded.evaluate((el) => el.scrollTop)
+    const p2 = await plotLocation(svg, 0.6, 0.5)
+    await page.mouse.click(p2.x, p2.y)
+    await expect(page.locator('.engine-status')).toHaveText(
+      /WebAssembly|JavaScript/,
+    )
+    expect(
+      Math.abs(
+        (await expanded.evaluate((el) => el.scrollTop)) - beforeExpanded,
+      ),
+    ).toBeLessThan(3)
+    await expect(expanded).toBeVisible()
+  })
+  test('reports certified error bounds and interactive sensitivity without fake probabilities', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      ...model,
+      source: 'x^2=p',
+      parameters: [{ id: 'p', name: 'p', value: 2, min: 0, max: 4, step: 0.1 }],
+    })
+    await navigate(page, '해석 리포트')
+    await expect(page.locator('.engine-status')).toHaveText(
+      /WebAssembly|JavaScript/,
+    )
+    const summary = page.getByRole('region', { name: '해의 품질과 검증' })
+    await expect(summary).toContainText('구간 내 전체 2개 근 확인')
+    await expect(summary).toContainText('해의 절대 오차 상한')
+    await expect(summary.locator('.quality-grid')).toContainText('100%')
+    await expect(page.locator('.technical-diagnostics')).not.toHaveAttribute(
+      'open',
+      '',
+    )
+    const previous = await page.locator('.scenario-result strong').textContent()
+    await page
+      .getByRole('spinbutton', { name: '가정한 등식 오차' })
+      .fill('0.001')
+    await expect(page.locator('.scenario-result strong')).not.toHaveText(
+      previous!,
+    )
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: '리포트 저장', exact: true }).click()
+    const report = await readFile((await (await download).path())!, 'utf8')
+    expect(report).toContain('해의 절대 오차 상한')
+    expect(report).toContain('파라미터별 변화율')
+    expect(report).not.toContain('포획 신뢰도')
+    await page.screenshot({
+      path: '/tmp/polymath-quality-report.png',
+      fullPage: true,
+    })
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth,
+      ),
+    ).toBe(false)
+  })
+  test('sixth-order contacts have a distinct marker, order badge and matching report', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await navigate(page, '수식·파라미터')
+    await importProject(page, {
+      ...model,
+      source: '(x-1)^6=p',
+      parameters: [{ id: 'p', name: 'p', value: 1, min: 0, max: 2, step: 0.1 }],
+    })
+    await showSimulation(page)
+    await expect(
+      page.locator('.sc-critical-point[data-order="6"]').first(),
+    ).toBeAttached()
+    await expect(page.locator('.sc-event-order').first()).toHaveText(
+      '6중근 · 접점',
+    )
+    await navigate(page, '해석 리포트')
+    await expect(page.locator('.engine-status')).toHaveText(
+      /WebAssembly|JavaScript/,
+    )
+    await expect(page.locator('.report-critical')).toContainText('6중근 · 접점')
+    await expect(page.locator('.report-critical')).toContainText('근 병합')
+  })
 })

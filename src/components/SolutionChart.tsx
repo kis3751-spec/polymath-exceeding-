@@ -1,3 +1,4 @@
+import { tangencyOrderLabel } from '../engine/tangency'
 import {
   branchEventLabel,
   branchEventText,
@@ -391,7 +392,8 @@ export default function SolutionChart({
   }
   function handleClick(event: PointerEvent<SVGSVGElement>) {
     if (event.button !== 0) return
-    event.currentTarget.focus()
+    event.preventDefault()
+    event.currentTarget.focus({ preventScroll: true })
     const point = pointerValue(
       event.currentTarget,
       event.clientX,
@@ -413,7 +415,9 @@ export default function SolutionChart({
   const wheelHandler = useRef<(event: WheelEvent) => void>(() => {})
   wheelHandler.current = (event) => {
     const svg = svgRef.current
-    if (!svg || document.activeElement !== svg || !zoomActive) return
+    // Native focus is immediate; React's focus indicator may still be queued
+    // when a wheel event arrives directly after a click or axis selection.
+    if (!svg || document.activeElement !== svg) return
     const point = pointerValue(svg, event.clientX, event.clientY)
     if (!point) return
     event.preventDefault()
@@ -833,8 +837,24 @@ export default function SolutionChart({
                     )
                     const cy = y(val)
                     const isMerge = ev.kind === 'merge'
+                    const order = ev.tangency?.verified
+                      ? ev.tangency.bifurcationOrder
+                      : undefined
+                    const shape =
+                      order === 'boundary'
+                        ? 'boundary'
+                        : typeof order === 'number'
+                          ? order % 2
+                            ? 'passage'
+                            : 'contact'
+                          : 'candidate'
+                    const color = shape === 'passage' ? '#7662a5' : '#b56827'
                     return (
-                      <g key={`event-${eIdx}`}>
+                      <g
+                        key={`event-${eIdx}`}
+                        className="sc-critical-point"
+                        data-order={order ?? 'candidate'}
+                      >
                         <line
                           x1={cx}
                           x2={cx}
@@ -845,15 +865,36 @@ export default function SolutionChart({
                           strokeWidth="1"
                           opacity="0.65"
                         />
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={isMerge ? '5.5' : '4.5'}
-                          fill={isMerge ? '#fff4e6' : '#fff9db'}
-                          stroke={isMerge ? '#d9480f' : '#e67700'}
-                          strokeWidth="2.2"
-                        />
-                        <title>{branchEventText(ev, parameterName)}</title>
+                        {shape === 'boundary' ? (
+                          <rect
+                            x={cx - 5}
+                            y={cy - 5}
+                            width="10"
+                            height="10"
+                            fill="white"
+                            stroke={color}
+                            strokeWidth="2"
+                          />
+                        ) : (
+                          <path
+                            d={
+                              shape === 'passage'
+                                ? `M ${cx - 6} ${cy} l 3 -5 h 6 l 3 5 l -3 5 h -6 Z`
+                                : shape === 'contact'
+                                  ? `M ${cx} ${cy - 7} l 7 7 l -7 7 l -7 -7 Z`
+                                  : `M ${cx} ${cy - 6} l 6 11 h -12 Z`
+                            }
+                            fill="white"
+                            stroke={color}
+                            strokeWidth="2"
+                          />
+                        )}
+                        <title>
+                          {branchEventText(ev, parameterName)}
+                          {ev.tangency?.verified
+                            ? ` · ${tangencyOrderLabel(ev.tangency)}`
+                            : ''}
+                        </title>
                       </g>
                     )
                   })}
@@ -1058,7 +1099,13 @@ export default function SolutionChart({
                   : '수치 추적으로 추정한 지점입니다.'
               }
             >
-              <b>{branchEventLabel(ev)}</b> · {parameterName || '파라미터'} ≈{' '}
+              <b>{branchEventLabel(ev)}</b>
+              {ev.tangency?.verified && (
+                <small className="sc-event-order">
+                  {tangencyOrderLabel(ev.tangency)}
+                </small>
+              )}{' '}
+              · {parameterName || '파라미터'} ≈{' '}
               {formatNumber(
                 ev.tangency?.verified
                   ? ev.tangency.parameterStar
@@ -1069,6 +1116,14 @@ export default function SolutionChart({
         </div>
       )}
 
+      {allBifurcationEvents.length > 0 && (
+        <div className="sc-critical-legend" aria-label="특별한 근 기호">
+          ○ 일반 해 <span>◆ 짝수 중근·접점</span>
+          <span>⬡ 홀수 중근·관통</span>
+          <span>■ 정의역 경계</span>
+          <span>△ 추적 경계 추정</span>
+        </div>
+      )}
       <div className="sc-chart-footer">
         <span>
           연속 파라미터 <strong>{parameterName || '—'}</strong>

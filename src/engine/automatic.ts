@@ -1,3 +1,4 @@
+import { classifyScalarRoot } from './tangency'
 import { squareFreeCoefficients } from './square-free'
 import {
   certifyScalarRoots,
@@ -718,6 +719,20 @@ function scalarResult(
     )
   return {
     kind: 'nonlinear',
+    ...(options.computeCondition === false
+      ? {}
+      : {
+          rootStructure: prepared.nonsmooth
+            ? {
+                kind: 'nonsmooth' as const,
+                evidence: '미분하지 않고 원래 등식에서 검증했습니다.',
+              }
+            : classifyScalarRoot(
+                (x) => tryScalar(resultModel, parameters, x),
+                value,
+                resultModel.jacobian?.([value], parameters)?.[0]?.[0],
+              ),
+        }),
     variables: prepared.variables,
     values: [Object.is(value, -0) ? 0 : value],
     auxiliary: evaluation.auxiliary,
@@ -1538,4 +1553,15 @@ export async function createAutomaticSolver(
       solveNear(normalized, parameters, seed, options),
     )
   return normalizedSearch
+}
+
+export function diagnosticModel(source: string, parameterNames: string[]) {
+  const p = prepare(source, parameterNames)
+  return {
+    source: p.source,
+    model: p.originalModel ?? p.model,
+    expression: p.originalExpression,
+    helpers: p.helpers,
+    nonsmooth: p.nonsmooth,
+  }
 }

@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `ccf1c82accf65503fa7ca0201e22843dd42e35258c1dac7eaaf98e6018cb3433`
+소스 묶음 SHA-256: `b255fd93666ae85d4096b2508ecb23406d3452c528f68fb1a7a33fff7e4accb2`
 
 ## 다른 코드 묶음
 
@@ -31,17 +31,19 @@
 - [src/components/chart-interaction.ts](#source-3) · [저장소 원본](../../src/components/chart-interaction.ts)
 - [src/components/EquationReference.tsx](#source-4) · [저장소 원본](../../src/components/EquationReference.tsx)
 - [src/components/ExampleWalkthrough.tsx](#source-5) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
-- [src/components/Guide.tsx](#source-6) · [저장소 원본](../../src/components/Guide.tsx)
-- [src/components/Guide.css](#source-7) · [저장소 원본](../../src/components/Guide.css)
-- [src/components/SolutionChart.tsx](#source-8) · [저장소 원본](../../src/components/SolutionChart.tsx)
-- [src/components/SolutionChart.css](#source-9) · [저장소 원본](../../src/components/SolutionChart.css)
-- [src/components/SimulationPanelView.tsx](#source-10) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/MergedSimulationSetView.tsx](#source-11) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
-- [src/components/SimulationPanelView.css](#source-12) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-13) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-14) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-15) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-16) · [저장소 원본](../../src/workspace-screens.css)
+- [src/components/AnalysisSummary.tsx](#source-6) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
+- [src/components/AnalysisSummary.css](#source-7) · [저장소 원본](../../src/components/AnalysisSummary.css)
+- [src/components/Guide.tsx](#source-8) · [저장소 원본](../../src/components/Guide.tsx)
+- [src/components/Guide.css](#source-9) · [저장소 원본](../../src/components/Guide.css)
+- [src/components/SolutionChart.tsx](#source-10) · [저장소 원본](../../src/components/SolutionChart.tsx)
+- [src/components/SolutionChart.css](#source-11) · [저장소 원본](../../src/components/SolutionChart.css)
+- [src/components/SimulationPanelView.tsx](#source-12) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
+- [src/components/MergedSimulationSetView.tsx](#source-13) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-14) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-15) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-16) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-17) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-18) · [저장소 원본](../../src/workspace-screens.css)
 
 <a id="source-1"></a>
 
@@ -286,7 +288,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/EquationReference.tsx
 
-원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 186줄 · SHA-256: `5d508cdd944920162618be80e6edd615353e9c40c8d6537ce31f9122713c956f`
+원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 186줄 · SHA-256: `038512cb65f9f4f6e368a6597d6f2c1d5258d8417d2e077151b3b3f8215dc7d1`
 
 ```tsx
 const functions = [
@@ -461,7 +463,7 @@ export default function EquationReference() {
         </p>
         <p>
           자동 탐색은 유한한 수치 탐색이며 모든 실근을 보장하지 않습니다. ‘추적
-          불가’는 실근 부재의 증명이 아닙니다. 접점 ‘확인됨’은 등식 오차와
+          불가’는 실근 부재의 증명이 아닙니다. 접점 ‘확인됨’은 등식 오차와 1~8차
           도함수의 국소 수치 검증이며 일반 Cusp 분기의 엄밀한 증명을 뜻하지
           않습니다.
         </p>
@@ -520,9 +522,546 @@ export default function ExampleWalkthrough({
 
 <a id="source-6"></a>
 
+## src/components/AnalysisSummary.tsx
+
+원본: [src/components/AnalysisSummary.tsx](../../src/components/AnalysisSummary.tsx) · 344줄 · SHA-256: `e16962b2099a4468053cc21c128252c085be29570c8fbd833193ae7372973da7`
+
+```tsx
+import { useMemo, useState } from 'react'
+import type { BranchTerminalEvent, SearchSummary, SolveResult } from '../engine'
+import {
+  coveragePercent,
+  reportDiagnostics,
+  searchConclusion,
+} from '../engine/report-diagnostics'
+import {
+  branchEventLabel,
+  eventLocation,
+  uniqueBranchEvents,
+} from '../engine/branch-events'
+import { rootStructureLabel, tangencyOrderLabel } from '../engine/tangency'
+import { unresolvedReason } from '../engine/interval-certification'
+import './AnalysisSummary.css'
+
+export const diagnosticNumber = (n?: number) =>
+  n === undefined || Number.isNaN(n)
+    ? '—'
+    : !Number.isFinite(n)
+      ? '∞'
+      : n === 0
+        ? '0'
+        : Math.abs(n) < 1e-3 || Math.abs(n) >= 1e6
+          ? n.toExponential(3)
+          : Number(n.toPrecision(6)).toString()
+
+function boundNumber(n: number) {
+  if (!Number.isFinite(n) || n === 0) return diagnosticNumber(n)
+  const text = n.toExponential(3)
+  if (Number(text) >= n) return text
+  const [m, e] = text.split('e')
+  const up = `${(Number(m) + 0.001).toFixed(3)}e${e}`
+  return Number(up) >= n ? up : n.toString()
+}
+
+type Props = {
+  result: SolveResult
+  source: string
+  parameters: Record<string, number>
+  search?: SearchSummary | null
+  events?: BranchTerminalEvent[]
+  sweepName: string
+  pending: boolean
+}
+export default function AnalysisSummary({
+  result,
+  source,
+  parameters,
+  search,
+  events = [],
+  sweepName,
+  pending,
+}: Props) {
+  const [perturbation, setPerturbation] = useState('0.000001')
+  const d = useMemo(
+    () => reportDiagnostics(result, source, parameters, search),
+    [result, source, JSON.stringify(parameters), search],
+  )
+  const critical = uniqueBranchEvents(events),
+    c = search?.certification
+  const delta = Number(perturbation)
+  const response =
+    perturbation.trim() && Number.isFinite(delta) && delta >= 0
+      ? d.powerResponse
+        ? (d.powerResponse.coefficient * delta) ** (1 / d.powerResponse.order)
+        : d.amplification !== undefined
+          ? d.amplification * delta
+          : undefined
+      : undefined
+  const linear = result.kind !== 'nonlinear'
+  return (
+    <section
+      className="analysis-summary"
+      aria-label="해의 품질과 검증"
+      aria-busy={pending}
+    >
+      <div className="analysis-verdict">
+        <span
+          className="analysis-root-kind"
+          data-kind={result.rootStructure?.kind ?? 'simple'}
+        >
+          {linear
+            ? '● 유일해'
+            : `${result.rootStructure?.kind === 'multiple' ? '◆' : '●'} ${result.variables.length > 1 ? (d.rank === result.variables.length ? `일반 연립해 · 랭크 ${d.rank}/${result.variables.length}` : d.rank === undefined ? '연립해 · 랭크 미산정' : `특이 연립해 · 랭크 ${d.rank}/${result.variables.length}`) : rootStructureLabel(result.rootStructure)}`}
+        </span>
+        <h3>
+          {pending ? '현재 입력 검증 중…' : searchConclusion(search, linear)}
+        </h3>
+        {c && (
+          <p>
+            {c.variable} ∈ [{diagnosticNumber(c.domain.min)},{' '}
+            {diagnosticNumber(c.domain.max)}] · 현재 파라미터에서 검증
+          </p>
+        )}
+      </div>
+      <div className="quality-grid">
+        <article
+          data-quality={d.errorBound !== undefined ? 'verified' : 'measured'}
+        >
+          <span>
+            {d.errorBound !== undefined
+              ? '해의 절대 오차 상한'
+              : '해 보정량 · 국소 추정'}
+          </span>
+          <strong>
+            {d.errorBound !== undefined ? '≤ ' : '≈ '}
+            {d.errorBound !== undefined
+              ? boundNumber(d.errorBound)
+              : diagnosticNumber(
+                  d.correction ? Math.max(...d.correction) : undefined,
+                )}
+          </strong>
+          <small>
+            {d.errorBound !== undefined
+              ? '구간 연산으로 해를 감싼 범위에서 계산'
+              : d.powerResponse
+                ? '중근: 선형 보정 대신 아래 비선형 반응 확인'
+                : '원래 등식과 역행렬로 계산한 마지막 보정 크기'}
+          </small>
+        </article>
+        <article>
+          <span>등식 오차 → 해 변화 증폭률</span>
+          <strong>
+            {d.powerResponse
+              ? `δ¹⁄${d.powerResponse.order}`
+              : d.amplification === undefined
+                ? '산정 조건 확인'
+                : `${diagnosticNumber(d.amplification)} ×`}
+          </strong>
+          <small>
+            {d.powerResponse
+              ? `${d.powerResponse.order}중근의 비선형 민감도 · 아래 입력으로 예측`
+              : '각 등식에 같은 절대 오차를 넣었을 때 · 현재 단위 기준'}
+          </small>
+        </article>
+        <article
+          data-quality={
+            c?.complete && c.allRootsRepresented ? 'verified' : 'measured'
+          }
+        >
+          <span>{linear ? '방정식 독립성' : '탐색 구간 검증률'}</span>
+          <strong>
+            {linear
+              ? `${d.rank ?? '—'} / ${result.values.length}`
+              : (coveragePercent(search) ?? '미실행')}
+          </strong>
+          <small>
+            {linear
+              ? '수치 랭크 / 미지수 수'
+              : c
+                ? `유일근 구간 ${c.uniqueRootCount}개 · 미결정 구간 ${c.unresolved.length}개`
+                : (search?.certificationUnavailable ??
+                  '단일 변수 자동 탐색에서 구간 검증 지원')}
+          </small>
+        </article>
+      </div>
+      <div className="sensitivity-scenario">
+        <div>
+          <h4>입력 오차가 이만큼이면?</h4>
+          <p>
+            각 등식의 우변에 가정한 절대 오차입니다. 측정 오차를 아는 경우 직접
+            바꿔보세요.
+          </p>
+        </div>
+        <label>
+          가정한 등식 오차 δ
+          <input
+            aria-label="가정한 등식 오차"
+            type="number"
+            min="0"
+            step="any"
+            value={perturbation}
+            onChange={(e) => setPerturbation(e.target.value)}
+          />
+        </label>
+        <div className="scenario-result">
+          <span>
+            최대 해 변화{' '}
+            {d.powerResponse ? '크기 추정' : linear ? '선형 예측' : '국소 예측'}
+          </span>
+          <strong>{diagnosticNumber(response)}</strong>
+        </div>
+      </div>
+      <details className="analysis-details">
+        <summary>정확도·민감도 지표의 의미와 계산 근거</summary>
+        {d.enclosure && (
+          <p>
+            선택한 해의 포함 구간: [{d.enclosure.lo.toPrecision(17)},{' '}
+            {d.enclosure.hi.toPrecision(17)}]. 바깥쪽 반올림을 사용하는 구간
+            Newton 교집합으로 축소했습니다.
+          </p>
+        )}
+        <p>
+          최대 절대 등식 오차 {diagnosticNumber(result.maxResidual)} · 정규화
+          등식 오차 {diagnosticNumber(d.normalizedError)}.{' '}
+          {linear
+            ? '정규화는 |Ax−b|/(|A||x|+|b|)의 성분별 최댓값입니다.'
+            : '정규화는 |Fᵢ|/(Σ|Jᵢⱼ|max(1,|xⱼ|)+|Fᵢ|)입니다.'}
+        </p>
+        <p>
+          일반근: Δx ≈ −J⁻¹F, 증폭률 ||J⁻¹||∞. 단일 변수는 1/|F′|이므로 조건수가
+          1이어도 민감한 근을 구분합니다. 등식과 미지수의 단위를 바꾸면 절대
+          증폭률도 달라집니다.
+        </p>
+        {d.powerResponse && (
+          <p>
+            {d.powerResponse.order}중근: |Δx| ≈ (
+            {diagnosticNumber(d.powerResponse.coefficient)}·δ)¹⁄
+            {d.powerResponse.order}. 첫 비영 도함수로 계산한 국소 변화 크기이며,
+            오차 방향에 따라 실근이 사라질 수 있습니다.
+          </p>
+        )}
+        <p>
+          포함 구간이 있을 때만 실제 해의 오차 상한을 표시합니다. 그 외
+          보정량·민감도는 국소 추정이며, 잃은 유효숫자나 입력 측정 오차를
+          복구하지 않습니다.
+        </p>
+        {d.reason && <p>{d.reason}</p>}
+        {result.rootStructure && <p>{result.rootStructure.evidence}</p>}
+      </details>
+      {d.parameterSensitivity.length > 0 && (
+        <details className="analysis-details">
+          <summary>파라미터별 영향 · dx/dp</summary>
+          <p>
+            현재 해에서 −J⁻¹∂F/∂p를 계산했습니다. 파라미터 1단위 증가에 대한
+            국소 해 변화입니다.
+          </p>
+          <div className="analysis-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>파라미터</th>
+                  {result.variables.map((v) => (
+                    <th key={v}>{v} 변화율</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {d.parameterSensitivity.map((p) => (
+                  <tr key={p.name}>
+                    <th>{p.name}</th>
+                    {p.derivatives.map((x, i) => (
+                      <td key={i}>{diagnosticNumber(x)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+      {critical.length > 0 && (
+        <div className="report-critical">
+          <h4>
+            곡선에서 확인한 특별한 지점 <span>{critical.length}</span>
+          </h4>
+          <p>
+            현재 해의 기준 곡선에 대한 접점·중근·추적 경계입니다. 현재
+            파라미터의 해와 별도로 표시합니다.
+          </p>
+          {critical.map((ev, i) => {
+            const at = eventLocation(ev)
+            return (
+              <details className="analysis-details" key={i}>
+                <summary>
+                  <span className="critical-symbol">
+                    {ev.tangency?.verified
+                      ? ev.tangency.bifurcationOrder === 'boundary'
+                        ? '■'
+                        : Number(ev.tangency.bifurcationOrder) % 2
+                          ? '⬡'
+                          : '◆'
+                      : '△'}
+                  </span>{' '}
+                  {branchEventLabel(ev)}
+                  {ev.tangency?.verified && (
+                    <small>{tangencyOrderLabel(ev.tangency)}</small>
+                  )}{' '}
+                  · {sweepName} ≈ {diagnosticNumber(at.parameter)}
+                </summary>
+                <p>
+                  {result.variables
+                    .map((v, j) => `${v} ≈ ${diagnosticNumber(at.values[j])}`)
+                    .join(' · ')}
+                </p>
+                <p>{ev.tangency?.geometricSummary ?? ev.description}</p>
+                {ev.tangency && (
+                  <p>
+                    등식 오차 {diagnosticNumber(ev.tangency.residualAtStar)} ·
+                    기울기 크기 {diagnosticNumber(ev.tangency.slopeAtStar)}.
+                    접점 차수는 국소 수치 판정이며, 스칼라 홀수 중근만으로
+                    다변수 Cusp 분기를 증명하지 않습니다.
+                  </p>
+                )}
+              </details>
+            )
+          })}
+        </div>
+      )}
+      {c && (
+        <details className="analysis-details">
+          <summary>
+            탐색 범위·미결정 구간{' '}
+            {c.unresolved.length > 0 ? `${c.unresolved.length}곳` : '없음'}
+          </summary>
+          <p>
+            검증률은 존재·부재가 판정된 구간 길이의 비율입니다. 모든 근을 찾았을
+            확률이 아닙니다. 미결정 구간이 1곳이라도 남으면 길이가 작아도 전체
+            발견 완료로 표시하지 않습니다.
+          </p>
+          {c.unresolved.length > 0 && (
+            <div className="analysis-table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>시작</th>
+                    <th>끝</th>
+                    <th>남은 검증</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.unresolved.map((u, i) => (
+                    <tr key={i}>
+                      <td>{diagnosticNumber(u.lo)}</td>
+                      <td>{diagnosticNumber(u.hi)}</td>
+                      <td>{unresolvedReason(u.reason)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {search?.truncated && (
+            <p>
+              탐색 또는 표시 한도에 도달했습니다. 현재 목록만으로 모든 근 발견을
+              판정하지 않습니다.
+            </p>
+          )}
+        </details>
+      )}
+    </section>
+  )
+}
+```
+
+<a id="source-7"></a>
+
+## src/components/AnalysisSummary.css
+
+원본: [src/components/AnalysisSummary.css](../../src/components/AnalysisSummary.css) · 175줄 · SHA-256: `957d16c9d8ba155ead4c90998d507f8303bf1a00f28bf4797d8700def39e4ee6`
+
+```css
+.analysis-summary {
+  margin: 24px 0;
+  color: var(--text, #30443b);
+}
+.analysis-verdict {
+  margin-bottom: 20px;
+}
+.analysis-root-kind {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #eef4ef;
+  color: #407769;
+  font-size: 12px;
+  font-weight: 600;
+}
+.analysis-root-kind[data-kind='multiple'],
+.analysis-root-kind[data-kind='boundary'] {
+  color: #93531e;
+  background: #fff3e5;
+}
+.analysis-verdict h3 {
+  font-size: clamp(18px, 2vw, 25px);
+  margin: 12px 0 7px;
+}
+.analysis-verdict p,
+.analysis-summary p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #68766e;
+}
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.quality-grid article {
+  padding: 22px 18px;
+  border: 1px solid #e0e6dc;
+  border-radius: 10px;
+  background: #fafbf8;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.quality-grid article[data-quality='verified'] {
+  border-color: #bfd6c9;
+  background: #f3f9f5;
+}
+.quality-grid article > span {
+  font-size: 12px;
+  color: #5b7265;
+}
+.quality-grid strong {
+  font:
+    500 clamp(21px, 2.6vw, 32px) / 1.3 'IBM Plex Mono',
+    monospace;
+  overflow-wrap: anywhere;
+  color: #356756;
+}
+.quality-grid small {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #6d7a71;
+}
+.sensitivity-scenario {
+  margin: 18px 0;
+  padding: 18px;
+  border: 1px solid #e2e6de;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.sensitivity-scenario > div:first-child {
+  flex: 1 1 230px;
+}
+.sensitivity-scenario h4,
+.report-critical h4 {
+  margin: 0 0 5px;
+  font-size: 14px;
+}
+.sensitivity-scenario p {
+  margin: 0;
+}
+.sensitivity-scenario label {
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  color: #68766e;
+}
+.sensitivity-scenario input {
+  width: 140px;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid #cbd6ca;
+  border-radius: 5px;
+  background: white;
+}
+.scenario-result {
+  display: grid;
+  gap: 8px;
+  min-width: 130px;
+}
+.scenario-result span {
+  font-size: 11px;
+  color: #68766e;
+}
+.scenario-result strong {
+  font: 500 21px monospace;
+  color: #356756;
+}
+.analysis-details {
+  border-top: 1px solid #e5e9e1;
+  padding: 12px 0;
+}
+.analysis-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #466759;
+}
+.analysis-details summary small {
+  margin-left: 7px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #f2eee7;
+  color: #93602d;
+  font-size: 11px;
+}
+.analysis-details p {
+  margin: 8px 0;
+}
+.analysis-table-scroll {
+  overflow-x: auto;
+  max-height: 280px;
+}
+.analysis-summary table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+.analysis-summary td,
+.analysis-summary th {
+  padding: 9px 12px;
+  border-bottom: 1px solid #e7ece3;
+}
+.report-critical {
+  margin: 24px 0;
+}
+.report-critical h4 span {
+  margin-left: 7px;
+  font-weight: 400;
+}
+.critical-symbol {
+  color: #a3632d;
+}
+@media (max-width: 700px) {
+  .quality-grid {
+    grid-template-columns: 1fr;
+  }
+  .quality-grid article {
+    padding: 18px;
+  }
+}
+
+.analysis-view > .nonlinear-status {
+  display: none;
+}
+.analysis-summary[aria-busy='true'] .quality-grid {
+  opacity: 0.5;
+}
+```
+
+<a id="source-8"></a>
+
 ## src/components/Guide.tsx
 
-원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 442줄 · SHA-256: `ea284eb20110aff6b58484b97fd91eeb4d8f4065f2903a8e08baa71d1b29eb9b`
+원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 454줄 · SHA-256: `a66a126a1182acb52811cec547ecba2cfeef9c9894e18957c5f43dc5d4829ba0`
 
 ```tsx
 import EquationReference from './EquationReference'
@@ -905,7 +1444,19 @@ export default function Guide({
               <section className="guide-section">
                 <span className="guide-step">{nonlinear ? '06' : '05'}</span>
                 <div>
-                  <h3>조건수로 해의 민감도를 살펴보세요</h3>
+                  <h3>오차 범위와 입력 민감도를 확인하세요</h3>
+                  <p>
+                    리포트는 해의 절대 오차 상한(구간 검증 시), 국소 보정량,
+                    등식 오차의 증폭률, 탐색 구간 검증률을 보여줍니다. ‘가정한
+                    등식 오차’를 입력하면 해 변화 크기를 예측합니다. 중근은 선형
+                    증폭 대신 차수에 따른 비선형 반응을 표시합니다.
+                  </p>
+                  <p className="guide-small">
+                    ◆ 짝수 중근·접점, ⬡ 홀수 중근·관통, ■ 정의역 경계를
+                    구분합니다. 2~8중근을 국소 미분으로 판정하며, 분기 다중근을
+                    교차·병합으로 임의 확정하지 않습니다. 구간 검증률은 구간
+                    길이 비율로, 모든 해를 찾았을 확률이 아닙니다.
+                  </p>
                   <p>
                     해석 리포트에서 ∞-norm 또는 2-norm(SVD)을 선택할 수
                     있습니다. 조건수가 클수록 입력의 작은 오차가 해에 크게
@@ -969,7 +1520,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-9"></a>
 
 ## src/components/Guide.css
 
@@ -1347,13 +1898,14 @@ export default function Guide({
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-10"></a>
 
 ## src/components/SolutionChart.tsx
 
-원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,090줄 · SHA-256: `3a749379a29c523b56fa51c61627c9d0cedfcf39496d78d6ae577e576cb241e7`
+원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,145줄 · SHA-256: `1027c719ffb79bcaf47a1f825a99774cd81d952edaaca9d273166baf80584a30`
 
 ```tsx
+import { tangencyOrderLabel } from '../engine/tangency'
 import {
   branchEventLabel,
   branchEventText,
@@ -1747,7 +2299,8 @@ export default function SolutionChart({
   }
   function handleClick(event: PointerEvent<SVGSVGElement>) {
     if (event.button !== 0) return
-    event.currentTarget.focus()
+    event.preventDefault()
+    event.currentTarget.focus({ preventScroll: true })
     const point = pointerValue(
       event.currentTarget,
       event.clientX,
@@ -1769,7 +2322,9 @@ export default function SolutionChart({
   const wheelHandler = useRef<(event: WheelEvent) => void>(() => {})
   wheelHandler.current = (event) => {
     const svg = svgRef.current
-    if (!svg || document.activeElement !== svg || !zoomActive) return
+    // Native focus is immediate; React's focus indicator may still be queued
+    // when a wheel event arrives directly after a click or axis selection.
+    if (!svg || document.activeElement !== svg) return
     const point = pointerValue(svg, event.clientX, event.clientY)
     if (!point) return
     event.preventDefault()
@@ -2189,8 +2744,24 @@ export default function SolutionChart({
                     )
                     const cy = y(val)
                     const isMerge = ev.kind === 'merge'
+                    const order = ev.tangency?.verified
+                      ? ev.tangency.bifurcationOrder
+                      : undefined
+                    const shape =
+                      order === 'boundary'
+                        ? 'boundary'
+                        : typeof order === 'number'
+                          ? order % 2
+                            ? 'passage'
+                            : 'contact'
+                          : 'candidate'
+                    const color = shape === 'passage' ? '#7662a5' : '#b56827'
                     return (
-                      <g key={`event-${eIdx}`}>
+                      <g
+                        key={`event-${eIdx}`}
+                        className="sc-critical-point"
+                        data-order={order ?? 'candidate'}
+                      >
                         <line
                           x1={cx}
                           x2={cx}
@@ -2201,15 +2772,36 @@ export default function SolutionChart({
                           strokeWidth="1"
                           opacity="0.65"
                         />
-                        <circle
-                          cx={cx}
-                          cy={cy}
-                          r={isMerge ? '5.5' : '4.5'}
-                          fill={isMerge ? '#fff4e6' : '#fff9db'}
-                          stroke={isMerge ? '#d9480f' : '#e67700'}
-                          strokeWidth="2.2"
-                        />
-                        <title>{branchEventText(ev, parameterName)}</title>
+                        {shape === 'boundary' ? (
+                          <rect
+                            x={cx - 5}
+                            y={cy - 5}
+                            width="10"
+                            height="10"
+                            fill="white"
+                            stroke={color}
+                            strokeWidth="2"
+                          />
+                        ) : (
+                          <path
+                            d={
+                              shape === 'passage'
+                                ? `M ${cx - 6} ${cy} l 3 -5 h 6 l 3 5 l -3 5 h -6 Z`
+                                : shape === 'contact'
+                                  ? `M ${cx} ${cy - 7} l 7 7 l -7 7 l -7 -7 Z`
+                                  : `M ${cx} ${cy - 6} l 6 11 h -12 Z`
+                            }
+                            fill="white"
+                            stroke={color}
+                            strokeWidth="2"
+                          />
+                        )}
+                        <title>
+                          {branchEventText(ev, parameterName)}
+                          {ev.tangency?.verified
+                            ? ` · ${tangencyOrderLabel(ev.tangency)}`
+                            : ''}
+                        </title>
                       </g>
                     )
                   })}
@@ -2414,7 +3006,13 @@ export default function SolutionChart({
                   : '수치 추적으로 추정한 지점입니다.'
               }
             >
-              <b>{branchEventLabel(ev)}</b> · {parameterName || '파라미터'} ≈{' '}
+              <b>{branchEventLabel(ev)}</b>
+              {ev.tangency?.verified && (
+                <small className="sc-event-order">
+                  {tangencyOrderLabel(ev.tangency)}
+                </small>
+              )}{' '}
+              · {parameterName || '파라미터'} ≈{' '}
               {formatNumber(
                 ev.tangency?.verified
                   ? ev.tangency.parameterStar
@@ -2425,6 +3023,14 @@ export default function SolutionChart({
         </div>
       )}
 
+      {allBifurcationEvents.length > 0 && (
+        <div className="sc-critical-legend" aria-label="특별한 근 기호">
+          ○ 일반 해 <span>◆ 짝수 중근·접점</span>
+          <span>⬡ 홀수 중근·관통</span>
+          <span>■ 정의역 경계</span>
+          <span>△ 추적 경계 추정</span>
+        </div>
+      )}
       <div className="sc-chart-footer">
         <span>
           연속 파라미터 <strong>{parameterName || '—'}</strong>
@@ -2446,11 +3052,11 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-11"></a>
 
 ## src/components/SolutionChart.css
 
-원본: [src/components/SolutionChart.css](../../src/components/SolutionChart.css) · 312줄 · SHA-256: `4c04335890e9f0118c2738e8cecb3f662bac6c9f6f16d7774eccf1bccc046f95`
+원본: [src/components/SolutionChart.css](../../src/components/SolutionChart.css) · 329줄 · SHA-256: `30d42bc27f4d44a0586123317be2d7fe42805f54f2d6312f7492e041b20a95ac`
 
 ```css
 .solution-chart {
@@ -2765,15 +3371,33 @@ export default function SolutionChart({
     padding-left: 25px;
   }
 }
+
+.sc-event-order {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #f2ece2;
+  font-size: 10px;
+  color: #8e622e;
+}
+.sc-critical-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #788474;
+  font-size: 10px;
+  padding: 8px 0;
+}
 ```
 
-<a id="source-10"></a>
+<a id="source-12"></a>
 
 ## src/components/SimulationPanelView.tsx
 
-원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 302줄 · SHA-256: `9fc667c2cd61e9f0351a7f5bc6158055c34622a4357115b606fa512d9e2b7ac9`
+원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 307줄 · SHA-256: `3b0b9e7ca92f93f774432636b0f041b8e3d54c2ba008d9d06a215b19dc774409`
 
 ```tsx
+import { rootStructureLabel } from '../engine/tangency'
 import { useEffect, useRef, useState } from 'react'
 import { Download, FileText, X } from 'lucide-react'
 import type { Parameter, SimulationAnchor, SimulationPanel } from '../engine'
@@ -2907,7 +3531,11 @@ export default function SimulationPanelView({
       </header>
 
       <div className="simulation-panel-current">
-        <span>현재 해</span>
+        <span>
+          현재 해
+          {panel.result?.rootStructure &&
+            ` · ${rootStructureLabel(panel.result.rootStructure)}`}
+        </span>
         <strong>
           {panel.result
             ? vectorText(panel.result.variables, panel.result.values)
@@ -3078,7 +3706,7 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-13"></a>
 
 ## src/components/MergedSimulationSetView.tsx
 
@@ -3380,7 +4008,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-14"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -3659,7 +4287,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-15"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
@@ -3892,7 +4520,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-16"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -4267,7 +4895,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-17"></a>
 
 ## src/styles.css
 
@@ -8001,7 +8629,7 @@ h2 {
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-18"></a>
 
 ## src/workspace-screens.css
 

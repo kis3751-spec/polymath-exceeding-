@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `fb7f93c3fdc1e4a4e9338af40394c005526f5dc4cea9cb494a6cf85652ae56eb`
+소스 묶음 SHA-256: `812ecd077dfe699d2de02f21b241612058413aec61a1a2323521c1b8ceb98af0`
 
 ## 다른 코드 묶음
 
@@ -39,17 +39,18 @@
 - [src/engine/automatic-polynomial.ts](#source-13) · [저장소 원본](../../src/engine/automatic-polynomial.ts)
 - [src/engine/parameter-path.ts](#source-14) · [저장소 원본](../../src/engine/parameter-path.ts)
 - [src/engine/tangency.ts](#source-15) · [저장소 원본](../../src/engine/tangency.ts)
-- [src/engine/automatic.ts](#source-16) · [저장소 원본](../../src/engine/automatic.ts)
-- [src/engine/root-isolation.ts](#source-17) · [저장소 원본](../../src/engine/root-isolation.ts)
-- [src/engine/conditioning.ts](#source-18) · [저장소 원본](../../src/engine/conditioning.ts)
-- [src/engine/solver.wat](#source-19) · [저장소 원본](../../src/engine/solver.wat)
-- [scripts/build-wasm.mjs](#source-20) · [저장소 원본](../../scripts/build-wasm.mjs)
+- [src/engine/report-diagnostics.ts](#source-16) · [저장소 원본](../../src/engine/report-diagnostics.ts)
+- [src/engine/automatic.ts](#source-17) · [저장소 원본](../../src/engine/automatic.ts)
+- [src/engine/root-isolation.ts](#source-18) · [저장소 원본](../../src/engine/root-isolation.ts)
+- [src/engine/conditioning.ts](#source-19) · [저장소 원본](../../src/engine/conditioning.ts)
+- [src/engine/solver.wat](#source-20) · [저장소 원본](../../src/engine/solver.wat)
+- [scripts/build-wasm.mjs](#source-21) · [저장소 원본](../../scripts/build-wasm.mjs)
 
 <a id="source-1"></a>
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 608줄 · SHA-256: `91a7c7ca82b580c0d1e3f7c7d531e212e39c2e391b8f796d102f5cdbe9425a43`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 617줄 · SHA-256: `0c0541c28d0e9994c80f835e0619a78460688f45bcdedb4d45ba0b45649e31e4`
 
 ```typescript
 import type { VariableBounds, SearchWindow } from './search-analysis'
@@ -79,6 +80,7 @@ export type Parameter = {
 }
 export type ModelInput = { source: string; parameters: Record<string, number> }
 export type SolveResult = {
+  rootStructure?: RootStructure
   kind?: 'linear' | 'nonlinear' | 'evaluation'
   iterations?: number
   method?: string
@@ -95,6 +97,11 @@ export type SolveResult = {
   engine: 'wasm' | 'javascript'
   durationMs: number
   warnings: string[]
+}
+export type RootStructure = {
+  kind: 'simple' | 'multiple' | 'boundary' | 'nonsmooth' | 'unresolved'
+  order?: number
+  evidence: string
 }
 export type SweepPoint = {
   parameter: number
@@ -135,7 +142,10 @@ export type SimulationPanel = {
 export type TangencyVerification = {
   /** Whether local derivative and curvature re-verification confirmed a fold/tangency bifurcation (∂f/∂x = 0) */
   verified: boolean
-  bifurcationOrder: 2 | 3 | 4 | 'boundary'
+  bifurcationOrder: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 'boundary'
+  /** Order of the first resolved nonzero x derivative, also for boundaries. */
+  multiplicity?: number
+  geometry?: 'regular' | 'degenerate' | 'boundary'
   curvatureFxxx?: number
   curvatureFxxxx?: number
   isCusp?: boolean
@@ -3574,9 +3584,10 @@ export function preprocessSolverSource(
 
 ## src/engine/nonlinear.ts
 
-원본: [src/engine/nonlinear.ts](../../src/engine/nonlinear.ts) · 512줄 · SHA-256: `2bdb8fb87ba1af9f026e4179469affa689e18906193638d3df32095078ed6ac9`
+원본: [src/engine/nonlinear.ts](../../src/engine/nonlinear.ts) · 533줄 · SHA-256: `f9abbfb40d387c00773c9f87d6e8bdf5e62fd987b75bec8163562b3a5fcf43d4`
 
 ```typescript
+import { classifyScalarRoot } from './tangency'
 import { nonsmoothSource } from './search-analysis'
 import { derivativeFreeRoots } from './derivative-free'
 import { normalizedModelCall } from './source-statements'
@@ -4061,6 +4072,26 @@ export async function createNonlinearSolver(
     )
     return {
       kind: 'nonlinear',
+      ...(scalar && options.computeCondition !== false
+        ? {
+            rootStructure: nonsmooth
+              ? {
+                  kind: 'nonsmooth' as const,
+                  evidence: '미분하지 않고 원래 등식에서 검증했습니다.',
+                }
+              : classifyScalarRoot(
+                  (x) => {
+                    try {
+                      return evaluate([x]).residuals[0]
+                    } catch {
+                      return undefined
+                    }
+                  },
+                  solved.values[0],
+                  model.jacobian?.(solved.values, parameters)?.[0]?.[0],
+                ),
+          }
+        : {}),
       variables: model.variables,
       values: solved.values,
       auxiliary: solved.evaluation.auxiliary,
@@ -4958,10 +4989,11 @@ export function createParameterPathValidator(
 
 ## src/engine/tangency.ts
 
-원본: [src/engine/tangency.ts](../../src/engine/tangency.ts) · 216줄 · SHA-256: `9d8d7fe489c868b87ee5ced92ad546530b31505675a44728cc51067c24b6f80c`
+원본: [src/engine/tangency.ts](../../src/engine/tangency.ts) · 367줄 · SHA-256: `c8c8d49abd7361902071f5ee1bd282f9a258f9e8292020a063de81404388476f`
 
 ```typescript
-import type { TangencyVerification } from './index'
+import type { RootStructure, TangencyVerification } from './index'
+import { nextDown, nextUp } from './interval-arithmetic'
 
 export type ScalarEvaluator = (x: number, p: number) => number | undefined
 export type DerivativeEstimate = {
@@ -4970,7 +5002,9 @@ export type DerivativeEstimate = {
   oneSided: boolean
 }
 const eps = Number.EPSILON
-const factorial = [1, 1, 2, 6, 24]
+export type DerivativeOrder = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+const orders: DerivativeOrder[] = [1, 2, 3, 4, 5, 6, 7, 8]
+const factorial = [1, 1, 2, 6, 24, 120, 720, 5040, 40320]
 
 // Polynomial-exact finite difference weights. The stencil is dimensionless;
 // Richardson comparison below measures sensitivity to the physical step size.
@@ -4995,26 +5029,37 @@ function weights(nodes: number[], order: number) {
   }
   return a.map((row) => row[n])
 }
-const stencils = [
-  [-3, -2, -1, 0, 1, 2, 3],
-  [0, 1, 2, 3, 4, 5, 6],
-  [0, -1, -2, -3, -4, -5, -6],
+const makeStencils = (radius: number) => [
+  Array.from({ length: 2 * radius + 1 }, (_, i) => i - radius),
+  Array.from({ length: 2 * radius + 1 }, (_, i) => i),
+  Array.from({ length: 2 * radius + 1 }, (_, i) => -i),
 ]
-const weightCache = stencils.map((nodes) =>
-  [0, 1, 2, 3, 4].map((order) => weights(nodes, order)),
-)
+const families = [3, 5].map((radius) => {
+  const stencils = makeStencils(radius)
+  return {
+    stencils,
+    weights: stencils.map((nodes) =>
+      orders.map((order) =>
+        order < nodes.length ? weights(nodes, order) : [],
+      ),
+    ),
+  }
+})
 export function adaptiveDerivative(
   evaluate: (x: number) => number | undefined,
   x: number,
-  order: 1 | 2 | 3 | 4 = 1,
+  order: DerivativeOrder = 1,
+  wideStencil = false,
 ): DerivativeEstimate | undefined {
-  const initial = eps ** (1 / 7) * Math.max(1, Math.abs(x))
+  const family = families[order <= 4 && !wideStencil ? 0 : 1]
+  const stencils = family.stencils
+  const initial = eps ** (1 / stencils[0].length) * Math.max(1, Math.abs(x))
   const sample = (h: number, stencil: number) => {
     const nodes = stencils[stencil]
     const values = nodes.map((n) => evaluate(x + n * h))
     if (values.some((v) => v === undefined || !Number.isFinite(v)))
       return undefined
-    const w = weightCache[stencil][order]
+    const w = family.weights[stencil][order - 1]
     let sum = 0,
       magnitude = 0
     values.forEach((v, i) => {
@@ -5050,21 +5095,63 @@ export function verifyScalarTangency(
   evaluate: ScalarEvaluator,
   seedX: number,
   seedP: number,
+  seedSlope?: number,
 ): TangencyVerification | undefined {
   if (!Number.isFinite(seedX) || !Number.isFinite(seedP)) return undefined
-  for (const order of [4, 3, 2] as const) {
+  // Fp=0 does not satisfy the fold normal form. Preserve the multiplicity
+  // without pretending that a crossing or a pitchfork is a two-root merge.
+  const seedFp = adaptiveDerivative((p) => evaluate(seedX, p), seedP)
+  if (
+    evaluate(seedX, seedP) === 0 &&
+    (seedSlope === undefined || seedSlope === 0) &&
+    seedFp &&
+    Math.abs(seedFp.value) <= 8 * seedFp.error
+  ) {
+    const kind = classifyScalarRoot((x) => evaluate(x, seedP), seedX)
+    if (kind.order && kind.order >= 2 && kind.order <= 8) {
+      const ds = ([1, 2, 3, 4] as const).map((n) =>
+        adaptiveDerivative((x) => evaluate(x, seedP), seedX, n),
+      )
+      if (ds.every(Boolean))
+        return {
+          verified: true,
+          bifurcationOrder: kind.order as 2 | 3 | 4 | 5 | 6 | 7 | 8,
+          multiplicity: kind.order,
+          geometry: 'degenerate',
+          parameterStar: seedP,
+          valuesStar: [seedX],
+          terminalSlope: ds[0]!.value,
+          oppositeSlopeSigns: false,
+          curvatureFxx: ds[1]!.value,
+          curvatureFxxx: ds[2]!.value,
+          curvatureFxxxx: ds[3]!.value,
+          sensitivityFp: seedFp.value,
+          residualAtStar: 0,
+          slopeAtStar: Math.abs(ds[0]!.value),
+          geometricSummary: `${kind.order}중근 국소 수치 판정. 파라미터 방향 도함수도 0이어서 교차·분화·병합의 위상은 이 판정만으로 지정하지 않습니다.`,
+        }
+    }
+  }
+  for (const order of [8, 7, 6, 5, 4, 3, 2] as const) {
     let x = seedX,
       p = seedP
     let failed = false
+    let converged = false
     for (let i = 0; i < 14; i++) {
       const f = evaluate(x, p)
       const fp = adaptiveDerivative((q) => evaluate(x, q), p)
       const lower = adaptiveDerivative(
         (y) => evaluate(y, p),
         x,
-        (order - 1) as 1 | 2 | 3,
+        (order - 1) as DerivativeOrder,
+        order > 4,
       )
-      const high = adaptiveDerivative((y) => evaluate(y, p), x, order)
+      const high = adaptiveDerivative(
+        (y) => evaluate(y, p),
+        x,
+        order,
+        order > 4,
+      )
       if (
         f === undefined ||
         !fp ||
@@ -5101,14 +5188,26 @@ export function verifyScalarTangency(
         failed = true
         break
       }
-      if (Math.abs(dx) <= 32 * eps * Math.max(1, Math.abs(x))) break
+      if (
+        Math.abs(dx) <=
+        32 * eps * Math.max(1, Math.abs(x)) +
+          (8 * lower.error) / (Math.abs(high.value) - high.error)
+      ) {
+        converged = true
+        if (Math.abs(dx) <= 32 * eps * Math.max(1, Math.abs(x))) break
+      }
     }
-    if (failed) continue
+    if (failed || !converged) continue
+    if (
+      Math.abs(x - seedX) <= 32 * eps * Math.max(1, Math.abs(seedX)) &&
+      atDomainBoundary((y) => evaluate(y, p), seedX)
+    )
+      x = seedX
     const f = evaluate(x, p),
       fp = adaptiveDerivative((q) => evaluate(x, q), p)
-    const ds = ([1, 2, 3, 4] as const).map((n) =>
-      adaptiveDerivative((y) => evaluate(y, p), x, n),
-    )
+    const ds = orders
+      .slice(0, Math.max(4, order))
+      .map((n) => adaptiveDerivative((y) => evaluate(y, p), x, n))
     if (f === undefined || !fp || ds.some((d) => !d)) continue
     const tolerance =
       128 *
@@ -5127,17 +5226,22 @@ export function verifyScalarTangency(
       continue
     if (Math.abs(ds[order - 1]!.value) <= 8 * ds[order - 1]!.error + tolerance)
       continue
-    const boundary = ds[0]!.oneSided
+    const boundary =
+      ds[0]!.oneSided && atDomainBoundary((y) => evaluate(y, p), x)
     const label = boundary
       ? '정의역 경계 접점'
       : order === 3
         ? '3중 접점·변곡 분기'
         : order === 4
           ? '고차 평탄 접점 (4차)'
-          : '2차 접점·중근'
+          : order > 4
+            ? `${order}중 접점`
+            : '2차 접점·중근'
     return {
       verified: true,
       bifurcationOrder: boundary ? 'boundary' : order,
+      multiplicity: order,
+      geometry: boundary ? 'boundary' : 'regular',
       isCusp: order === 3 && !boundary,
       parameterStar: p,
       valuesStar: [x],
@@ -5150,7 +5254,7 @@ export function verifyScalarTangency(
       residualAtStar: Math.abs(f),
       slopeAtStar: Math.abs(ds[0]!.value),
       parabolaCoeff: order === 2 ? -ds[1]!.value / (2 * fp.value) : undefined,
-      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 등식 오차와 1~4차 도함수를 두 스텝 크기로 비교했습니다.`,
+      geometricSummary: `${label} 확인됨 (국소 수치 검증): p ≈ ${Number(p.toPrecision(7))}, x ≈ ${Number(x.toPrecision(7))}. 원래 식의 등식 오차와 1~${Math.max(4, order)}차 도함수를 두 스텝 크기로 비교했습니다.`,
     }
   }
   return undefined
@@ -5170,22 +5274,353 @@ export interface MultivariableTangencyProbe {
 }
 
 export function tangencyLabel(t: TangencyVerification): string {
+  if (t.geometry === 'degenerate') return '분기 다중근'
   const order = t.bifurcationOrder
   return order === 'boundary'
     ? '정의역 경계 도달'
-    : order === 3
+    : typeof order === 'number' && order % 2 === 1
       ? '변곡점 통과'
       : '근 병합'
+}
+
+// A one-sided finite-difference stencil alone does not imply a boundary.
+// Check adjacent representable values: a nearby interior log root stays interior.
+function atDomainBoundary(
+  evaluate: (x: number) => number | undefined,
+  x: number,
+) {
+  return [nextDown(x), nextUp(x)].some((y) => {
+    const f = evaluate(y)
+    return f === undefined || !Number.isFinite(f)
+  })
+}
+
+/** Local numerical multiplicity; it does not assert branch topology or
+ * completeness. Nonsmooth expressions must be filtered before this function. */
+export function classifyScalarRoot(
+  evaluate: (x: number) => number | undefined,
+  x: number,
+  analyticSlope?: number,
+): RootStructure {
+  const unknown: RootStructure = {
+    kind: 'unresolved',
+    evidence: '8차까지의 도함수에서 차수를 분리하지 못했습니다.',
+  }
+  const f = evaluate(x)
+  if (f === undefined || !Number.isFinite(f)) return unknown
+  for (const order of orders) {
+    const d = adaptiveDerivative(evaluate, x, order)
+    if (!d)
+      return {
+        ...unknown,
+        evidence: '정의역 안에서 도함수 스텐실을 구성하지 못했습니다.',
+      }
+    if (Math.abs(d.value) <= 8 * d.error) continue
+    // A broad finite-difference stencil can hide the nonzero slope of two
+    // distinct tiny roots. Never upgrade that discrepancy to multiplicity.
+    if (
+      order > 1 &&
+      analyticSlope !== undefined &&
+      Number.isFinite(analyticSlope) &&
+      analyticSlope !== 0
+    )
+      return {
+        kind: 'unresolved',
+        evidence:
+          '직접 도함수는 0이 아니지만 차분 간격에서 분리되지 않습니다. 중근으로 합치지 않고 현재 기울기로 민감도를 계산합니다.',
+      }
+    const boundary = atDomainBoundary(evaluate, x)
+    return {
+      kind: boundary ? 'boundary' : order === 1 ? 'simple' : 'multiple',
+      order,
+      evidence:
+        order === 1
+          ? '두 미분 간격에서 1차 도함수가 0과 분리됨 (국소 수치 판정).'
+          : `두 미분 간격에서 1~${order - 1}차는 오차 범위 내 0, ${order}차는 0과 분리됨 (국소 수치 판정).`,
+    }
+  }
+  return unknown
+}
+export function rootStructureLabel(root?: RootStructure) {
+  if (!root) return '계산된 해'
+  if (root.kind === 'simple') return '단순근'
+  if (root.kind === 'boundary')
+    return `정의역 경계${root.order && root.order > 1 ? ` · ${root.order}중근` : ''}`
+  if (root.kind === 'multiple')
+    return root.order === 2
+      ? '2중근 · 접점'
+      : `${root.order}중근${root.order && root.order % 2 ? ' · 관통' : ' · 접점'}`
+  return root.kind === 'nonsmooth' ? '비매끄러운 식의 해' : '근 차수 미분리'
+}
+export function tangencyOrderLabel(t: TangencyVerification) {
+  if (t.geometry === 'degenerate')
+    return `${t.bifurcationOrder}중근 · 분기 유형 미분리`
+  if (t.bifurcationOrder === 'boundary')
+    return `경계 접점${t.multiplicity ? ` · ${t.multiplicity}중근` : ''}`
+  return `${t.bifurcationOrder}중근${t.bifurcationOrder % 2 ? ' · 관통' : ' · 접점'}`
 }
 ```
 
 <a id="source-16"></a>
 
-## src/engine/automatic.ts
+## src/engine/report-diagnostics.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,541줄 · SHA-256: `6a0171561a759c2b755093b2b3c500c3528f9a26013e0d67e50485db563f9e85`
+원본: [src/engine/report-diagnostics.ts](../../src/engine/report-diagnostics.ts) · 243줄 · SHA-256: `f065979374d9b8641339b45f4b55e7cc7a6cd92abea1ceffcd4b99fd744e5abb`
 
 ```typescript
+import { Matrix, SingularValueDecomposition } from 'ml-matrix'
+import type { SolveResult, SearchSummary } from './index'
+import { diagnosticModel } from './automatic'
+import { compileNonlinear } from './nonlinear-parser'
+import { adaptiveDerivative, type DerivativeOrder } from './tangency'
+import {
+  containsZero,
+  div,
+  evaluateIntervalJet,
+  nextUp,
+  sub,
+  type Interval,
+} from './interval-arithmetic'
+
+export type ReportDiagnostics = {
+  normalizedError?: number
+  correction?: number[]
+  amplification?: number
+  rank?: number
+  enclosure?: Interval
+  errorBound?: number
+  parameterSensitivity: { name: string; derivatives: number[] }[]
+  powerResponse?: { order: number; coefficient: number }
+  reason?: string
+}
+const norm = (v: number[]) => Math.max(0, ...v.map(Math.abs))
+
+/** Every intersected interval still contains the unique root of the certified
+ * starting box. A tiny residual alone is never converted to an error bound. */
+export function refineRootEnclosure(
+  initial: Interval,
+  evaluate: (x: Interval) => ReturnType<typeof evaluateIntervalJet>,
+): Interval {
+  let box = { ...initial }
+  for (let k = 0; k < 32; k++) {
+    const jet = evaluate(box)
+    if (jet.domain !== 'all' || jet.issue || containsZero(jet.der)) break
+    const m = box.lo / 2 + box.hi / 2
+    const point = evaluate({ lo: m, hi: m })
+    if (point.domain !== 'all' || point.issue) break
+    const n = sub({ lo: m, hi: m }, div(point.val, jet.der))
+    const lo = Math.max(box.lo, n.lo),
+      hi = Math.min(box.hi, n.hi)
+    if (lo > hi || !Number.isFinite(lo) || !Number.isFinite(hi)) break
+    if (lo === box.lo && hi === box.hi) break
+    box = { lo, hi }
+  }
+  return box
+}
+
+export function reportDiagnostics(
+  result: SolveResult,
+  source: string,
+  parameters: Record<string, number>,
+  search?: SearchSummary | null,
+): ReportDiagnostics {
+  const out: ReportDiagnostics = { parameterSensitivity: [] }
+  if (result.kind === 'evaluation') return out
+  const n = result.values.length,
+    a = result.matrix
+  let context: ReturnType<typeof diagnosticModel> | undefined
+  let model: ReturnType<typeof compileNonlinear> | undefined
+  if (result.kind === 'nonlinear') {
+    try {
+      context = diagnosticModel(source, Object.keys(parameters))
+      model = context.model
+    } catch {
+      try {
+        model = compileNonlinear(source, Object.keys(parameters))
+      } catch {
+        /* explain below */
+      }
+    }
+  }
+  const cert = search?.certification
+  // Search and diagnostics must refer to the current parameter values.
+  if (
+    n === 1 &&
+    cert?.model &&
+    context?.expression &&
+    cert.model.source === context.source &&
+    Object.keys(parameters).length ===
+      Object.keys(cert.model.parameters).length &&
+    Object.entries(parameters).every(
+      ([key, value]) => cert.model!.parameters[key] === value,
+    )
+  ) {
+    const boxes = cert.rootIntervals.filter(
+      (b) => result.values[0] >= b.lo && result.values[0] <= b.hi,
+    )
+    if (boxes.length === 1) {
+      const enclosure = refineRootEnclosure(boxes[0], (x) =>
+        evaluateIntervalJet(
+          context!.expression!,
+          result.variables[0],
+          x,
+          parameters,
+          context!.helpers,
+        ),
+      )
+      out.enclosure = enclosure
+      out.errorBound = nextUp(
+        Math.max(
+          Math.abs(result.values[0] - enclosure.lo),
+          Math.abs(result.values[0] - enclosure.hi),
+        ),
+      )
+    }
+  }
+  if (
+    a.length !== n ||
+    a.some((row) => row.length !== n || !row.every(Number.isFinite))
+  ) {
+    out.reason =
+      result.rootStructure?.kind === 'nonsmooth'
+        ? '비매끄러운 식: 도함수 대신 대입 오차와 구간 검증을 사용합니다.'
+        : '현재 점의 유한한 Jacobian을 구성하지 못했습니다.'
+    return out
+  }
+  const scales = result.values.map((x) => Math.max(1, Math.abs(x)))
+  const valueMagnitude = Math.max(1, ...scales)
+  const rowMagnitudes = a.map((row, i) =>
+    Math.max(Number.MIN_VALUE, Math.abs(result.rhs[i]), ...row.map(Math.abs)),
+  )
+  // Componentwise backward error for linear equations; nonlinear systems use
+  // the Jacobian linearization and x scale max(1, |x|), as stated in the report.
+  const normalized = a.map((row, i) => {
+    const denominator =
+      row.reduce(
+        (sum, v, j) =>
+          sum +
+          Math.abs(v / rowMagnitudes[i]) *
+            (result.kind === 'nonlinear'
+              ? scales[j] / valueMagnitude
+              : Math.abs(result.values[j]) / valueMagnitude),
+        0,
+      ) + Math.abs(result.rhs[i] / rowMagnitudes[i] / valueMagnitude)
+    return denominator
+      ? Math.abs(result.residuals[i] / rowMagnitudes[i] / valueMagnitude) /
+          denominator
+      : Math.abs(result.residuals[i]) === 0
+        ? 0
+        : Infinity
+  })
+  out.normalizedError = norm(normalized)
+  const magnitude = norm(a.flat())
+  const multiple = (result.rootStructure?.order ?? 1) > 1
+  if (multiple && n === 1 && model) {
+    const order = result.rootStructure!.order!
+    const d = adaptiveDerivative(
+      (x) => {
+        try {
+          return model!.evaluate([x], parameters).residuals[0]
+        } catch {
+          return undefined
+        }
+      },
+      result.values[0],
+      order as DerivativeOrder,
+    )
+    const fact = Array.from({ length: order }, (_, i) => i + 1).reduce(
+      (v, k) => v * k,
+      1,
+    )
+    if (d && Math.abs(d.value) > 8 * d.error)
+      out.powerResponse = { order, coefficient: fact / Math.abs(d.value) }
+  }
+  if (!magnitude || multiple) {
+    out.rank = 0
+    out.reason =
+      '중근에서는 선형 오차 증폭률이 발산합니다. 첫 비영 도함수의 거듭제곱 반응을 사용합니다.'
+    return out
+  }
+  try {
+    const svd = new SingularValueDecomposition(
+      new Matrix(a.map((row) => row.map((v) => v / magnitude))),
+    )
+    const threshold = n * Number.EPSILON * Math.max(...svd.diagonal)
+    out.rank = svd.diagonal.filter((v) => v > threshold).length
+    if (out.rank < n) {
+      out.reason = `국소 랭크 ${out.rank}/${n}: 특이 연립계이며 근의 차수는 스칼라 기준으로 지정하지 않습니다.`
+      return out
+    }
+    const inverse = svd
+      .inverse()
+      .to2DArray()
+      .map((row) => row.map((v) => v / magnitude))
+    if (!inverse.flat().every(Number.isFinite)) throw new Error('inverse range')
+    const apply = (v: number[]) =>
+      inverse.map((row) => row.reduce((sum, c, j) => sum + c * v[j], 0))
+    out.amplification = Math.max(
+      ...inverse.map((row) => row.reduce((sum, v) => sum + Math.abs(v), 0)),
+    )
+    out.correction = apply(result.residuals).map(Math.abs)
+    if (model)
+      for (const [name, p] of Object.entries(parameters)) {
+        const dp = result.values.map((_, i) =>
+          adaptiveDerivative((q) => {
+            try {
+              return model!.evaluate(result.values, {
+                ...parameters,
+                [name]: q,
+              }).residuals[i]
+            } catch {
+              return undefined
+            }
+          }, p),
+        )
+        if (dp.every((d) => d && Number.isFinite(d.value))) {
+          const derivatives = apply(dp.map((d) => -d!.value))
+          if (derivatives.every(Number.isFinite))
+            out.parameterSensitivity.push({ name, derivatives })
+        }
+      }
+  } catch {
+    out.reason =
+      '수치 범위 또는 특이값 분해 한계로 오차 증폭률을 계산하지 못했습니다.'
+  }
+  return out
+}
+export function coveragePercent(search?: SearchSummary | null) {
+  const c = search?.certification
+  if (!c) return undefined
+  return c.complete
+    ? '100%'
+    : `${Math.min(99.9999, Math.floor(c.coverageLowerBound * 1e6) / 1e4).toFixed(4)}%`
+}
+export function searchConclusion(
+  search?: SearchSummary | null,
+  linear = false,
+) {
+  if (linear) return '독립 선형계 · 유일해'
+  const c = search?.certification
+  if (c?.complete && c.allRootsRepresented)
+    return `구간 내 전체 ${c.uniqueRootCount}개 근 확인`
+  if (c?.complete)
+    return `${c.uniqueRootCount}개 근 구간 확정 · 결과 대응 확인 필요`
+  if (c)
+    return `${c.uniqueRootCount}개 근 구간 확정 · ${c.unresolved.length}곳 추가 검증 필요`
+  return search?.nonIsolated
+    ? '구간 해 대표값 · 고립근 개수로 집계하지 않음'
+    : '수치 탐색 결과 · 전체 구간 검증 전'
+}
+```
+
+<a id="source-17"></a>
+
+## src/engine/automatic.ts
+
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,567줄 · SHA-256: `b5d5df2f8d3828f70a51012d1b152b153ac65610017664a0fe28464bf1d10eae`
+
+```typescript
+import { classifyScalarRoot } from './tangency'
 import { squareFreeCoefficients } from './square-free'
 import {
   certifyScalarRoots,
@@ -5906,6 +6341,20 @@ function scalarResult(
     )
   return {
     kind: 'nonlinear',
+    ...(options.computeCondition === false
+      ? {}
+      : {
+          rootStructure: prepared.nonsmooth
+            ? {
+                kind: 'nonsmooth' as const,
+                evidence: '미분하지 않고 원래 등식에서 검증했습니다.',
+              }
+            : classifyScalarRoot(
+                (x) => tryScalar(resultModel, parameters, x),
+                value,
+                resultModel.jacobian?.([value], parameters)?.[0]?.[0],
+              ),
+        }),
     variables: prepared.variables,
     values: [Object.is(value, -0) ? 0 : value],
     auxiliary: evaluation.auxiliary,
@@ -6727,9 +7176,20 @@ export async function createAutomaticSolver(
     )
   return normalizedSearch
 }
+
+export function diagnosticModel(source: string, parameterNames: string[]) {
+  const p = prepare(source, parameterNames)
+  return {
+    source: p.source,
+    model: p.originalModel ?? p.model,
+    expression: p.originalExpression,
+    helpers: p.helpers,
+    nonsmooth: p.nonsmooth,
+  }
+}
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## src/engine/root-isolation.ts
 
@@ -6779,7 +7239,7 @@ export function isUniquePolynomialRoot(result: SolveResult): boolean {
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-19"></a>
 
 ## src/engine/conditioning.ts
 
@@ -6905,7 +7365,7 @@ export function conditionNumber(
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-20"></a>
 
 ## src/engine/solver.wat
 
@@ -7000,7 +7460,7 @@ export function conditionNumber(
 )
 ```
 
-<a id="source-20"></a>
+<a id="source-21"></a>
 
 ## scripts/build-wasm.mjs
 

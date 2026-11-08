@@ -25,6 +25,7 @@ export type Parameter = {
 }
 export type ModelInput = { source: string; parameters: Record<string, number> }
 export type SolveResult = {
+  rootStructure?: RootStructure
   kind?: 'linear' | 'nonlinear' | 'evaluation'
   iterations?: number
   method?: string
@@ -41,6 +42,11 @@ export type SolveResult = {
   engine: 'wasm' | 'javascript'
   durationMs: number
   warnings: string[]
+}
+export type RootStructure = {
+  kind: 'simple' | 'multiple' | 'boundary' | 'nonsmooth' | 'unresolved'
+  order?: number
+  evidence: string
 }
 export type SweepPoint = {
   parameter: number
@@ -81,7 +87,10 @@ export type SimulationPanel = {
 export type TangencyVerification = {
   /** Whether local derivative and curvature re-verification confirmed a fold/tangency bifurcation (∂f/∂x = 0) */
   verified: boolean
-  bifurcationOrder: 2 | 3 | 4 | 'boundary'
+  bifurcationOrder: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 'boundary'
+  /** Order of the first resolved nonzero x derivative, also for boundaries. */
+  multiplicity?: number
+  geometry?: 'regular' | 'degenerate' | 'boundary'
   curvatureFxxx?: number
   curvatureFxxxx?: number
   isCusp?: boolean
