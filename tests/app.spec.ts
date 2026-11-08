@@ -2841,3 +2841,108 @@ test.describe('V3 tangency diagnostics and reference manual', () => {
     await expect(page.locator('.sc-curve').first()).toHaveAttribute('d', curve!)
   })
 })
+
+test.describe('Readable manual and scientific showcase', () => {
+  for (const width of [1440, 390])
+    test(`manual and usage occupy readable columns at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/')
+      await page
+        .getByRole('button', { name: '사용 가이드', exact: true })
+        .click()
+      const dialog = page.getByRole('dialog')
+      const reference = page.locator('.guide-reference > div')
+      const referenceWidth = await reference.evaluate(
+        (el) => el.getBoundingClientRect().width,
+      )
+      expect(referenceWidth).toBeGreaterThan(width === 390 ? 260 : 650)
+      const heading = page.getByRole('heading', {
+        name: '함수·문법 공식집',
+        exact: true,
+      })
+      const h = await heading.boundingBox()
+      expect(h!.height).toBeLessThan(45)
+      await expect(dialog).toContainText('밑 10')
+      const table = page.locator('.guide-table-scroll')
+      await table.scrollIntoViewIfNeeded()
+      const box = await table.boundingBox(),
+        d = await dialog.boundingBox()
+      expect(box!.x + box!.width).toBeLessThanOrEqual(d!.x + d!.width)
+      await page.getByRole('button', { name: '사용 방법', exact: true }).click()
+      const body = page.locator('.guide-section > div').first()
+      expect(
+        await body.evaluate((el) => el.getBoundingClientRect().width),
+      ).toBeGreaterThan(width === 390 ? 230 : 600)
+      await expect(
+        page.getByRole('heading', { name: '필요한 화면부터 열어보세요' }),
+      ).toBeVisible()
+      await page.screenshot({ path: `/tmp/polymath-guide-usage-${width}.png` })
+      await page.getByRole('button', { name: '함수·문법', exact: true }).click()
+      await page.screenshot({
+        path: `/tmp/polymath-guide-reference-${width}.png`,
+      })
+      await page.keyboard.press('Escape')
+      await expect(dialog).not.toBeVisible()
+    })
+
+  for (const ex of [
+    { title: 'Landau 모형의 평형 분기', count: 3, parameter: 'h', next: '0.5' },
+    {
+      title: '평균장 Ising 모형의 자기화',
+      count: 3,
+      parameter: 'h',
+      next: '0.7',
+    },
+    { title: 'Semenov 열폭주 임계점', count: 2, parameter: 'q', next: '2.5' },
+    { title: 'van der Waals 등온선', count: 3, parameter: 'P', next: '0.8' },
+  ])
+    test(`loads ${ex.title} with annotated merged curves`, async ({ page }) => {
+      await page.goto('/')
+      await navigate(page, '수식·파라미터')
+      await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+      await openExample(page, ex.title)
+      await page.locator('.example-walkthrough summary').click()
+      await expect(page.locator('.example-walkthrough')).toContainText(
+        '모형 배경',
+      )
+      await showSimulation(page)
+      await expect(page.locator('.solution-count')).toHaveText(
+        `발견한 실수 해 ${ex.count}개`,
+      )
+      await page
+        .getByRole('button', { name: '시뮬레이션 병합 세트 추가', exact: true })
+        .click()
+      const merged = page.locator('.merged-simulation-panel')
+      await expect(merged.locator('.sc-curve')).toHaveCount(ex.count)
+      await expect(merged.locator('.sc-bifurcation-banner')).toContainText(
+        '2차 접점',
+      )
+      const curves = await merged
+        .locator('.sc-curve')
+        .evaluateAll((elements) => elements.map((el) => el.getAttribute('d')))
+      await page
+        .getByRole('slider', { name: `${ex.parameter} 슬라이더`, exact: true })
+        .fill(ex.next)
+      if (ex.parameter === 'q')
+        await expect(merged.locator('.merged-current-card strong')).toHaveText([
+          /추적 불가/,
+          /추적 불가/,
+        ])
+      else
+        await expect(page.locator('.solution-count')).toHaveText(
+          '발견한 실수 해 1개',
+        )
+      expect(
+        await merged
+          .locator('.sc-curve')
+          .evaluateAll((elements) =>
+            elements.map((el) => el.getAttribute('d')),
+          ),
+      ).toEqual(curves)
+      await merged.locator('.solution-chart').screenshot({
+        path: `/tmp/polymath-showcase-chart-${ex.parameter}-${ex.count}-${ex.next}.png`,
+      })
+    })
+})

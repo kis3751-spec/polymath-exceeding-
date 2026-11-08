@@ -1,3 +1,4 @@
+import ExampleWalkthrough from './components/ExampleWalkthrough'
 import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
@@ -618,6 +619,11 @@ export default function App() {
     setSelectedIndex(null)
     setToast('새 모델을 열었습니다.')
   }
+  const activeExample = nonlinear
+    ? NONLINEAR_EXAMPLES.find(
+        (ex) => ex.project.source === project.source && ex.guide,
+      )
+    : undefined
   function loadExample(p: Project) {
     setUndoProject(structuredClone(project))
     setProject(structuredClone(p))
@@ -1088,6 +1094,12 @@ export default function App() {
               <span />내 브라우저에서 안전하게 연산
             </div>
           </div>
+          {activeExample && !expanded && (
+            <ExampleWalkthrough
+              key={activeExample.id}
+              example={activeExample}
+            />
+          )}
           <div
             className={`studio-grid sectioned-workspace ${expanded ? 'results-expanded' : ''}`}
             data-screen={screen}
@@ -1115,7 +1127,7 @@ export default function App() {
                       {examplesOpen && (
                         <div className="examples-menu">
                           <span className="menu-label">
-                            비선형 모델링 시작하기
+                            수학·과학 예제 · 모델을 선택하세요
                           </span>
                           {NONLINEAR_EXAMPLES.map((ex) => (
                             <button

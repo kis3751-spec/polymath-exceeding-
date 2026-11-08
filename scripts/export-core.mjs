@@ -55,6 +55,7 @@ const books = [
     ],
     files: [
       'src/models.ts',
+      'src/showcase-examples.ts',
       'src/solver-input.ts',
       'src/use-project-persistence.ts',
       'src/equation-count.ts',
@@ -80,6 +81,9 @@ const books = [
       'src/main.tsx',
       ...chartHelpers,
       'src/components/EquationReference.tsx',
+      'src/components/ExampleWalkthrough.tsx',
+      'src/components/Guide.tsx',
+      'src/components/Guide.css',
       'src/components/SolutionChart.tsx',
       'src/components/SolutionChart.css',
       'src/components/SimulationPanelView.tsx',

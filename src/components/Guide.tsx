@@ -1,5 +1,5 @@
 import EquationReference from './EquationReference'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, BookOpen, Check, Lightbulb, X } from 'lucide-react'
 import type { SolverMode } from '../models'
 import './Guide.css'
@@ -13,6 +13,7 @@ export default function Guide({
 }) {
   const dialog = useRef<HTMLDivElement>(null)
   const nonlinear = mode === 'nonlinear'
+  const [page, setPage] = useState<'reference' | 'usage'>('reference')
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null
@@ -22,9 +23,11 @@ export default function Guide({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
       if (event.key !== 'Tab' || !dialog.current) return
-      const focusable = dialog.current.querySelectorAll<HTMLElement>(
-        'button, a[href], input, select, textarea, [tabindex="0"]',
-      )
+      const focusable = Array.from(
+        dialog.current.querySelectorAll<HTMLElement>(
+          'button, a[href], input, select, textarea, [tabindex="0"]',
+        ),
+      ).filter((element) => element.getClientRects().length > 0)
       const first = focusable[0]
       const last = focusable[focusable.length - 1]
       if (
@@ -88,313 +91,345 @@ export default function Guide({
           <p>복잡한 코딩 없이, 익숙한 수학 문법으로 모델을 만듭니다.</p>
         </header>
 
-        <div className="guide-content">
-          <EquationReference />
-          <section className="guide-section">
-            <span className="guide-step">01</span>
-            <div>
-              <h3>필요한 화면부터 열어보세요</h3>
-              <p>
-                첫 화면의 <strong>Equation Solver</strong> 카드를 누르면
-                계산기를 엽니다. 준비 중인 모듈은 아직 계산할 수 없습니다.
-              </p>
-              <p>
-                <strong>수식·파라미터</strong>에서 식과 범위·간격을 설정하고,{' '}
-                <strong>시뮬레이션</strong>에서 해와 그래프를 탐색하세요.{' '}
-                <strong>해석 리포트</strong>에서는 수치 검증과 상세 결과를
-                확인합니다. 화면 이동은 작성한 모델과 선택한 해를 지우지
-                않습니다.
-              </p>
-              <p className="guide-small">
-                상단의 화면 이동 버튼으로 작업을 바꾸고, 모듈 홈으로 돌아갈 수
-                있습니다. Linear와 Nonlinear 유형은 수식·파라미터 화면에서
-                선택합니다.
-              </p>
-            </div>
-          </section>
+        <nav className="guide-navigation" aria-label="가이드 내용">
+          <button
+            type="button"
+            aria-pressed={page === 'reference'}
+            onClick={() => setPage('reference')}
+          >
+            함수·문법
+          </button>
+          <button
+            type="button"
+            aria-pressed={page === 'usage'}
+            onClick={() => setPage('usage')}
+          >
+            사용 방법
+          </button>
+        </nav>
+        <div className="guide-content" key={page}>
+          {page === 'reference' ? (
+            <EquationReference />
+          ) : (
+            <>
+              <section className="guide-section">
+                <span className="guide-step">01</span>
+                <div>
+                  <h3>필요한 화면부터 열어보세요</h3>
+                  <p>
+                    첫 화면의 <strong>Equation Solver</strong> 카드를 누르면
+                    계산기를 엽니다. 준비 중인 모듈은 아직 계산할 수 없습니다.
+                  </p>
+                  <p>
+                    <strong>수식·파라미터</strong>에서 식과 범위·간격을
+                    설정하고, <strong>시뮬레이션</strong>에서 해와 그래프를
+                    탐색하세요. <strong>해석 리포트</strong>에서는 수치 검증과
+                    상세 결과를 확인합니다. 화면 이동은 작성한 모델과 선택한
+                    해를 지우지 않습니다.
+                  </p>
+                  <p className="guide-small">
+                    상단의 화면 이동 버튼으로 작업을 바꾸고, 모듈 홈으로 돌아갈
+                    수 있습니다. Linear와 Nonlinear 유형은 수식·파라미터
+                    화면에서 선택합니다.
+                  </p>
+                </div>
+              </section>
 
-          <section className="guide-section">
-            <span className="guide-step">02</span>
-            <div>
-              <h3>
-                {nonlinear
-                  ? '방정식을 그대로 입력하세요'
-                  : '한 줄에 방정식 하나'}
-              </h3>
-              {nonlinear ? (
-                <>
-                  <p>
-                    <code>x^2 = 4</code>처럼 익숙한 등식으로 적으면 자동으로
-                    실수 해를 탐색합니다. 기본 모드에는 초기값이나 min/max를
-                    입력하지 않아도 됩니다.
-                  </p>
-                  <pre className="guide-code">
-                    <span># 발견한 실수 해 -2, 2를 함께 확인합니다</span>
-                    {'\n'}x^2 = 4
-                  </pre>
-                  <p className="guide-small">
-                    <code>f(x) = x^2 - 4</code> 같은 잔차식도 사용할 수
-                    있습니다. 자동 탐색은 실수 해만 다룹니다. 복소수 계산기는
-                    이후 별도 기능으로 제공할 예정입니다.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p>
-                    모르는 값은 문자로, 알고 있는 값은 숫자로 적으세요. 양쪽
-                    모두에 미지수가 있어도 괜찮습니다.
-                  </p>
-                  <pre className="guide-code">
-                    <span># 두 식, 두 미지수</span>
-                    {'\n'}2x + 3y = 12{'\n'}4x = 5 + y
-                  </pre>
-                </>
-              )}
-              <div className="guide-rule">
-                <Check size={14} />
-                <span>
-                  <code>2x</code>와 <code>2*x</code>는 같은 뜻입니다.
-                </span>
-              </div>
-              {!nonlinear && (
-                <p className="guide-small">
-                  <code>2*(x + y)</code> 같은 괄호와 <code>x/2</code>처럼 알려진
-                  값으로 나누기도 지원합니다. 미지수끼리 곱하거나 제곱하는 식은
-                  Nonlinear 탭에서 입력하세요.
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section className="guide-section">
-            <span className="guide-step">03</span>
-            <div>
-              {nonlinear ? (
-                <>
-                  <h3>여러 해를 목록에서 선택하세요</h3>
-                  <p>
-                    연립식도 한 줄에 등식 하나씩 작성합니다. 미지수 수와
-                    독립적인 식 수를 맞추면 여러 시작점을 자동으로 시도합니다.
-                    시뮬레이션 화면의 발견한 해 목록에서 해를 선택하고,
-                    시뮬레이션 추가로 여러 창을 열어 비교하세요. 선택한 해의
-                    자세한 계산 결과는 해석 리포트에서 볼 수 있습니다.
-                  </p>
-                  <pre className="guide-code">
-                    <span># 원과 직선의 교점을 자동으로 탐색합니다</span>
-                    {'\n'}x^2 + y^2 = 25{'\n'}x - y = 1
-                  </pre>
-                  <p className="guide-small">
-                    일반 함수는 기본 -100~100 영역을 탐색하며, 지원되는 단일
-                    다항식은 계수에서 탐색 범위를 잡습니다. 실제 사용한 범위와
-                    방법은 결과에 표시됩니다. 필요하면 ‘고급 탐색 설정’에서 자동
-                    탐색 범위를 바꿀 수 있습니다.
-                  </p>
-                  <p className="guide-small">
-                    결과는 <strong>발견한 실수 해</strong>입니다. 유한한 수치
-                    탐색으로 모든 해를 찾았거나 해가 없음을 보장하지는 않습니다.
-                    <code>sin(x) = 0</code>처럼 해가 무한히 많은 식도 있습니다.
-                    0에 가까운 해부터 최대 32개를 표시하며 제한에 도달하면
-                    안내합니다. 같은 거리에서는 양수 해가 먼저 나옵니다.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3>미지수와 파라미터를 구분해요</h3>
-                  <p>
-                    <strong>미지수</strong>는 계산으로 구할 값입니다.{' '}
-                    <strong>파라미터</strong>는 내가 조절하는 알려진 값으로,
-                    파라미터 패널에 추가합니다.
-                  </p>
-                  <div className="guide-equation">
-                    <code>x + y = F</code>
-                    <ArrowRight size={17} />
+              <section className="guide-section">
+                <span className="guide-step">02</span>
+                <div>
+                  <h3>
+                    {nonlinear
+                      ? '방정식을 그대로 입력하세요'
+                      : '한 줄에 방정식 하나'}
+                  </h3>
+                  {nonlinear ? (
+                    <>
+                      <p>
+                        <code>x^2 = 4</code>처럼 익숙한 등식으로 적으면 자동으로
+                        실수 해를 탐색합니다. 기본 모드에는 초기값이나 min/max를
+                        입력하지 않아도 됩니다.
+                      </p>
+                      <pre className="guide-code">
+                        <span># 발견한 실수 해 -2, 2를 함께 확인합니다</span>
+                        {'\n'}x^2 = 4
+                      </pre>
+                      <p className="guide-small">
+                        <code>f(x) = x^2 - 4</code> 같은 잔차식도 사용할 수
+                        있습니다. 자동 탐색은 실수 해만 다룹니다. 복소수
+                        계산기는 이후 별도 기능으로 제공할 예정입니다.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        모르는 값은 문자로, 알고 있는 값은 숫자로 적으세요. 양쪽
+                        모두에 미지수가 있어도 괜찮습니다.
+                      </p>
+                      <pre className="guide-code">
+                        <span># 두 식, 두 미지수</span>
+                        {'\n'}2x + 3y = 12{'\n'}4x = 5 + y
+                      </pre>
+                    </>
+                  )}
+                  <div className="guide-rule">
+                    <Check size={14} />
                     <span>
-                      <b>x, y</b>를 구하고 <b>F</b>를 조절해요
+                      <code>2x</code>와 <code>2*x</code>는 같은 뜻입니다.
                     </span>
                   </div>
-                  <p className="guide-small">
-                    파라미터로 등록하지 않은 문자는 모두 미지수입니다. 이름은
-                    영문자로 시작하고 영문·숫자·밑줄(_)을 사용하세요. 대소문자를
-                    구분합니다.
-                  </p>
-                </>
-              )}
-            </div>
-          </section>
+                  {!nonlinear && (
+                    <p className="guide-small">
+                      <code>2*(x + y)</code> 같은 괄호와 <code>x/2</code>처럼
+                      알려진 값으로 나누기도 지원합니다. 미지수끼리 곱하거나
+                      제곱하는 식은 Nonlinear 탭에서 입력하세요.
+                    </p>
+                  )}
+                </div>
+              </section>
 
-          <section className="guide-section">
-            <span className="guide-step">함수</span>
-            <div>
-              <h3>번호를 붙인 함수를 정의하고 조합하세요</h3>
-              <pre>{'f1(x) = 2x + 4\nf2(x) = -3x + 7\nf1(x) - f2(x) = 0'}</pre>
-              <p>
-                x에 대한 함수는 f1(x), f2(x)처럼 적습니다. 등록한 파라미터 외의
-                다른 미지수를 혼합하려면 <code>f1 = 2x + y - 10</code>처럼 괄호
-                없이 정의하고, <code>f1 + f2 = 0</code>처럼 식을 만드세요.
-                기존의 단독 f(x) 잔차 표기는 호환성을 위해 유지합니다.
-              </p>
-              <p>
-                파라미터 값은 연속적으로 조절합니다. <b>샘플 포인트 간격</b>은
-                표와 그래프의 샘플 마커 간격이며 슬라이더의 이동 폭을 제한하지
-                않습니다. 여러 해를 함께 보려면 시뮬레이션 화면의 병합 세트
-                추가를 누르세요. 각 세트의 해는 칩으로 선택하며, 경계·병합
-                표시는 수치적 추정입니다.
-              </p>
-            </div>
-          </section>
-          {nonlinear && (
-            <section className="guide-section">
-              <span className="guide-step">04</span>
-              <div>
-                <h3>파라미터와 보조식으로 모델을 나누세요</h3>
-                <p>
-                  조절할 상수는 파라미터 패널에 추가합니다. 일반 등식에서
-                  <code>y = 2</code>도 풀어야 할 조건으로 취급합니다. 보조식이
-                  필요하면 <code>f(x) = h - target</code>과
-                  <code>h = ln(x)</code>를 함께 적으세요. f 형식의 모델에서는
-                  h를 보조식으로 계산하고, target은 패널의 파라미터입니다.
-                </p>
-                <p className="guide-small">
-                  보조식의 입력 순서는 자유롭지만 서로 순환해서 참조할 수
-                  없습니다. 이름을 미지수나 파라미터와 중복해서 정의하지 마세요.
-                  이름은 영문자로 시작하고 영문·숫자·밑줄(_)을 사용하며,
-                  대소문자를 구분합니다.
-                </p>
-                <p className="guide-small">
-                  <code>ln(x)</code>는 자연로그, <code>log(x)</code>는 밑이 10인
-                  상용로그입니다. <code>sqrt(x)</code>, <code>exp(x)</code>,{' '}
-                  <code>sin(x)</code> 등도 사용할 수 있습니다. 로그·제곱근의
-                  정의역을 벗어난 계산 지점은 자동 탐색에서 제외합니다.
-                </p>
-                <details className="guide-small">
-                  <summary>고급 옵션: 초기조건으로 한 해 찾기</summary>
+              <section className="guide-section">
+                <span className="guide-step">03</span>
+                <div>
+                  {nonlinear ? (
+                    <>
+                      <h3>여러 해를 목록에서 선택하세요</h3>
+                      <p>
+                        연립식도 한 줄에 등식 하나씩 작성합니다. 미지수 수와
+                        독립적인 식 수를 맞추면 여러 시작점을 자동으로
+                        시도합니다. 시뮬레이션 화면의 발견한 해 목록에서 해를
+                        선택하고, 시뮬레이션 추가로 여러 창을 열어 비교하세요.
+                        선택한 해의 자세한 계산 결과는 해석 리포트에서 볼 수
+                        있습니다.
+                      </p>
+                      <pre className="guide-code">
+                        <span># 원과 직선의 교점을 자동으로 탐색합니다</span>
+                        {'\n'}x^2 + y^2 = 25{'\n'}x - y = 1
+                      </pre>
+                      <p className="guide-small">
+                        일반 함수는 기본 -100~100 영역을 탐색하며, 지원되는 단일
+                        다항식은 계수에서 탐색 범위를 잡습니다. 실제 사용한
+                        범위와 방법은 결과에 표시됩니다. 필요하면 ‘고급 탐색
+                        설정’에서 자동 탐색 범위를 바꿀 수 있습니다.
+                      </p>
+                      <p className="guide-small">
+                        결과는 <strong>발견한 실수 해</strong>입니다. 유한한
+                        수치 탐색으로 모든 해를 찾았거나 해가 없음을 보장하지는
+                        않습니다.
+                        <code>sin(x) = 0</code>처럼 해가 무한히 많은 식도
+                        있습니다. 0에 가까운 해부터 최대 32개를 표시하며 제한에
+                        도달하면 안내합니다. 같은 거리에서는 양수 해가 먼저
+                        나옵니다.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>미지수와 파라미터를 구분해요</h3>
+                      <p>
+                        <strong>미지수</strong>는 계산으로 구할 값입니다.{' '}
+                        <strong>파라미터</strong>는 내가 조절하는 알려진 값으로,
+                        파라미터 패널에 추가합니다.
+                      </p>
+                      <div className="guide-equation">
+                        <code>x + y = F</code>
+                        <ArrowRight size={17} />
+                        <span>
+                          <b>x, y</b>를 구하고 <b>F</b>를 조절해요
+                        </span>
+                      </div>
+                      <p className="guide-small">
+                        파라미터로 등록하지 않은 문자는 모두 미지수입니다.
+                        이름은 영문자로 시작하고 영문·숫자·밑줄(_)을 사용하세요.
+                        대소문자를 구분합니다.
+                      </p>
+                    </>
+                  )}
+                </div>
+              </section>
+
+              <section className="guide-section">
+                <span className="guide-step">함수</span>
+                <div>
+                  <h3>번호를 붙인 함수를 정의하고 조합하세요</h3>
+                  <pre>
+                    {'f1(x) = 2x + 4\nf2(x) = -3x + 7\nf1(x) - f2(x) = 0'}
+                  </pre>
                   <p>
-                    ‘고급 탐색 설정 → 해 탐색 방식’에서 수동 모드를 선택하면
-                    기존 Polymath 형식을 사용할 수 있습니다. 단일근에는
-                    <code>x(min)</code>·<code>x(max)</code>, 연립식에는 각
-                    변수의 <code>x(0)</code> 초기 추정값을 적습니다. 명시식만
-                    계산하는 NLE0도 수동 모드에서 사용합니다.
+                    x에 대한 함수는 f1(x), f2(x)처럼 적습니다. 등록한 파라미터
+                    외의 다른 미지수를 혼합하려면 <code>f1 = 2x + y - 10</code>
+                    처럼 괄호 없이 정의하고, <code>f1 + f2 = 0</code>처럼 식을
+                    만드세요. 기존의 단독 f(x) 잔차 표기는 호환성을 위해
+                    유지합니다.
                   </p>
-                </details>
+                  <p>
+                    파라미터 값은 연속적으로 조절합니다. <b>샘플 포인트 간격</b>
+                    은 표와 그래프의 샘플 마커 간격이며 슬라이더의 이동 폭을
+                    제한하지 않습니다. 여러 해를 함께 보려면 시뮬레이션 화면의
+                    병합 세트 추가를 누르세요. 각 세트의 해는 칩으로 선택하며,
+                    경계·병합 표시는 수치적 추정입니다.
+                  </p>
+                </div>
+              </section>
+              {nonlinear && (
+                <section className="guide-section">
+                  <span className="guide-step">04</span>
+                  <div>
+                    <h3>파라미터와 보조식으로 모델을 나누세요</h3>
+                    <p>
+                      조절할 상수는 파라미터 패널에 추가합니다. 일반 등식에서
+                      <code>y = 2</code>도 풀어야 할 조건으로 취급합니다.
+                      보조식이 필요하면 <code>f(x) = h - target</code>과
+                      <code>h = ln(x)</code>를 함께 적으세요. f 형식의
+                      모델에서는 h를 보조식으로 계산하고, target은 패널의
+                      파라미터입니다.
+                    </p>
+                    <p className="guide-small">
+                      보조식의 입력 순서는 자유롭지만 서로 순환해서 참조할 수
+                      없습니다. 이름을 미지수나 파라미터와 중복해서 정의하지
+                      마세요. 이름은 영문자로 시작하고 영문·숫자·밑줄(_)을
+                      사용하며, 대소문자를 구분합니다.
+                    </p>
+                    <p className="guide-small">
+                      <code>ln(x)</code>는 자연로그, <code>log(x)</code>는 밑이
+                      10인 상용로그입니다. <code>sqrt(x)</code>,{' '}
+                      <code>exp(x)</code>, <code>sin(x)</code> 등도 사용할 수
+                      있습니다. 로그·제곱근의 정의역을 벗어난 계산 지점은 자동
+                      탐색에서 제외합니다.
+                    </p>
+                    <details className="guide-small">
+                      <summary>고급 옵션: 초기조건으로 한 해 찾기</summary>
+                      <p>
+                        ‘고급 탐색 설정 → 해 탐색 방식’에서 수동 모드를 선택하면
+                        기존 Polymath 형식을 사용할 수 있습니다. 단일근에는
+                        <code>x(min)</code>·<code>x(max)</code>, 연립식에는 각
+                        변수의 <code>x(0)</code> 초기 추정값을 적습니다.
+                        명시식만 계산하는 NLE0도 수동 모드에서 사용합니다.
+                      </p>
+                    </details>
+                  </div>
+                </section>
+              )}
+
+              <section className="guide-section">
+                <span className="guide-step">{nonlinear ? '05' : '04'}</span>
+                <div>
+                  <h3>슬라이더와 그래프로 값을 선택하세요</h3>
+                  <p>
+                    범위와 간격은 수식·파라미터 화면에서, 실제 값은 시뮬레이션
+                    화면의 슬라이더나 숫자 입력으로 조절합니다. 화면 확대 버튼을
+                    누르면 더 큰 그래프와 값 조절을 함께 사용할 수 있습니다.
+                  </p>
+                  <p>
+                    그래프는 선택한 탐색 변수의 범위에서 해가 어떻게 달라지는지
+                    보여줍니다. 같은 기준 해와 설정에서 탐색 변수의 현재값만
+                    바꾸면 곡선은 유지되고 현재 점만 이동합니다. 다른 고정
+                    파라미터나 선택한 해, 범위를 바꾸면 곡선도 달라질 수
+                    있습니다.
+                  </p>
+                  <p>
+                    마우스를 움직이면 표시한 곡선을 따라 탐색 점이 부드럽게
+                    이동합니다.{' '}
+                    <strong>
+                      그래프를 클릭하면 해당 가로축 값을 실제 파라미터로 적용
+                    </strong>
+                    합니다. 마우스를 치워도 선택한 현재값은 유지되며, 해는 그
+                    값으로 다시 계산합니다.
+                  </p>
+                  <p className="guide-small">
+                    데이터 표와 CSV는 설정한 간격을 따릅니다. 예를 들어 0.2~0.8,
+                    간격 0.01이면 61행입니다. 마우스 탐색 점의 곡선 보간값과
+                    표의 직접 계산값은 다를 수 있습니다. 표에서는 가장 가까운
+                    계산 행을 표시하며, 표의 간격을 화면 움직임에 맞춰 바꾸지는
+                    않습니다. 유효하지 않은 구간을 가로질러 선을 연결하지도
+                    않습니다.
+                  </p>
+                  <p className="guide-small">
+                    그래프를 클릭하여 초점을 둔 뒤 휠을 움직이면 축을 점진적으로
+                    확대·축소합니다. <strong>그래프 확대 축</strong>에서
+                    양축·X축·Y축을 선택하고 <strong>축 초기화</strong>로 원래
+                    범위를 복원하세요. 축 조정은 표시 비율만 바꾸며 계산한 해나
+                    표는 바꾸지 않습니다. 초점이 없는 그래프 위에서는 일반
+                    페이지 스크롤을 유지합니다.
+                  </p>
+                  <p className="guide-small">
+                    키보드로는 좌우 방향키와 Home/End로 표의 지점을 탐색하고,
+                    Enter/Space로 값을 적용합니다. +/−는 확대·축소, 0은 축
+                    초기화입니다.
+                  </p>
+                  <p className="guide-small">
+                    최댓값은 항상 마지막 행에 포함하므로 마지막 구간만 짧을 수
+                    있습니다. 데이터가 {nonlinear ? '500' : '2,000'}행을 넘으면
+                    간격이나 범위를 조정하세요. 이 시뮬레이션은 정상상태
+                    파라미터 분석이며 시간에 따른 적분은 아닙니다.
+                  </p>
+                  {nonlinear && (
+                    <p className="guide-small">
+                      시뮬레이션 추가로 최대 6개 해의 창을 동시에 열 수
+                      있습니다. 파라미터 값은 모든 창에 함께 적용되며, 각 창은
+                      추가한 시점의 기준 해에서 이어 풉니다. 이는 수치적
+                      추적이며 모든 분기를 찾아내거나 분기점에서 같은 가지를
+                      유지한다고 보장할 수는 없습니다. 찾지 못한 지점은 숫자를
+                      만들어 채우지 않고 표와 그래프에 빈 결과로 표시합니다.
+                      CSV는 현재 선택한 해의 데이터입니다.
+                    </p>
+                  )}
+                </div>
+              </section>
+
+              <section className="guide-section">
+                <span className="guide-step">{nonlinear ? '06' : '05'}</span>
+                <div>
+                  <h3>조건수로 해의 민감도를 살펴보세요</h3>
+                  <p>
+                    해석 리포트에서 ∞-norm 또는 2-norm(SVD)을 선택할 수
+                    있습니다. 조건수가 클수록 입력의 작은 오차가 해에 크게
+                    영향을 줄 수 있습니다.
+                  </p>
+                  {nonlinear && (
+                    <p className="guide-small">
+                      비선형 모델에서는 찾은 해 근처의 Jacobian 행렬로 계산한
+                      국소 조건수입니다. 미지수가 하나면 0이 아닌 미분값의 행렬
+                      조건수는 1이므로, 이것만으로 전체 구간의 안정성이나 수렴을
+                      판단할 수 없습니다. 잔차와 식의 단위도 함께 확인하세요.
+                    </p>
+                  )}
+                  <p className="guide-small">
+                    초록 ‘안정’은 10⁴ 미만, 노랑 ‘민감’은 10⁴ 이상~10⁸ 미만,
+                    주황 ‘매우 민감’은 10⁸ 이상입니다. 참고 범위이므로 측정
+                    오차와 단위도 함께 확인하세요.
+                  </p>
+                  <p className="guide-small">
+                    2-norm은 다른 기준으로 민감도를 측정하는 도구이며,
+                    선택한다고 해 자체의 정밀도가 높아지는 것은 아닙니다. 자세한
+                    계산 방식은 리포트에서 확인할 수 있습니다.
+                  </p>
+                </div>
+              </section>
+
+              <div className="guide-note">
+                <Lightbulb size={19} />
+                <div>
+                  <h4>
+                    {nonlinear
+                      ? '탐색 결과와 물리적 의미를 함께 확인하세요'
+                      : '모델을 직접 구성하세요'}
+                  </h4>
+                  <p>
+                    {nonlinear
+                      ? '작은 잔차는 해당 식을 잘 만족한다는 뜻입니다. 발견한 해가 실제 모델에서 가능한 값인지 확인하세요. 예를 들어 음수 농도는 수학적 해여도 실제 운전 조건으로는 적합하지 않을 수 있습니다. 탐색 범위를 넓혀 다른 해가 있는지도 확인할 수 있습니다.'
+                      : 'Linear는 빈 계산기로 시작합니다. 독립적인 방정식 수와 미지수 수를 맞추고, 조절할 상수는 파라미터로 추가하세요.'}{' '}
+                    <code>#</code> 뒤에는 메모를 적을 수 있습니다. Differential
+                    Equation Solver 등 다른 큰 카테고리는 추후 추가될
+                    예정입니다.
+                  </p>
+                </div>
               </div>
-            </section>
+              <p className="guide-privacy">
+                계산은 브라우저의 Web Worker와 WebAssembly에서 실행됩니다.
+                모델은 외부 서버로 전송되지 않습니다.
+              </p>
+            </>
           )}
-
-          <section className="guide-section">
-            <span className="guide-step">{nonlinear ? '05' : '04'}</span>
-            <div>
-              <h3>슬라이더와 그래프로 값을 선택하세요</h3>
-              <p>
-                범위와 간격은 수식·파라미터 화면에서, 실제 값은 시뮬레이션
-                화면의 슬라이더나 숫자 입력으로 조절합니다. 화면 확대 버튼을
-                누르면 더 큰 그래프와 값 조절을 함께 사용할 수 있습니다.
-              </p>
-              <p>
-                그래프는 선택한 탐색 변수의 범위에서 해가 어떻게 달라지는지
-                보여줍니다. 같은 기준 해와 설정에서 탐색 변수의 현재값만 바꾸면
-                곡선은 유지되고 현재 점만 이동합니다. 다른 고정 파라미터나
-                선택한 해, 범위를 바꾸면 곡선도 달라질 수 있습니다.
-              </p>
-              <p>
-                마우스를 움직이면 표시한 곡선을 따라 탐색 점이 부드럽게
-                이동합니다.{' '}
-                <strong>
-                  그래프를 클릭하면 해당 가로축 값을 실제 파라미터로 적용
-                </strong>
-                합니다. 마우스를 치워도 선택한 현재값은 유지되며, 해는 그 값으로
-                다시 계산합니다.
-              </p>
-              <p className="guide-small">
-                데이터 표와 CSV는 설정한 간격을 따릅니다. 예를 들어 0.2~0.8,
-                간격 0.01이면 61행입니다. 마우스 탐색 점의 곡선 보간값과 표의
-                직접 계산값은 다를 수 있습니다. 표에서는 가장 가까운 계산 행을
-                표시하며, 표의 간격을 화면 움직임에 맞춰 바꾸지는 않습니다.
-                유효하지 않은 구간을 가로질러 선을 연결하지도 않습니다.
-              </p>
-              <p className="guide-small">
-                그래프를 클릭하여 초점을 둔 뒤 휠을 움직이면 축을 점진적으로
-                확대·축소합니다. <strong>그래프 확대 축</strong>에서
-                양축·X축·Y축을 선택하고 <strong>축 초기화</strong>로 원래 범위를
-                복원하세요. 축 조정은 표시 비율만 바꾸며 계산한 해나 표는 바꾸지
-                않습니다. 초점이 없는 그래프 위에서는 일반 페이지 스크롤을
-                유지합니다.
-              </p>
-              <p className="guide-small">
-                키보드로는 좌우 방향키와 Home/End로 표의 지점을 탐색하고,
-                Enter/Space로 값을 적용합니다. +/−는 확대·축소, 0은 축
-                초기화입니다.
-              </p>
-              <p className="guide-small">
-                최댓값은 항상 마지막 행에 포함하므로 마지막 구간만 짧을 수
-                있습니다. 데이터가 {nonlinear ? '500' : '2,000'}행을 넘으면
-                간격이나 범위를 조정하세요. 이 시뮬레이션은 정상상태 파라미터
-                분석이며 시간에 따른 적분은 아닙니다.
-              </p>
-              {nonlinear && (
-                <p className="guide-small">
-                  시뮬레이션 추가로 최대 6개 해의 창을 동시에 열 수 있습니다.
-                  파라미터 값은 모든 창에 함께 적용되며, 각 창은 추가한 시점의
-                  기준 해에서 이어 풉니다. 이는 수치적 추적이며 모든 분기를
-                  찾아내거나 분기점에서 같은 가지를 유지한다고 보장할 수는
-                  없습니다. 찾지 못한 지점은 숫자를 만들어 채우지 않고 표와
-                  그래프에 빈 결과로 표시합니다. CSV는 현재 선택한 해의
-                  데이터입니다.
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section className="guide-section">
-            <span className="guide-step">{nonlinear ? '06' : '05'}</span>
-            <div>
-              <h3>조건수로 해의 민감도를 살펴보세요</h3>
-              <p>
-                해석 리포트에서 ∞-norm 또는 2-norm(SVD)을 선택할 수 있습니다.
-                조건수가 클수록 입력의 작은 오차가 해에 크게 영향을 줄 수
-                있습니다.
-              </p>
-              {nonlinear && (
-                <p className="guide-small">
-                  비선형 모델에서는 찾은 해 근처의 Jacobian 행렬로 계산한 국소
-                  조건수입니다. 미지수가 하나면 0이 아닌 미분값의 행렬 조건수는
-                  1이므로, 이것만으로 전체 구간의 안정성이나 수렴을 판단할 수
-                  없습니다. 잔차와 식의 단위도 함께 확인하세요.
-                </p>
-              )}
-              <p className="guide-small">
-                초록 ‘안정’은 10⁴ 미만, 노랑 ‘민감’은 10⁴ 이상~10⁸ 미만, 주황
-                ‘매우 민감’은 10⁸ 이상입니다. 참고 범위이므로 측정 오차와 단위도
-                함께 확인하세요.
-              </p>
-              <p className="guide-small">
-                2-norm은 다른 기준으로 민감도를 측정하는 도구이며, 선택한다고 해
-                자체의 정밀도가 높아지는 것은 아닙니다. 자세한 계산 방식은
-                리포트에서 확인할 수 있습니다.
-              </p>
-            </div>
-          </section>
-
-          <div className="guide-note">
-            <Lightbulb size={19} />
-            <div>
-              <h4>
-                {nonlinear
-                  ? '탐색 결과와 물리적 의미를 함께 확인하세요'
-                  : '모델을 직접 구성하세요'}
-              </h4>
-              <p>
-                {nonlinear
-                  ? '작은 잔차는 해당 식을 잘 만족한다는 뜻입니다. 발견한 해가 실제 모델에서 가능한 값인지 확인하세요. 예를 들어 음수 농도는 수학적 해여도 실제 운전 조건으로는 적합하지 않을 수 있습니다. 탐색 범위를 넓혀 다른 해가 있는지도 확인할 수 있습니다.'
-                  : 'Linear는 빈 계산기로 시작합니다. 독립적인 방정식 수와 미지수 수를 맞추고, 조절할 상수는 파라미터로 추가하세요.'}{' '}
-                <code>#</code> 뒤에는 메모를 적을 수 있습니다. Differential
-                Equation Solver 등 다른 큰 카테고리는 추후 추가될 예정입니다.
-              </p>
-            </div>
-          </div>
-          <p className="guide-privacy">
-            계산은 브라우저의 Web Worker와 WebAssembly에서 실행됩니다. 모델은
-            외부 서버로 전송되지 않습니다.
-          </p>
         </div>
         <footer className="guide-footer">
           <button onClick={onClose}>

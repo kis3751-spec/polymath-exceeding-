@@ -486,7 +486,10 @@ h2 {
   right: 0;
   top: 29px;
   z-index: 35;
-  width: 275px;
+  width: min(340px, calc(100vw - 48px));
+  max-height: min(520px, 65dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 9px;
   background: #fff;
   border: 1px solid var(--line);
@@ -3593,5 +3596,58 @@ h2 {
   }
   .solution-item .add-simulation-button {
     font-size: 8px;
+  }
+}
+
+.example-walkthrough {
+  margin: 16px 38px 0;
+  padding: 0 18px;
+  border: 1px solid #dce7d7;
+  border-radius: 10px;
+  background: #f6faf2;
+  color: #3e6252;
+}
+.example-walkthrough summary {
+  padding: 14px 0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.example-walkthrough summary span {
+  margin-left: 12px;
+  color: #75866d;
+  font-size: 11px;
+  font-weight: 400;
+}
+.example-walkthrough p,
+.example-walkthrough li {
+  font-size: 12px;
+  line-height: 1.9;
+}
+.example-walkthrough ol {
+  padding-left: 20px;
+}
+.example-walkthrough a {
+  display: inline-block;
+  margin: 4px 0 12px;
+  color: #28765d;
+  font-size: 12px;
+  text-decoration: underline;
+}
+.example-walkthrough small {
+  display: block;
+  padding-bottom: 16px;
+  font-size: 11px;
+  color: #7b8775;
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .example-walkthrough {
+    margin-inline: 16px;
+  }
+  .example-walkthrough summary span {
+    display: block;
+    margin: 7px 0 0;
+    line-height: 1.7;
   }
 }

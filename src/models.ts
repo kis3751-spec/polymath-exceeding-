@@ -1,3 +1,4 @@
+import { SHOWCASE_EXAMPLES } from './showcase-examples'
 import type {
   ConditionNorm,
   SimulationAnchor,
@@ -52,11 +53,19 @@ export const DEFAULT_NONLINEAR_PROJECT: Project = {
   nonlinearSearch: 'auto',
 }
 
-export const NONLINEAR_EXAMPLES: Array<{
+export type NonlinearExample = {
   id: string
   category: string
   project: Project
-}> = [
+  guide?: {
+    context: string
+    features: string[]
+    steps: string[]
+    reference: { label: string; url: string }
+  }
+}
+
+export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
   {
     id: 'positive-root',
     category: '기초 · 여러 실근과 파라미터',
@@ -142,4 +151,5 @@ export const NONLINEAR_EXAMPLES: Array<{
       conditionNorm: 'infinity',
     },
   },
+  ...SHOWCASE_EXAMPLES,
 ]

@@ -33,7 +33,7 @@ const functions = [
 export default function EquationReference() {
   return (
     <section
-      className="guide-section"
+      className="guide-section guide-reference"
       aria-label="Equation Solver 함수·문법 공식집"
     >
       <div>
@@ -84,7 +84,11 @@ export default function EquationReference() {
           <code>f1(f2(x))</code>도 가능하며 순환 정의는 금지합니다.
         </p>
         <h4>Nonlinear 내장 함수</h4>
-        <div style={{ overflowX: 'auto' }}>
+        <div
+          className="guide-table-scroll"
+          tabIndex={0}
+          aria-label="지원 함수 표"
+        >
           <table>
             <thead>
               <tr>
