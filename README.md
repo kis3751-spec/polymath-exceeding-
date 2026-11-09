@@ -238,3 +238,4 @@ Nonlinear 자동 탐색의 시뮬레이션은 이제 [기본 병합 그래프](d
 
 - [곡선·샘플·초기값 추적과 리포트 해석](docs/SIMULATION_ALIGNMENT_REVIEW.md)
 - [첨부 2차 인증 엔진의 재검증 결과](docs/UPLOADED_PATCH_V2_AUDIT.md)
+- [3차 확률·인증 알고리즘의 확장 검증과 적용 범위](docs/UPLOADED_PATCH_V3_AUDIT.md)

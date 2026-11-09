@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `6f23a81fda20042ef4c3901d8fa84a399f5cf291b703dbd7eedf8e873257d247`
+소스 묶음 SHA-256: `3b832e38b0d9657c92e7310e4397973385ddae15e809a987bcb5cf908f6c5cca`
 
 ## 다른 코드 묶음
 
@@ -1828,7 +1828,7 @@ export function periodicWindow(
 
 ## src/engine/interval-arithmetic.ts
 
-원본: [src/engine/interval-arithmetic.ts](../../src/engine/interval-arithmetic.ts) · 489줄 · SHA-256: `9584b1f548c13a663937d6d83be320d0cb36d503ead7abc69c96395cd112c544`
+원본: [src/engine/interval-arithmetic.ts](../../src/engine/interval-arithmetic.ts) · 500줄 · SHA-256: `0313735dd342e97d510e6580b2ec4d1c51b4cfc85db34e9234e0b7da4971008c`
 
 ```typescript
 import type { NonlinearNode as Node } from './nonlinear-parser'
@@ -1874,12 +1874,21 @@ export function mul(a: Interval, b: Interval): Interval {
   if (b.lo === 1 && b.hi === 1) return a
   const p = [a.lo * b.lo, a.lo * b.hi, a.hi * b.lo, a.hi * b.hi]
   if (p.some(Number.isNaN)) return WHOLE
-  return bounded(nextDown(Math.min(...p)), nextUp(Math.max(...p)))
+  let lo = nextDown(Math.min(...p))
+  let hi = nextUp(Math.max(...p))
+  // Intersect with the known sign, retaining all real values between zero
+  // and MIN_VALUE when a positive or negative product underflows.
+  if ((a.lo >= 0 && b.lo >= 0) || (a.hi <= 0 && b.hi <= 0)) lo = Math.max(0, lo)
+  else if ((a.lo >= 0 && b.hi <= 0) || (a.hi <= 0 && b.lo >= 0))
+    hi = Math.min(0, hi)
+  return bounded(lo, hi)
 }
 export function div(a: Interval, b: Interval): Interval {
   if (containsZero(b)) return WHOLE
   if (b.lo === 1 && b.hi === 1) return a
-  return mul(a, bounded(nextDown(1 / b.hi), nextUp(1 / b.lo)))
+  const invLo = b.lo > 0 ? Math.max(0, nextDown(1 / b.hi)) : nextDown(1 / b.hi)
+  const invHi = b.hi < 0 ? Math.min(0, nextUp(1 / b.lo)) : nextUp(1 / b.lo)
+  return mul(a, bounded(invLo, invHi))
 }
 const square = (a: Interval): Interval => {
   const p = mul(a, a)
@@ -1889,6 +1898,8 @@ export function integerPower(a: Interval, n: number): Interval {
   if (n === 0) return ONE
   if (n < 0) return div(ONE, integerPower(a, -n))
   const endpoint = (x: number) => {
+    if (x === 0) return ZERO
+    if (x === 1) return ONE
     let p = ONE,
       b = point(x),
       k = n

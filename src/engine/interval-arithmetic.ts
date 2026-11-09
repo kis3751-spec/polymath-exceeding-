@@ -41,12 +41,21 @@ export function mul(a: Interval, b: Interval): Interval {
   if (b.lo === 1 && b.hi === 1) return a
   const p = [a.lo * b.lo, a.lo * b.hi, a.hi * b.lo, a.hi * b.hi]
   if (p.some(Number.isNaN)) return WHOLE
-  return bounded(nextDown(Math.min(...p)), nextUp(Math.max(...p)))
+  let lo = nextDown(Math.min(...p))
+  let hi = nextUp(Math.max(...p))
+  // Intersect with the known sign, retaining all real values between zero
+  // and MIN_VALUE when a positive or negative product underflows.
+  if ((a.lo >= 0 && b.lo >= 0) || (a.hi <= 0 && b.hi <= 0)) lo = Math.max(0, lo)
+  else if ((a.lo >= 0 && b.hi <= 0) || (a.hi <= 0 && b.lo >= 0))
+    hi = Math.min(0, hi)
+  return bounded(lo, hi)
 }
 export function div(a: Interval, b: Interval): Interval {
   if (containsZero(b)) return WHOLE
   if (b.lo === 1 && b.hi === 1) return a
-  return mul(a, bounded(nextDown(1 / b.hi), nextUp(1 / b.lo)))
+  const invLo = b.lo > 0 ? Math.max(0, nextDown(1 / b.hi)) : nextDown(1 / b.hi)
+  const invHi = b.hi < 0 ? Math.min(0, nextUp(1 / b.lo)) : nextUp(1 / b.lo)
+  return mul(a, bounded(invLo, invHi))
 }
 const square = (a: Interval): Interval => {
   const p = mul(a, a)
@@ -56,6 +65,8 @@ export function integerPower(a: Interval, n: number): Interval {
   if (n === 0) return ONE
   if (n < 0) return div(ONE, integerPower(a, -n))
   const endpoint = (x: number) => {
+    if (x === 0) return ZERO
+    if (x === 1) return ONE
     let p = ONE,
       b = point(x),
       k = n
