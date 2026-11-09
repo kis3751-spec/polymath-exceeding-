@@ -118,6 +118,14 @@ export default function AnalysisSummary({
                 ? '중근: 선형 보정 대신 아래 비선형 반응 확인'
                 : '원래 등식과 역행렬로 계산한 마지막 보정 크기'}
           </small>
+          <details className="metric-help">
+            <summary>이 수치 읽는 법</summary>
+            <p>
+              {d.errorBound !== undefined
+                ? '표시한 해와 수학적 해 사이의 거리가 이 값 이하라는 뜻입니다. 입력한 식과 파라미터를 고정한 계산 오차이며, 측정값의 오차까지 포함하지는 않습니다. 예를 들어 0.0001 이하라면 해의 마지막 소수 자릿수를 그 수준에서 판단할 수 있습니다.'
+                : '현재 계산값에 남아 있는 등식 오차를 줄이려면 해를 얼마나 더 움직여야 하는지 추정한 값입니다. 작을수록 식을 잘 만족하지만, 엄밀한 오차 상한이나 정확한 소수 자릿수 보장은 아닙니다. 특히 평탄한 중근 근처에서는 아래 민감도와 함께 확인하세요.'}
+            </p>
+          </details>
         </article>
         <article>
           <span>등식 오차 → 해 변화 증폭률</span>
@@ -133,6 +141,16 @@ export default function AnalysisSummary({
               ? `${d.powerResponse.order}중근의 비선형 민감도 · 아래 입력으로 예측`
               : '각 등식에 같은 절대 오차를 넣었을 때 · 현재 단위 기준'}
           </small>
+          <details className="metric-help">
+            <summary>이 수치 읽는 법</summary>
+            <p>
+              등식의 우변에 생긴 작은 절대 오차가 해의 절대 변화로 얼마나 커질지
+              나타냅니다. 예를 들어 0.736896×라면 등식 오차 0.0003에 대해 해
+              변화는 약 0.0002211로 예상합니다. 값이 클수록 같은 오차에 더
+              민감하며, 단위를 바꾸면 숫자도 달라집니다. 중근은 작은 오차에도 해
+              개수가 달라질 수 있어 별도의 비선형 크기로 표시합니다.
+            </p>
+          </details>
         </article>
         <article
           data-quality={
@@ -153,15 +171,29 @@ export default function AnalysisSummary({
                 : (search?.certificationUnavailable ??
                   '단일 변수 자동 탐색에서 구간 검증 지원')}
           </small>
+          <details className="metric-help">
+            <summary>이 수치 읽는 법</summary>
+            <p>
+              {linear
+                ? '미지수 개수와 랭크가 같으면 독립적인 조건이 충분한 선형계입니다. 랭크가 부족하면 해가 없거나 무한히 많을 수 있어 추가 조건을 확인해야 합니다.'
+                : '현재 파라미터와 표시한 미지수 범위에서, 근의 존재·부재가 판정된 길이의 비율입니다. 100%라도 미결정 구간이 남았는지와 결과 목록의 일치 여부를 함께 확인해야 합니다. 전체 실수 영역이나 파라미터 변화 전체를 검증한 값도, 모든 근을 찾았을 확률도 아닙니다. 맨 위의 전체 근 확인 여부가 최종 판정입니다.'}
+            </p>
+          </details>
         </article>
       </div>
       <div className="sensitivity-scenario">
         <div>
           <h4>입력 오차가 이만큼이면?</h4>
-          <p>
-            각 등식의 우변에 가정한 절대 오차입니다. 측정 오차를 아는 경우 직접
-            바꿔보세요.
-          </p>
+          <details className="metric-help">
+            <summary>어떤 오차를 입력하나요?</summary>
+            <p>
+              각 등식의 우변이 흔들릴 수 있는 절대 크기를 입력합니다. 측정
+              오차를 알고 있다면 현재 등식의 단위로 환산해 넣으세요. 아래 결과는
+              해 성분 중 가장 큰 변화 크기의 예측으로, 파라미터 슬라이더의
+              이동량이나 확률이 아닙니다. 큰 오차·접점 근처에서는 선형 근사가
+              맞지 않을 수 있으므로 실제 식을 바꿔 다시 계산해야 합니다.
+            </p>
+          </details>
         </div>
         <label>
           가정한 등식 오차 δ

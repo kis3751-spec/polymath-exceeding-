@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `a93e4a27b35ece77f2335e8f62c298a7ba02761290a4fb634c6ecc2b10ca3a15`
+소스 묶음 SHA-256: `7a41a184dbcb1c13e41ede1adbd6e1e6fcfda038dfad75c072e76f5f61aeda05`
 
 ## 다른 코드 묶음
 
@@ -36,9 +36,11 @@
 - [src/engine/branches.ts](#source-10) · [저장소 원본](../../src/engine/branches.ts)
 - [src/engine/branch-events.ts](#source-11) · [저장소 원본](../../src/engine/branch-events.ts)
 - [src/engine/simulation-panels.ts](#source-12) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/default-overview.ts](#source-13) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-14) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-15) · [저장소 원본](../../src/App.tsx)
+- [src/engine/manual-simulation.ts](#source-13) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-14) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-15) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-16) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-17) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -798,7 +800,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 
 ## src/engine/sweep.ts
 
-원본: [src/engine/sweep.ts](../../src/engine/sweep.ts) · 180줄 · SHA-256: `1cbcb5546e4e7b6ad3d26be96d10b4b324f4d86a57ea0e254a0b46f1bd4e20b8`
+원본: [src/engine/sweep.ts](../../src/engine/sweep.ts) · 182줄 · SHA-256: `ea140ec8de02e2bc5e695630a52088bbfffad2e2d95978c21f491eb08e331d43`
 
 ```typescript
 import {
@@ -815,7 +817,7 @@ export type SweepSettings = {
   name: string
   min: number
   max: number
-  /** Uniform rendering samples; independent from the tabulated interval. */
+  /** Base rendering samples, supplemented by the tabulated vertices. */
   steps: number
   /** User-selected interval for the table and CSV dataset. */
   step: number
@@ -912,7 +914,7 @@ type Sweeps = Pick<
   'sweep' | 'dataset' | 'datasetError' | 'sweepName'
 >
 
-/** Graph density stays stable while the table and CSV preserve the user's step. */
+/** Supplement the base graph with every table/CSV vertex, preserving exact samples. */
 export function computeSweeps(
   solve: Solver,
   source: string,
@@ -959,14 +961,16 @@ export function computeSweeps(
     return pointAt(min * (1 - fraction) + max * fraction)
   })
   try {
+    const dataset = parameterValues(
+      min,
+      max,
+      step,
+      settings.maxPoints ?? MAX_DATASET_POINTS,
+    ).map(pointAt)
     return {
-      sweep,
-      dataset: parameterValues(
-        min,
-        max,
-        step,
-        settings.maxPoints ?? MAX_DATASET_POINTS,
-      ).map(pointAt),
+      // Every sample marker must also be a vertex of the rendered polyline.
+      sweep: [...cache.values()].sort((a, b) => a.parameter - b.parameter),
+      dataset,
       sweepName: name,
     }
   } catch (error) {
@@ -987,7 +991,7 @@ export function computeSweeps(
 
 ## src/engine/branches.ts
 
-원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 516줄 · SHA-256: `a3a6d4c4233db71808b87bd0f2281cfe1ec86efd970863d108a7c58f7741bb9c`
+원본: [src/engine/branches.ts](../../src/engine/branches.ts) · 516줄 · SHA-256: `f5215e6c3f55cff594846186ca1ad9b312b70f62e237ce3d6874d317e4f6e9e6`
 
 ```typescript
 import {
@@ -1485,7 +1489,7 @@ export function computeBranchSweeps(
   }
 
   const allSweepMap = new Map<number, SweepPoint>()
-  for (const p of baseGraphParameters) {
+  for (const p of targets) {
     const pt = cache.get(p)
     if (pt) allSweepMap.set(p, pt)
   }
@@ -2147,6 +2151,160 @@ export function detectMergedBranchEvents(
 
 <a id="source-13"></a>
 
+## src/engine/manual-simulation.ts
+
+원본: [src/engine/manual-simulation.ts](../../src/engine/manual-simulation.ts) · 68줄 · SHA-256: `e8913afb37db6d6f55bca02750522ead9817f288b13cac6007f09de33062f26f`
+
+```typescript
+import { ModelError } from './index'
+import type {
+  ConditionNorm,
+  SimulationAnchor,
+  SolveResult,
+  SolverOptions,
+} from './index'
+import type { NearSolver } from './branches'
+import type { SweepSettings } from './sweep'
+import { compileNonlinear, manualEquationSource } from './nonlinear-parser'
+import { createSimulationPanelComputer } from './simulation-panels'
+
+/** Manual Newton chooses a root once. Parameter exploration then follows that
+ * saved root, rather than repeatedly applying the original initial guess. */
+export function createManualSimulation(
+  solve: (
+    source: string,
+    parameters: Record<string, number>,
+    options?: SolverOptions,
+  ) => SolveResult,
+  solveNear: NearSolver,
+) {
+  const boundedNear: NearSolver = (source, parameters, seed, options) => {
+    const result = solveNear(source, parameters, seed, options)
+    const bounds = compileNonlinear(source, Object.keys(parameters)).bounds
+    if (
+      bounds &&
+      (result.values[0] < bounds.min || result.values[0] > bounds.max)
+    )
+      throw new ModelError('선택한 해가 지정한 미지수 범위를 벗어났습니다.')
+    return result
+  }
+  const compute = createSimulationPanelComputer(boundedNear)
+  let saved: { key: string; anchor: SimulationAnchor } | undefined
+  let serial = 0
+  return (
+    source: string,
+    parameters: Record<string, number>,
+    sweep: SweepSettings | null,
+    conditionNorm: ConditionNorm = 'infinity',
+    restart = false,
+  ) => {
+    const names = Object.keys(parameters).sort()
+    const key = JSON.stringify([source, names])
+    if (restart || saved?.key !== key) {
+      const result = solve(source, parameters, { conditionNorm })
+      saved = {
+        key,
+        anchor: {
+          id: `manual-${++serial}`,
+          label: '초기값으로 선택한 해',
+          variables: [...result.variables],
+          values: [...result.values],
+          parameters: { ...parameters },
+        },
+      }
+    }
+    const anchor = saved!.anchor
+    const [panel] = compute(
+      manualEquationSource(source, names),
+      parameters,
+      sweep,
+      [anchor],
+      conditionNorm,
+    )
+    return { anchor, panel }
+  }
+}
+```
+
+<a id="source-14"></a>
+
+## src/use-interaction-viewport.ts
+
+원본: [src/use-interaction-viewport.ts](../../src/use-interaction-viewport.ts) · 68줄 · SHA-256: `cad0b802a913d2d397ab9d4b07f6255fbb2c4c53257a307c8750268fd2674f30`
+
+```typescript
+import { useEffect, useLayoutEffect, useRef } from 'react'
+
+/** Keep a parameter edit in place through its asynchronous reply. Explicit
+ * wheel/touch/keyboard scrolling cancels the reservation immediately. */
+export function useInteractionViewport(busy: boolean) {
+  const saved = useRef<{
+    x: number
+    y: number
+    area: HTMLElement | null
+    top: number
+    until: number
+  } | null>(null)
+  useEffect(() => {
+    const cancel = () => {
+      saved.current = null
+    }
+    const key = (e: KeyboardEvent) => {
+      if (
+        [
+          'PageDown',
+          'PageUp',
+          'Home',
+          'End',
+          'ArrowDown',
+          'ArrowUp',
+          ' ',
+        ].includes(e.key)
+      )
+        cancel()
+    }
+    window.addEventListener('wheel', cancel, { passive: true })
+    window.addEventListener('touchmove', cancel, { passive: true })
+    window.addEventListener('keydown', key)
+    return () => {
+      window.removeEventListener('wheel', cancel)
+      window.removeEventListener('touchmove', cancel)
+      window.removeEventListener('keydown', key)
+    }
+  }, [])
+  useLayoutEffect(() => {
+    const at = saved.current
+    if (!at) return
+    if (performance.now() > at.until) {
+      saved.current = null
+      return
+    }
+    window.scrollTo({ left: at.x, top: at.y, behavior: 'instant' })
+    if (at.area?.isConnected) at.area.scrollTop = at.top
+    // The pending state starts in a passive effect, so keep the reservation
+    // through the first render and release only after a settled animation frame.
+    if (!busy) {
+      const frame = requestAnimationFrame(() => {
+        if (saved.current === at) saved.current = null
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+  })
+  return () => {
+    const area = document.querySelector<HTMLElement>('.results-expanded')
+    saved.current = {
+      x: window.scrollX,
+      y: window.scrollY,
+      area,
+      top: area?.scrollTop ?? 0,
+      until: performance.now() + 10000,
+    }
+  }
+}
+```
+
+<a id="source-15"></a>
+
 ## src/engine/default-overview.ts
 
 원본: [src/engine/default-overview.ts](../../src/engine/default-overview.ts) · 117줄 · SHA-256: `382b854d5522e48b4eed91f150b76407ab32261b1fb064ae4d4a98e476ec0e5c`
@@ -2271,13 +2429,15 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-16"></a>
 
 ## src/engine/solver.worker.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 360줄 · SHA-256: `2422c68b62c94a6ea904c70320458191a58c5daf827d15d072a3a11809f70510`
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 402줄 · SHA-256: `b5216fddc69ea4383c7fe36896ad709459871d1f14dc9df9d5b2a51726fd2c8c`
 
 ```typescript
+import { compileNonlinear } from './nonlinear-parser'
+import { createManualSimulation } from './manual-simulation'
 import { createDefaultOverview } from './default-overview'
 import type { VariableBounds } from './search-analysis'
 import { sameComputedRoot } from './root-comparison'
@@ -2310,6 +2470,7 @@ type Request = {
   // Interactions may display current anchored values first while the full
   // discovery list is refreshed after a short quiet period.
   defaultOverview?: boolean
+  restartBranch?: boolean
   deferDiscovery?: boolean
 }
 type QueuedRequest = {
@@ -2321,6 +2482,7 @@ const ready = createSolver()
 const nonlinearReady = createNonlinearSolver()
 let automaticReady: ReturnType<typeof createAutomaticSolver> | undefined
 const searches = new Map<string, AutomaticSearchResult>()
+let computeManual: ReturnType<typeof createManualSimulation> | undefined
 let computeOverview: ReturnType<typeof createDefaultOverview> | undefined
 let computePanels: ReturnType<typeof createSimulationPanelComputer> | undefined
 let pendingRequest: QueuedRequest | undefined
@@ -2614,16 +2776,54 @@ async function handleRequest(work: QueuedRequest) {
     }
     const solve = await (mode === 'nonlinear' ? nonlinearReady : ready)
     if (work.generation !== generation) return
+    if (
+      mode === 'nonlinear' &&
+      sweep &&
+      compileNonlinear(source, Object.keys(parameters)).variables.length
+    ) {
+      const automatic = await (automaticReady ??= createAutomaticSolver())
+      if (work.generation !== generation) return
+      computeManual ??= createManualSimulation(solve, automatic.solveNear)
+      const { anchor, panel } = computeManual(
+        source,
+        parameters,
+        sweep,
+        conditionNorm,
+        work.request.restartBranch,
+      )
+      if (!panel.result) {
+        self.postMessage({
+          id,
+          ok: false,
+          discoveryPending: false,
+          error:
+            panel.error ?? '현재 파라미터까지 선택한 해를 추적하지 못했습니다.',
+          selectedSimulation: panel,
+          manualAnchor: anchor,
+        })
+      } else {
+        self.postMessage({
+          id,
+          ok: true,
+          discoveryPending: false,
+          manualAnchor: anchor,
+          payload: {
+            result: panel.result,
+            selectedSimulation: panel,
+            sweep: panel.sweep,
+            dataset: panel.dataset,
+            datasetError: panel.datasetError,
+            sweepName: panel.sweepName,
+          },
+        })
+      }
+      return
+    }
     const calculationSource = source
     const result = solve(calculationSource, parameters, { conditionNorm })
     const payload: SolvePayload = {
       result,
-      ...computeSweeps(
-        solve,
-        calculationSource,
-        parameters,
-        mode === 'nonlinear' && sweep ? { ...sweep, maxPoints: 500 } : sweep,
-      ),
+      ...computeSweeps(solve, calculationSource, parameters, sweep),
     }
     self.postMessage({ id, ok: true, discoveryPending: false, payload })
   } catch (error) {
@@ -2640,13 +2840,14 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-17"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,400줄 · SHA-256: `4b9781520faa0201a700a518058bb4c5467db09a04b0b1e9cf759291d6f90fa0`
+원본: [src/App.tsx](../../src/App.tsx) · 3,497줄 · SHA-256: `c2a1b5f0cf3bdabf54595753fde314f4ec52dea26ffd9820d79229dbddb57fc3`
 
 ```tsx
+import { useInteractionViewport } from './use-interaction-viewport'
 import AnalysisSummary from './components/AnalysisSummary'
 import { rootStructureLabel, tangencyOrderLabel } from './engine/tangency'
 import {
@@ -2903,6 +3104,9 @@ export default function App() {
     setOverviewHidden(false)
     setOverviewExcluded([])
   }, [project.source, project.mode])
+  const [manualAnchor, setManualAnchor] = useState<SimulationAnchor | null>(
+    null,
+  )
   const [selectedSimulation, setSelectedSimulation] =
     useState<SimulationPanel | null>(null)
   const [simulationResults, setSimulationResults] = useState<SimulationPanel[]>(
@@ -2911,6 +3115,7 @@ export default function App() {
   const [searchInfo, setSearchInfo] = useState<SearchSummary | null>(null)
   const [pending, setPending] = useState(false)
   const [discoveryPending, setDiscoveryPending] = useState(false)
+  const preserveViewport = useInteractionViewport(pending || discoveryPending)
   const solutionsRef = useRef<HTMLDetailsElement>(null)
   const [solutionsHeight, setSolutionsHeight] = useState(0)
   const [workerReady, setWorkerReady] = useState(false)
@@ -2956,7 +3161,8 @@ export default function App() {
   const nonlinearSearch = project.nonlinearSearch ?? 'auto'
   const automatic = nonlinear && nonlinearSearch === 'auto'
   const selectedBranch =
-    automatic && project.selectedAnchor?.id === selectedSimulation?.id
+    nonlinear &&
+    (!automatic || project.selectedAnchor?.id === selectedSimulation?.id)
       ? selectedSimulation
       : null
   const payload =
@@ -3036,6 +3242,7 @@ export default function App() {
     worker.current = w
     w.onmessage = ({ data }) => {
       if (data.id !== requestId.current) return
+      if (data.manualAnchor) setManualAnchor(data.manualAnchor)
       if (data.overview) setOverview(data.overview)
       setPending(false)
       setDiscoveryPending(data.discoveryPending === true)
@@ -3136,6 +3343,7 @@ export default function App() {
           id,
           ...createSolverInput(project),
           deferDiscovery: !sourceChanged && !explicitSolve,
+          restartBranch: explicitSolve,
         })
       },
       sourceChanged ? 160 : 16,
@@ -3168,7 +3376,9 @@ export default function App() {
     const previousFocus = document.activeElement as HTMLElement | null
     document.body.style.overflow = 'hidden'
     const area = document.querySelector<HTMLElement>('.results-expanded')
-    area?.querySelector<HTMLButtonElement>('.results-heading button')?.focus()
+    area
+      ?.querySelector<HTMLButtonElement>('.results-heading button')
+      ?.focus({ preventScroll: true })
     const trap = (e: KeyboardEvent) => {
       if (
         e.key !== 'Tab' ||
@@ -3203,7 +3413,7 @@ export default function App() {
     return () => {
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', trap)
-      previousFocus?.focus()
+      previousFocus?.focus({ preventScroll: true })
     }
   }, [expanded])
   useEffect(() => {
@@ -3254,7 +3464,7 @@ export default function App() {
     document.addEventListener('keydown', trap)
     return () => {
       document.removeEventListener('keydown', trap)
-      previous?.focus()
+      previous?.focus({ preventScroll: true })
     }
   }, [paramOpen])
   useEffect(() => {
@@ -3472,7 +3682,12 @@ export default function App() {
     setProject((p) => ({ ...p, selectedAnchor: anchor }))
     navigate('report')
   }
+  function updateSweepName(name: string) {
+    preserveViewport()
+    setProject((p) => ({ ...p, sweepName: name }))
+  }
   function updateParameter(id: string, value: number) {
+    preserveViewport()
     setProject((p) => {
       const current = p.parameters.find((v) => v.id === id)
       if (!current) return p
@@ -4345,12 +4560,18 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                {view === 'simulation' && project.parameters.length > 0 && (
-                  <ResultParameters
-                    parameters={project.parameters}
-                    onChange={updateParameter}
-                  />
-                )}
+                {view === 'simulation' &&
+                  project.parameters.length > 0 &&
+                  !(
+                    automatic &&
+                    !overviewHidden &&
+                    overview?.anchors.length
+                  ) && (
+                    <ResultParameters
+                      parameters={project.parameters}
+                      onChange={updateParameter}
+                    />
+                  )}
                 {automatic && view === 'simulation' && (
                   <div className="merge-actions">
                     <button
@@ -4449,10 +4670,10 @@ export default function App() {
                     {searchInfo && <SearchCoverage search={searchInfo} />}
                   </details>
                 )}
-                {automatic &&
-                view === 'simulation' &&
+                {view === 'simulation' &&
                 (selectedBranch ||
-                  (!overviewHidden &&
+                  (automatic &&
+                    !overviewHidden &&
                     overview?.anchors.length)) ? null : error ? (
                   <div className="error-state" role="alert">
                     <div className="error-icon">
@@ -4598,7 +4819,7 @@ export default function App() {
                       )}
                     {view === 'simulation' ? (
                       <>
-                        {!automatic && (
+                        {!automatic && !(nonlinear && selectedSimulation) && (
                           <>
                             <div className="chart-section">
                               <div className="chart-heading">
@@ -4826,7 +5047,36 @@ export default function App() {
                                   ? '국소 조건수 계산 방식'
                                   : '조건수 계산 방식'}
                               </label>
-                              <p>입력 오차에 대한 해의 민감도를 확인합니다.</p>
+                              <details className="analysis-details condition-help">
+                                <summary>조건수는 어떻게 해석하나요?</summary>
+                                <p>
+                                  조건수는 같은 비율의 입력 변화가 해에 얼마나
+                                  큰 비율의 변화로 증폭될 수 있는지 보여주는
+                                  국소 지표입니다. 선형식은 계수 행렬,
+                                  비선형식은 현재 해 근처의 Jacobian을
+                                  사용합니다. 값이 클수록 입력의 작은 변화나
+                                  반올림에 취약한 방향이 있습니다. 실제 측정
+                                  오차나 해를 모두 찾았을 확률을 뜻하지
+                                  않습니다.
+                                </p>
+                                <p>
+                                  ∞-norm은 성분별 최대 오차와 행 합을 기준으로,
+                                  2-norm은 전체 벡터 길이와 최대·최소 특이값의
+                                  비율을 기준으로 계산합니다. 선택을 바꾸면 진단
+                                  기준이 달라집니다. 계산 자릿수가 늘어나거나
+                                  해가 더 정확해지는 설정은 아닙니다.
+                                </p>
+                                <p>
+                                  위의 ‘등식 오차 → 해 변화 증폭률’은 절대
+                                  오차가 해의 절대 변화로 바뀌는 크기이고,
+                                  조건수는 상대 변화와 방향 간 불균형을
+                                  나타냅니다. 단일 변수의 비특이 Jacobian
+                                  조건수는 항상 1이므로, 이 경우에는 증폭률과
+                                  파라미터별 영향으로 민감도를 판단하세요.
+                                  단위와 스케일이 같은 모델끼리 비교하는 것이
+                                  적절합니다.
+                                </p>
+                              </details>
                             </div>
                             <div className="condition-select-wrap">
                               <select
@@ -5039,6 +5289,28 @@ export default function App() {
                     </div>
                   </>
                 )}
+                {nonlinear &&
+                  !automatic &&
+                  view === 'simulation' &&
+                  selectedSimulation &&
+                  manualAnchor && (
+                    <SimulationPanelView
+                      panel={selectedSimulation}
+                      anchor={manualAnchor}
+                      parameters={project.parameters}
+                      onSweepNameChange={updateSweepName}
+                      expanded={expanded}
+                      pending={pending}
+                      closable={false}
+                      onClose={() => {}}
+                      onParameterChange={
+                        sweepParam
+                          ? (value) => updateParameter(sweepParam.id, value)
+                          : undefined
+                      }
+                      onReport={() => navigate('report')}
+                    />
+                  )}
                 {automatic &&
                   view === 'simulation' &&
                   anchors.length === 0 &&
@@ -5074,6 +5346,7 @@ export default function App() {
                         panel={selectedBranch}
                         anchor={project.selectedAnchor}
                         parameters={project.parameters}
+                        onSweepNameChange={updateSweepName}
                         expanded={expanded}
                         pending={pending}
                         closable={false}
@@ -5107,6 +5380,13 @@ export default function App() {
                         panels={overview.panels}
                         parameters={project.parameters}
                         sweepName={project.sweepName}
+                        onSweepNameChange={updateSweepName}
+                        controls={
+                          <ResultParameters
+                            parameters={project.parameters}
+                            onChange={updateParameter}
+                          />
+                        }
                         expanded={expanded}
                         large
                         pending={pending}
@@ -5142,6 +5422,14 @@ export default function App() {
                           panels={simulationResults}
                           parameters={project.parameters}
                           sweepName={project.sweepName}
+                          onSweepNameChange={updateSweepName}
+                          controls={
+                            <ResultParameters
+                              parameters={project.parameters}
+                              onChange={updateParameter}
+                              idPrefix={set.id}
+                            />
+                          }
                           expanded={expanded}
                           pending={pending}
                           onRemoveSet={() => removeMergedSet(set.id)}
@@ -5227,6 +5515,7 @@ export default function App() {
                               panel={panel}
                               anchor={anchor}
                               parameters={project.parameters}
+                              onSweepNameChange={updateSweepName}
                               expanded={expanded}
                               pending={pending}
                               onClose={() => closeSimulation(anchor.id)}
@@ -5596,11 +5885,15 @@ function SweepTable({
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
                     e.preventDefault()
-                    rows.current[Math.min(i + 1, points.length - 1)]?.focus()
+                    rows.current[Math.min(i + 1, points.length - 1)]?.focus({
+                      preventScroll: true,
+                    })
                   }
                   if (e.key === 'ArrowUp') {
                     e.preventDefault()
-                    rows.current[Math.max(0, i - 1)]?.focus()
+                    rows.current[Math.max(0, i - 1)]?.focus({
+                      preventScroll: true,
+                    })
                   }
                 }}
               >
@@ -5994,9 +6287,11 @@ function SearchBoundsEditor({
 function ResultParameters({
   parameters,
   onChange,
+  idPrefix = 'main',
 }: {
   parameters: Parameter[]
   onChange: (id: string, value: number) => void
+  idPrefix?: string
 }) {
   return (
     <section className="results-parameters" aria-label="파라미터 조절">
@@ -6005,13 +6300,15 @@ function ResultParameters({
           <SlidersHorizontal size={14} />
           파라미터 조절
         </span>
-        <small>열린 모든 시뮬레이션에 적용</small>
       </div>
       <div className="results-parameter-grid">
         {parameters.map((p) => (
           <div key={p.id} className="result-parameter">
             <div className="parameter-top">
-              <label htmlFor={`param-${p.id}`} className="parameter-name">
+              <label
+                htmlFor={`param-${idPrefix}-${p.id}`}
+                className="parameter-name"
+              >
                 {p.name}
               </label>
               <div className="parameter-input-wrap">
@@ -6022,7 +6319,7 @@ function ResultParameters({
               </div>
             </div>
             <input
-              id={`param-${p.id}`}
+              id={`param-${idPrefix}-${p.id}`}
               aria-label={`${p.name} 슬라이더`}
               className="parameter-slider"
               type="range"

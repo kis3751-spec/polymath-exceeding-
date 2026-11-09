@@ -493,7 +493,7 @@ export function computeBranchSweeps(
   }
 
   const allSweepMap = new Map<number, SweepPoint>()
-  for (const p of baseGraphParameters) {
+  for (const p of targets) {
     const pt = cache.get(p)
     if (pt) allSweepMap.set(p, pt)
   }

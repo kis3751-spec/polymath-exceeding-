@@ -1,0 +1,15 @@
+import * as underflowArithmetic from './fixes/engine/interval-arithmetic'
+it('underflow multiplication encloses exact MIN_VALUE/2', () => {
+  const r = underflowArithmetic.mul(
+    { lo: Number.MIN_VALUE, hi: Number.MIN_VALUE }, { lo: 0.5, hi: 0.5 },
+  )
+  // The exact positive real 2^-1075 lies strictly between 0 and MIN_VALUE.
+  // Every Float64 enclosure therefore needs lo <= 0 and hi >= MIN_VALUE.
+  expect(r.lo).toBeLessThanOrEqual(0)
+  expect(r.hi).toBeGreaterThanOrEqual(Number.MIN_VALUE)
+})
+it('exact dyadic underflow preserves the positive real value', () => {
+  const r = underflowArithmetic.dyadicToInterval({ m: 1n, e: -1075 })
+  expect(r.lo).toBeLessThanOrEqual(0)
+  expect(r.hi).toBeGreaterThanOrEqual(Number.MIN_VALUE)
+})

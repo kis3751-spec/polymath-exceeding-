@@ -1,3 +1,4 @@
+import { useInteractionViewport } from './use-interaction-viewport'
 import AnalysisSummary from './components/AnalysisSummary'
 import { rootStructureLabel, tangencyOrderLabel } from './engine/tangency'
 import {
@@ -254,6 +255,9 @@ export default function App() {
     setOverviewHidden(false)
     setOverviewExcluded([])
   }, [project.source, project.mode])
+  const [manualAnchor, setManualAnchor] = useState<SimulationAnchor | null>(
+    null,
+  )
   const [selectedSimulation, setSelectedSimulation] =
     useState<SimulationPanel | null>(null)
   const [simulationResults, setSimulationResults] = useState<SimulationPanel[]>(
@@ -262,6 +266,7 @@ export default function App() {
   const [searchInfo, setSearchInfo] = useState<SearchSummary | null>(null)
   const [pending, setPending] = useState(false)
   const [discoveryPending, setDiscoveryPending] = useState(false)
+  const preserveViewport = useInteractionViewport(pending || discoveryPending)
   const solutionsRef = useRef<HTMLDetailsElement>(null)
   const [solutionsHeight, setSolutionsHeight] = useState(0)
   const [workerReady, setWorkerReady] = useState(false)
@@ -307,7 +312,8 @@ export default function App() {
   const nonlinearSearch = project.nonlinearSearch ?? 'auto'
   const automatic = nonlinear && nonlinearSearch === 'auto'
   const selectedBranch =
-    automatic && project.selectedAnchor?.id === selectedSimulation?.id
+    nonlinear &&
+    (!automatic || project.selectedAnchor?.id === selectedSimulation?.id)
       ? selectedSimulation
       : null
   const payload =
@@ -387,6 +393,7 @@ export default function App() {
     worker.current = w
     w.onmessage = ({ data }) => {
       if (data.id !== requestId.current) return
+      if (data.manualAnchor) setManualAnchor(data.manualAnchor)
       if (data.overview) setOverview(data.overview)
       setPending(false)
       setDiscoveryPending(data.discoveryPending === true)
@@ -487,6 +494,7 @@ export default function App() {
           id,
           ...createSolverInput(project),
           deferDiscovery: !sourceChanged && !explicitSolve,
+          restartBranch: explicitSolve,
         })
       },
       sourceChanged ? 160 : 16,
@@ -519,7 +527,9 @@ export default function App() {
     const previousFocus = document.activeElement as HTMLElement | null
     document.body.style.overflow = 'hidden'
     const area = document.querySelector<HTMLElement>('.results-expanded')
-    area?.querySelector<HTMLButtonElement>('.results-heading button')?.focus()
+    area
+      ?.querySelector<HTMLButtonElement>('.results-heading button')
+      ?.focus({ preventScroll: true })
     const trap = (e: KeyboardEvent) => {
       if (
         e.key !== 'Tab' ||
@@ -554,7 +564,7 @@ export default function App() {
     return () => {
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', trap)
-      previousFocus?.focus()
+      previousFocus?.focus({ preventScroll: true })
     }
   }, [expanded])
   useEffect(() => {
@@ -605,7 +615,7 @@ export default function App() {
     document.addEventListener('keydown', trap)
     return () => {
       document.removeEventListener('keydown', trap)
-      previous?.focus()
+      previous?.focus({ preventScroll: true })
     }
   }, [paramOpen])
   useEffect(() => {
@@ -823,7 +833,12 @@ export default function App() {
     setProject((p) => ({ ...p, selectedAnchor: anchor }))
     navigate('report')
   }
+  function updateSweepName(name: string) {
+    preserveViewport()
+    setProject((p) => ({ ...p, sweepName: name }))
+  }
   function updateParameter(id: string, value: number) {
+    preserveViewport()
     setProject((p) => {
       const current = p.parameters.find((v) => v.id === id)
       if (!current) return p
@@ -1696,12 +1711,18 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-                {view === 'simulation' && project.parameters.length > 0 && (
-                  <ResultParameters
-                    parameters={project.parameters}
-                    onChange={updateParameter}
-                  />
-                )}
+                {view === 'simulation' &&
+                  project.parameters.length > 0 &&
+                  !(
+                    automatic &&
+                    !overviewHidden &&
+                    overview?.anchors.length
+                  ) && (
+                    <ResultParameters
+                      parameters={project.parameters}
+                      onChange={updateParameter}
+                    />
+                  )}
                 {automatic && view === 'simulation' && (
                   <div className="merge-actions">
                     <button
@@ -1800,10 +1821,10 @@ export default function App() {
                     {searchInfo && <SearchCoverage search={searchInfo} />}
                   </details>
                 )}
-                {automatic &&
-                view === 'simulation' &&
+                {view === 'simulation' &&
                 (selectedBranch ||
-                  (!overviewHidden &&
+                  (automatic &&
+                    !overviewHidden &&
                     overview?.anchors.length)) ? null : error ? (
                   <div className="error-state" role="alert">
                     <div className="error-icon">
@@ -1949,7 +1970,7 @@ export default function App() {
                       )}
                     {view === 'simulation' ? (
                       <>
-                        {!automatic && (
+                        {!automatic && !(nonlinear && selectedSimulation) && (
                           <>
                             <div className="chart-section">
                               <div className="chart-heading">
@@ -2177,7 +2198,36 @@ export default function App() {
                                   ? '국소 조건수 계산 방식'
                                   : '조건수 계산 방식'}
                               </label>
-                              <p>입력 오차에 대한 해의 민감도를 확인합니다.</p>
+                              <details className="analysis-details condition-help">
+                                <summary>조건수는 어떻게 해석하나요?</summary>
+                                <p>
+                                  조건수는 같은 비율의 입력 변화가 해에 얼마나
+                                  큰 비율의 변화로 증폭될 수 있는지 보여주는
+                                  국소 지표입니다. 선형식은 계수 행렬,
+                                  비선형식은 현재 해 근처의 Jacobian을
+                                  사용합니다. 값이 클수록 입력의 작은 변화나
+                                  반올림에 취약한 방향이 있습니다. 실제 측정
+                                  오차나 해를 모두 찾았을 확률을 뜻하지
+                                  않습니다.
+                                </p>
+                                <p>
+                                  ∞-norm은 성분별 최대 오차와 행 합을 기준으로,
+                                  2-norm은 전체 벡터 길이와 최대·최소 특이값의
+                                  비율을 기준으로 계산합니다. 선택을 바꾸면 진단
+                                  기준이 달라집니다. 계산 자릿수가 늘어나거나
+                                  해가 더 정확해지는 설정은 아닙니다.
+                                </p>
+                                <p>
+                                  위의 ‘등식 오차 → 해 변화 증폭률’은 절대
+                                  오차가 해의 절대 변화로 바뀌는 크기이고,
+                                  조건수는 상대 변화와 방향 간 불균형을
+                                  나타냅니다. 단일 변수의 비특이 Jacobian
+                                  조건수는 항상 1이므로, 이 경우에는 증폭률과
+                                  파라미터별 영향으로 민감도를 판단하세요.
+                                  단위와 스케일이 같은 모델끼리 비교하는 것이
+                                  적절합니다.
+                                </p>
+                              </details>
                             </div>
                             <div className="condition-select-wrap">
                               <select
@@ -2390,6 +2440,28 @@ export default function App() {
                     </div>
                   </>
                 )}
+                {nonlinear &&
+                  !automatic &&
+                  view === 'simulation' &&
+                  selectedSimulation &&
+                  manualAnchor && (
+                    <SimulationPanelView
+                      panel={selectedSimulation}
+                      anchor={manualAnchor}
+                      parameters={project.parameters}
+                      onSweepNameChange={updateSweepName}
+                      expanded={expanded}
+                      pending={pending}
+                      closable={false}
+                      onClose={() => {}}
+                      onParameterChange={
+                        sweepParam
+                          ? (value) => updateParameter(sweepParam.id, value)
+                          : undefined
+                      }
+                      onReport={() => navigate('report')}
+                    />
+                  )}
                 {automatic &&
                   view === 'simulation' &&
                   anchors.length === 0 &&
@@ -2425,6 +2497,7 @@ export default function App() {
                         panel={selectedBranch}
                         anchor={project.selectedAnchor}
                         parameters={project.parameters}
+                        onSweepNameChange={updateSweepName}
                         expanded={expanded}
                         pending={pending}
                         closable={false}
@@ -2458,6 +2531,13 @@ export default function App() {
                         panels={overview.panels}
                         parameters={project.parameters}
                         sweepName={project.sweepName}
+                        onSweepNameChange={updateSweepName}
+                        controls={
+                          <ResultParameters
+                            parameters={project.parameters}
+                            onChange={updateParameter}
+                          />
+                        }
                         expanded={expanded}
                         large
                         pending={pending}
@@ -2493,6 +2573,14 @@ export default function App() {
                           panels={simulationResults}
                           parameters={project.parameters}
                           sweepName={project.sweepName}
+                          onSweepNameChange={updateSweepName}
+                          controls={
+                            <ResultParameters
+                              parameters={project.parameters}
+                              onChange={updateParameter}
+                              idPrefix={set.id}
+                            />
+                          }
                           expanded={expanded}
                           pending={pending}
                           onRemoveSet={() => removeMergedSet(set.id)}
@@ -2578,6 +2666,7 @@ export default function App() {
                               panel={panel}
                               anchor={anchor}
                               parameters={project.parameters}
+                              onSweepNameChange={updateSweepName}
                               expanded={expanded}
                               pending={pending}
                               onClose={() => closeSimulation(anchor.id)}
@@ -2947,11 +3036,15 @@ function SweepTable({
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
                     e.preventDefault()
-                    rows.current[Math.min(i + 1, points.length - 1)]?.focus()
+                    rows.current[Math.min(i + 1, points.length - 1)]?.focus({
+                      preventScroll: true,
+                    })
                   }
                   if (e.key === 'ArrowUp') {
                     e.preventDefault()
-                    rows.current[Math.max(0, i - 1)]?.focus()
+                    rows.current[Math.max(0, i - 1)]?.focus({
+                      preventScroll: true,
+                    })
                   }
                 }}
               >
@@ -3345,9 +3438,11 @@ function SearchBoundsEditor({
 function ResultParameters({
   parameters,
   onChange,
+  idPrefix = 'main',
 }: {
   parameters: Parameter[]
   onChange: (id: string, value: number) => void
+  idPrefix?: string
 }) {
   return (
     <section className="results-parameters" aria-label="파라미터 조절">
@@ -3356,13 +3451,15 @@ function ResultParameters({
           <SlidersHorizontal size={14} />
           파라미터 조절
         </span>
-        <small>열린 모든 시뮬레이션에 적용</small>
       </div>
       <div className="results-parameter-grid">
         {parameters.map((p) => (
           <div key={p.id} className="result-parameter">
             <div className="parameter-top">
-              <label htmlFor={`param-${p.id}`} className="parameter-name">
+              <label
+                htmlFor={`param-${idPrefix}-${p.id}`}
+                className="parameter-name"
+              >
                 {p.name}
               </label>
               <div className="parameter-input-wrap">
@@ -3373,7 +3470,7 @@ function ResultParameters({
               </div>
             </div>
             <input
-              id={`param-${p.id}`}
+              id={`param-${idPrefix}-${p.id}`}
               aria-label={`${p.name} 슬라이더`}
               className="parameter-slider"
               type="range"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Download, Layers3, Trash2, X } from 'lucide-react'
 import type {
   MergedSimulationSet,
@@ -29,6 +29,8 @@ export type MergedSimulationSetViewProps = {
   onRemoveSet: () => void
   onToggleAnchorInSet: (anchorId: string) => void
   onParameterChange?: (value: number) => void
+  onSweepNameChange?: (name: string) => void
+  controls?: ReactNode
 }
 
 function formatNumber(value: number | undefined): string {
@@ -52,6 +54,8 @@ export default function MergedSimulationSetView({
   onRemoveSet,
   onToggleAnchorInSet,
   onParameterChange,
+  onSweepNameChange,
+  controls,
 }: MergedSimulationSetViewProps) {
   const includedAnchors = anchors.filter((a) =>
     mergedSet.anchorIds.includes(a.id),
@@ -156,12 +160,6 @@ export default function MergedSimulationSetView({
             />
             {mergedSet.name}
           </h3>
-          <p className="simulation-panel-anchor">
-            <span>포함된 해 ({includedAnchors.length}개)</span>
-            <span>
-              하나의 좌표계에서 여러 해의 궤적과 병합·소멸 지점을 비교합니다.
-            </span>
-          </p>
         </div>
         <button
           type="button"
@@ -267,6 +265,25 @@ export default function MergedSimulationSetView({
           })}
         </div>
       </details>
+      <div className="merged-parameter-controls">
+        {parameters.length > 0 && onSweepNameChange && (
+          <label className="sweep-selector">
+            가로축 파라미터
+            <select
+              aria-label={`${mergedSet.name} 가로축 파라미터`}
+              value={sweepName}
+              onChange={(e) => onSweepNameChange(e.target.value)}
+            >
+              {parameters.map((p) => (
+                <option key={p.id} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {controls}
+      </div>
       {sweepParam ? (
         <div className="simulation-panel-chart">
           <SolutionChart
@@ -301,9 +318,26 @@ export default function MergedSimulationSetView({
         </p>
       )}
 
-      {large && (
-        <p className="overview-limit">설정 범위에서 발견한 가지 · 최대 6개</p>
-      )}
+      <details className="analysis-details simulation-reading-help">
+        <summary>해의 범위와 끊긴 곡선 읽기</summary>
+        <p>
+          각 색은 저장한 한 해에서 연속적으로 추적한 계산 결과입니다. 현재값에서
+          존재하지 않는 해도 다른 파라미터 구간에는 표시될 수 있습니다. 범례나
+          위 선택 버튼으로 숨기거나 다시 표시할 수 있습니다.
+        </p>
+        <p>
+          ◆는 국소적으로 확인한 근 병합 지점입니다. 빈 구간은 추적 실패를
+          뜻하며, 해가 없다는 증명과는 다릅니다. 실제 근 소멸, 분모 0·정의역
+          이탈, 수치 보정 실패를 구분하려면 지점 안내와 리포트를 확인하세요.
+          수렴하지 않은 구간을 다른 해로 연결하지 않습니다.
+        </p>
+        <p>
+          전체 해 탐색은 설정한 범위의 여러 파라미터에서 발견한 해를 최대
+          6개까지 함께 추적합니다. 유한한 탐색이므로 이 그래프만으로 모든 해가
+          포함되었다고 판정하지 않습니다. 가로축 파라미터를 바꾸면 기존 기준
+          해에서 새 곡선을 계산하며 세트를 삭제할 필요가 없습니다.
+        </p>
+      </details>
       <footer className="simulation-panel-actions">
         <button
           type="button"

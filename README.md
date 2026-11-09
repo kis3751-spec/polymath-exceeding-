@@ -233,3 +233,8 @@ npm run test:e2e
 리포트의 오차 상한·민감도 시나리오·검증률, 2~8중근 기호와 스크롤 수정은 [리포트·근 표시 안내](docs/REPORT_AND_ROOT_TYPES.md)를 참고하세요.
 
 Nonlinear 자동 탐색의 시뮬레이션은 이제 [기본 병합 그래프](docs/DEFAULT_MERGED_SIMULATION.md)로 시작합니다. 별도의 병합 추가 없이 발견한 가지를 함께 비교하고 개별 해를 선택할 수 있습니다.
+
+### 최근 시뮬레이션 수정·첨부 검토
+
+- [곡선·샘플·초기값 추적과 리포트 해석](docs/SIMULATION_ALIGNMENT_REVIEW.md)
+- [첨부 2차 인증 엔진의 재검증 결과](docs/UPLOADED_PATCH_V2_AUDIT.md)

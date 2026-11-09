@@ -173,3 +173,13 @@
 .analysis-summary[aria-busy='true'] .quality-grid {
   opacity: 0.5;
 }
+
+.metric-help summary {
+  font-size: 11px;
+  cursor: pointer;
+  color: #467466;
+  line-height: 1.8;
+}
+.metric-help p {
+  margin: 8px 0 0;
+}

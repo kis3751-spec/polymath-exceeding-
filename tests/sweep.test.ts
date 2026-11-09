@@ -75,15 +75,17 @@ describe('independent graph and table calculations with the real WASM solver', (
       await readFile(new URL('../public/solver.wasm', import.meta.url)),
     )
   })
-  it('preserves 81 graph samples and emits 61 configured table samples', () => {
+  it('includes all 61 configured table samples in the denser graph', () => {
     const sweeps = computeSweeps(
       solve,
       'x + y = F\nc_A*x + c_B*y = c_T*F',
       { F: 100, c_A: 0.2, c_B: 0.8, c_T: 0.5 },
       { name: 'c_T', min: 0.2, max: 0.8, steps: 81, step: 0.01 },
     )
-    expect(sweeps.sweep).toHaveLength(81)
+    expect(sweeps.sweep.length).toBeGreaterThanOrEqual(81)
     expect(sweeps.dataset).toHaveLength(61)
+    for (const sample of sweeps.dataset)
+      expect(sweeps.sweep).toContainEqual(sample)
     expect(sweeps.dataset[1].parameter).toBe(0.21)
     expect(sweeps.dataset[1].values?.[0]).toBeCloseTo(98.3333333333, 8)
     expect(sweeps.dataset[1].values?.[1]).toBeCloseTo(1.6666666667, 8)

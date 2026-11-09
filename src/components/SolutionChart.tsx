@@ -620,15 +620,18 @@ export default function SolutionChart({
                 </button>
               ))}
         </div>
-        <span className="sc-explore-hint">
-          연속 탐색 · 샘플 포인트 마커 표시 · 클릭으로 파라미터 적용
-        </span>
       </div>
 
       <div className="sc-view-controls">
-        <span className={`sc-zoom-hint${zoomActive ? ' is-active' : ''}`}>
-          {zoomActive ? '휠로 축 확대·축소' : '그래프 클릭 후 휠로 확대·축소'}
-        </span>
+        <details className="chart-help">
+          <summary>그래프 사용법</summary>
+          <p>
+            마우스 이동으로 값을 살펴보고, 클릭하면 그 위치의 파라미터를 실제
+            계산에 적용합니다. 클릭 후 휠로 선택한 축을 확대·축소합니다. 빈 원은
+            표·CSV의 샘플 포인트이며 그래프 선도 같은 계산점을 통과합니다. 선
+            사이의 위치는 보간 표시이고 클릭 후 현재점은 솔버로 다시 계산합니다.
+          </p>
+        </details>
         <label className="sc-sample-toggle">
           <input
             type="checkbox"

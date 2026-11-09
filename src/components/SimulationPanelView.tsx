@@ -14,6 +14,7 @@ export type SimulationPanelViewProps = {
   onClose: () => void
   closable?: boolean
   onParameterChange?: (value: number) => void
+  onSweepNameChange?: (name: string) => void
   onReport?: () => void
   pending?: boolean
 }
@@ -38,6 +39,7 @@ export default function SimulationPanelView({
   onClose,
   closable = true,
   onParameterChange,
+  onSweepNameChange,
   onReport,
   pending = false,
 }: SimulationPanelViewProps) {
@@ -62,7 +64,7 @@ export default function SimulationPanelView({
     if (selectedIndex === null) return
     const row = rows.current[selectedIndex]
     const container = scroller.current
-    if (!row || !container) return
+    if (!row || !container || !container.clientHeight) return
     const headingHeight = 38
     if (row.offsetTop < container.scrollTop + headingHeight) {
       container.scrollTop = Math.max(0, row.offsetTop - headingHeight)
@@ -154,9 +156,22 @@ export default function SimulationPanelView({
 
       {hasSweep ? (
         <div className="simulation-panel-chart">
-          <p className="simulation-panel-sweep-label">
-            <strong>{panel.sweepName}</strong>에 따른 해의 변화
-          </p>
+          {onSweepNameChange && (
+            <label className="sweep-selector">
+              가로축 파라미터
+              <select
+                aria-label={`${panel.label} 가로축 파라미터`}
+                value={panel.sweepName}
+                onChange={(e) => onSweepNameChange(e.target.value)}
+              >
+                {parameters.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <SolutionChart
             expanded={expanded}
             modelKind="nonlinear"
@@ -186,6 +201,22 @@ export default function SimulationPanelView({
         </p>
       )}
 
+      <details className="analysis-details simulation-reading-help">
+        <summary>초기값과 끊긴 곡선은 어떻게 읽나요?</summary>
+        <p>
+          초기값은 여러 해 중 처음 선택할 해를 정합니다. 이후에는 그 해를 연속
+          추적합니다. 탐색 파라미터만 움직이면 기준 곡선은 유지되고 현재점만
+          이동합니다. 다른 고정 파라미터를 바꾸면 식 자체가 달라져 곡선을 다시
+          계산합니다.
+        </p>
+        <p>
+          빈 구간은 선택한 해를 연속적으로 추적하지 못한 곳입니다. 근이
+          병합·소멸하거나 정의역을 벗어날 수 있고, 수치 보정이 실패할 수도
+          있습니다. 다른 해의 부재를 뜻하지는 않습니다. 모든 가지를 비교하려면
+          자동 탐색을 사용하세요. ‘모델 풀기’를 다시 누르면 현재 설정과
+          초기값으로 기준 해를 새로 선택합니다.
+        </p>
+      </details>
       {panel.datasetError && (
         <p className="simulation-panel-error" role="alert">
           {panel.datasetError}
@@ -266,7 +297,7 @@ export default function SimulationPanelView({
                         className="simulation-panel-no-solution"
                         title={point.error}
                       >
-                        해 없음
+                        추적 미완료
                       </td>
                     )}
                   </tr>

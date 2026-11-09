@@ -227,8 +227,10 @@ describe('selected diagnostics and lightweight sweeps', () => {
       { k: 1 },
       { name: 'k', min: 0, max: 1, steps: 81, step: 0.01 },
     )
-    expect(sweeps.sweep).toHaveLength(81)
+    expect(sweeps.sweep.length).toBeGreaterThanOrEqual(101)
     expect(sweeps.dataset).toHaveLength(101)
+    for (const point of sweeps.dataset)
+      expect(sweeps.sweep).toContainEqual(point)
     expect(getter).toHaveBeenCalledTimes(1)
     const unchecked = solve(
       'x = k',

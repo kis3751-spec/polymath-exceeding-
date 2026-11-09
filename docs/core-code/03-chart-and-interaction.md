@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `41b255acb0c455350c5a3a38e058af779905d142e770d9b3b13259ac4c5899f5`
+소스 묶음 SHA-256: `1b26e72209166e20fccbf730cdc170f059e62b88262cac6c016e679f49c8e02d`
 
 ## 다른 코드 묶음
 
@@ -524,7 +524,7 @@ export default function ExampleWalkthrough({
 
 ## src/components/AnalysisSummary.tsx
 
-원본: [src/components/AnalysisSummary.tsx](../../src/components/AnalysisSummary.tsx) · 344줄 · SHA-256: `e16962b2099a4468053cc21c128252c085be29570c8fbd833193ae7372973da7`
+원본: [src/components/AnalysisSummary.tsx](../../src/components/AnalysisSummary.tsx) · 376줄 · SHA-256: `4482fe7aceee3ab9e330a1623d1d335c89d3f99a54e024dc1db546b27a8443ff`
 
 ```tsx
 import { useMemo, useState } from 'react'
@@ -647,6 +647,14 @@ export default function AnalysisSummary({
                 ? '중근: 선형 보정 대신 아래 비선형 반응 확인'
                 : '원래 등식과 역행렬로 계산한 마지막 보정 크기'}
           </small>
+          <details className="metric-help">
+            <summary>이 수치 읽는 법</summary>
+            <p>
+              {d.errorBound !== undefined
+                ? '표시한 해와 수학적 해 사이의 거리가 이 값 이하라는 뜻입니다. 입력한 식과 파라미터를 고정한 계산 오차이며, 측정값의 오차까지 포함하지는 않습니다. 예를 들어 0.0001 이하라면 해의 마지막 소수 자릿수를 그 수준에서 판단할 수 있습니다.'
+                : '현재 계산값에 남아 있는 등식 오차를 줄이려면 해를 얼마나 더 움직여야 하는지 추정한 값입니다. 작을수록 식을 잘 만족하지만, 엄밀한 오차 상한이나 정확한 소수 자릿수 보장은 아닙니다. 특히 평탄한 중근 근처에서는 아래 민감도와 함께 확인하세요.'}
+            </p>
+          </details>
         </article>
         <article>
           <span>등식 오차 → 해 변화 증폭률</span>
@@ -662,6 +670,16 @@ export default function AnalysisSummary({
               ? `${d.powerResponse.order}중근의 비선형 민감도 · 아래 입력으로 예측`
               : '각 등식에 같은 절대 오차를 넣었을 때 · 현재 단위 기준'}
           </small>
+          <details className="metric-help">
+            <summary>이 수치 읽는 법</summary>
+            <p>
+              등식의 우변에 생긴 작은 절대 오차가 해의 절대 변화로 얼마나 커질지
+              나타냅니다. 예를 들어 0.736896×라면 등식 오차 0.0003에 대해 해
+              변화는 약 0.0002211로 예상합니다. 값이 클수록 같은 오차에 더
+              민감하며, 단위를 바꾸면 숫자도 달라집니다. 중근은 작은 오차에도 해
+              개수가 달라질 수 있어 별도의 비선형 크기로 표시합니다.
+            </p>
+          </details>
         </article>
         <article
           data-quality={
@@ -682,15 +700,29 @@ export default function AnalysisSummary({
                 : (search?.certificationUnavailable ??
                   '단일 변수 자동 탐색에서 구간 검증 지원')}
           </small>
+          <details className="metric-help">
+            <summary>이 수치 읽는 법</summary>
+            <p>
+              {linear
+                ? '미지수 개수와 랭크가 같으면 독립적인 조건이 충분한 선형계입니다. 랭크가 부족하면 해가 없거나 무한히 많을 수 있어 추가 조건을 확인해야 합니다.'
+                : '현재 파라미터와 표시한 미지수 범위에서, 근의 존재·부재가 판정된 길이의 비율입니다. 100%라도 미결정 구간이 남았는지와 결과 목록의 일치 여부를 함께 확인해야 합니다. 전체 실수 영역이나 파라미터 변화 전체를 검증한 값도, 모든 근을 찾았을 확률도 아닙니다. 맨 위의 전체 근 확인 여부가 최종 판정입니다.'}
+            </p>
+          </details>
         </article>
       </div>
       <div className="sensitivity-scenario">
         <div>
           <h4>입력 오차가 이만큼이면?</h4>
-          <p>
-            각 등식의 우변에 가정한 절대 오차입니다. 측정 오차를 아는 경우 직접
-            바꿔보세요.
-          </p>
+          <details className="metric-help">
+            <summary>어떤 오차를 입력하나요?</summary>
+            <p>
+              각 등식의 우변이 흔들릴 수 있는 절대 크기를 입력합니다. 측정
+              오차를 알고 있다면 현재 등식의 단위로 환산해 넣으세요. 아래 결과는
+              해 성분 중 가장 큰 변화 크기의 예측으로, 파라미터 슬라이더의
+              이동량이나 확률이 아닙니다. 큰 오차·접점 근처에서는 선형 근사가
+              맞지 않을 수 있으므로 실제 식을 바꿔 다시 계산해야 합니다.
+            </p>
+          </details>
         </div>
         <label>
           가정한 등식 오차 δ
@@ -877,7 +909,7 @@ export default function AnalysisSummary({
 
 ## src/components/AnalysisSummary.css
 
-원본: [src/components/AnalysisSummary.css](../../src/components/AnalysisSummary.css) · 175줄 · SHA-256: `957d16c9d8ba155ead4c90998d507f8303bf1a00f28bf4797d8700def39e4ee6`
+원본: [src/components/AnalysisSummary.css](../../src/components/AnalysisSummary.css) · 185줄 · SHA-256: `0c8ed9688f6f2c8ba5d53a78e2fb986d6de2a674d2f4e76ab687172949f5e92b`
 
 ```css
 .analysis-summary {
@@ -1054,6 +1086,16 @@ export default function AnalysisSummary({
 }
 .analysis-summary[aria-busy='true'] .quality-grid {
   opacity: 0.5;
+}
+
+.metric-help summary {
+  font-size: 11px;
+  cursor: pointer;
+  color: #467466;
+  line-height: 1.8;
+}
+.metric-help p {
+  margin: 8px 0 0;
 }
 ```
 
@@ -1902,7 +1944,7 @@ export default function Guide({
 
 ## src/components/SolutionChart.tsx
 
-원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,154줄 · SHA-256: `e043a05084d6bc3addc28935e5026b8600a1ed9c1cccf853fcdf8141e1e5f5e5`
+원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,157줄 · SHA-256: `fdfa6012201651c78a80150dd2e10ab2119810a1e35f67bb70ac1db50369299c`
 
 ```tsx
 import { tangencyOrderLabel } from '../engine/tangency'
@@ -2527,15 +2569,18 @@ export default function SolutionChart({
                 </button>
               ))}
         </div>
-        <span className="sc-explore-hint">
-          연속 탐색 · 샘플 포인트 마커 표시 · 클릭으로 파라미터 적용
-        </span>
       </div>
 
       <div className="sc-view-controls">
-        <span className={`sc-zoom-hint${zoomActive ? ' is-active' : ''}`}>
-          {zoomActive ? '휠로 축 확대·축소' : '그래프 클릭 후 휠로 확대·축소'}
-        </span>
+        <details className="chart-help">
+          <summary>그래프 사용법</summary>
+          <p>
+            마우스 이동으로 값을 살펴보고, 클릭하면 그 위치의 파라미터를 실제
+            계산에 적용합니다. 클릭 후 휠로 선택한 축을 확대·축소합니다. 빈 원은
+            표·CSV의 샘플 포인트이며 그래프 선도 같은 계산점을 통과합니다. 선
+            사이의 위치는 보간 표시이고 클릭 후 현재점은 솔버로 다시 계산합니다.
+          </p>
+        </details>
         <label className="sc-sample-toggle">
           <input
             type="checkbox"
@@ -3065,7 +3110,7 @@ export default function SolutionChart({
 
 ## src/components/SolutionChart.css
 
-원본: [src/components/SolutionChart.css](../../src/components/SolutionChart.css) · 329줄 · SHA-256: `30d42bc27f4d44a0586123317be2d7fe42805f54f2d6312f7492e041b20a95ac`
+원본: [src/components/SolutionChart.css](../../src/components/SolutionChart.css) · 342줄 · SHA-256: `d631eb8b0888bbcb90a9d0d0735e06bd2814490b5bd3094a40c51b1c9c3f1fd0`
 
 ```css
 .solution-chart {
@@ -3397,13 +3442,26 @@ export default function SolutionChart({
   font-size: 10px;
   padding: 8px 0;
 }
+
+.chart-help {
+  margin-right: auto;
+  max-width: 65ch;
+  font-size: 11px;
+  color: #60766c;
+}
+.chart-help summary {
+  cursor: pointer;
+}
+.chart-help p {
+  line-height: 1.8;
+}
 ```
 
 <a id="source-12"></a>
 
 ## src/components/SimulationPanelView.tsx
 
-원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 307줄 · SHA-256: `3b0b9e7ca92f93f774432636b0f041b8e3d54c2ba008d9d06a215b19dc774409`
+원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 338줄 · SHA-256: `8badbc96f138b76bdf66ad13e3ec89887bb391733c51a74e775c8723bd2f66e2`
 
 ```tsx
 import { rootStructureLabel } from '../engine/tangency'
@@ -3422,6 +3480,7 @@ export type SimulationPanelViewProps = {
   onClose: () => void
   closable?: boolean
   onParameterChange?: (value: number) => void
+  onSweepNameChange?: (name: string) => void
   onReport?: () => void
   pending?: boolean
 }
@@ -3446,6 +3505,7 @@ export default function SimulationPanelView({
   onClose,
   closable = true,
   onParameterChange,
+  onSweepNameChange,
   onReport,
   pending = false,
 }: SimulationPanelViewProps) {
@@ -3470,7 +3530,7 @@ export default function SimulationPanelView({
     if (selectedIndex === null) return
     const row = rows.current[selectedIndex]
     const container = scroller.current
-    if (!row || !container) return
+    if (!row || !container || !container.clientHeight) return
     const headingHeight = 38
     if (row.offsetTop < container.scrollTop + headingHeight) {
       container.scrollTop = Math.max(0, row.offsetTop - headingHeight)
@@ -3562,9 +3622,22 @@ export default function SimulationPanelView({
 
       {hasSweep ? (
         <div className="simulation-panel-chart">
-          <p className="simulation-panel-sweep-label">
-            <strong>{panel.sweepName}</strong>에 따른 해의 변화
-          </p>
+          {onSweepNameChange && (
+            <label className="sweep-selector">
+              가로축 파라미터
+              <select
+                aria-label={`${panel.label} 가로축 파라미터`}
+                value={panel.sweepName}
+                onChange={(e) => onSweepNameChange(e.target.value)}
+              >
+                {parameters.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <SolutionChart
             expanded={expanded}
             modelKind="nonlinear"
@@ -3594,6 +3667,22 @@ export default function SimulationPanelView({
         </p>
       )}
 
+      <details className="analysis-details simulation-reading-help">
+        <summary>초기값과 끊긴 곡선은 어떻게 읽나요?</summary>
+        <p>
+          초기값은 여러 해 중 처음 선택할 해를 정합니다. 이후에는 그 해를 연속
+          추적합니다. 탐색 파라미터만 움직이면 기준 곡선은 유지되고 현재점만
+          이동합니다. 다른 고정 파라미터를 바꾸면 식 자체가 달라져 곡선을 다시
+          계산합니다.
+        </p>
+        <p>
+          빈 구간은 선택한 해를 연속적으로 추적하지 못한 곳입니다. 근이
+          병합·소멸하거나 정의역을 벗어날 수 있고, 수치 보정이 실패할 수도
+          있습니다. 다른 해의 부재를 뜻하지는 않습니다. 모든 가지를 비교하려면
+          자동 탐색을 사용하세요. ‘모델 풀기’를 다시 누르면 현재 설정과
+          초기값으로 기준 해를 새로 선택합니다.
+        </p>
+      </details>
       {panel.datasetError && (
         <p className="simulation-panel-error" role="alert">
           {panel.datasetError}
@@ -3674,7 +3763,7 @@ export default function SimulationPanelView({
                         className="simulation-panel-no-solution"
                         title={point.error}
                       >
-                        해 없음
+                        추적 미완료
                       </td>
                     )}
                   </tr>
@@ -3719,10 +3808,10 @@ export default function SimulationPanelView({
 
 ## src/components/MergedSimulationSetView.tsx
 
-원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 326줄 · SHA-256: `abdc68d880405c619cfe1ad34dcbc6491fe98bac57b756add9c06dab84a189ce`
+원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 360줄 · SHA-256: `58a83505bbb8e4c0390f3bc31c4e619703ea8f00eeb81fcee4b6038b7ee9e7fc`
 
 ```tsx
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Download, Layers3, Trash2, X } from 'lucide-react'
 import type {
   MergedSimulationSet,
@@ -3753,6 +3842,8 @@ export type MergedSimulationSetViewProps = {
   onRemoveSet: () => void
   onToggleAnchorInSet: (anchorId: string) => void
   onParameterChange?: (value: number) => void
+  onSweepNameChange?: (name: string) => void
+  controls?: ReactNode
 }
 
 function formatNumber(value: number | undefined): string {
@@ -3776,6 +3867,8 @@ export default function MergedSimulationSetView({
   onRemoveSet,
   onToggleAnchorInSet,
   onParameterChange,
+  onSweepNameChange,
+  controls,
 }: MergedSimulationSetViewProps) {
   const includedAnchors = anchors.filter((a) =>
     mergedSet.anchorIds.includes(a.id),
@@ -3880,12 +3973,6 @@ export default function MergedSimulationSetView({
             />
             {mergedSet.name}
           </h3>
-          <p className="simulation-panel-anchor">
-            <span>포함된 해 ({includedAnchors.length}개)</span>
-            <span>
-              하나의 좌표계에서 여러 해의 궤적과 병합·소멸 지점을 비교합니다.
-            </span>
-          </p>
         </div>
         <button
           type="button"
@@ -3991,6 +4078,25 @@ export default function MergedSimulationSetView({
           })}
         </div>
       </details>
+      <div className="merged-parameter-controls">
+        {parameters.length > 0 && onSweepNameChange && (
+          <label className="sweep-selector">
+            가로축 파라미터
+            <select
+              aria-label={`${mergedSet.name} 가로축 파라미터`}
+              value={sweepName}
+              onChange={(e) => onSweepNameChange(e.target.value)}
+            >
+              {parameters.map((p) => (
+                <option key={p.id} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {controls}
+      </div>
       {sweepParam ? (
         <div className="simulation-panel-chart">
           <SolutionChart
@@ -4025,9 +4131,26 @@ export default function MergedSimulationSetView({
         </p>
       )}
 
-      {large && (
-        <p className="overview-limit">설정 범위에서 발견한 가지 · 최대 6개</p>
-      )}
+      <details className="analysis-details simulation-reading-help">
+        <summary>해의 범위와 끊긴 곡선 읽기</summary>
+        <p>
+          각 색은 저장한 한 해에서 연속적으로 추적한 계산 결과입니다. 현재값에서
+          존재하지 않는 해도 다른 파라미터 구간에는 표시될 수 있습니다. 범례나
+          위 선택 버튼으로 숨기거나 다시 표시할 수 있습니다.
+        </p>
+        <p>
+          ◆는 국소적으로 확인한 근 병합 지점입니다. 빈 구간은 추적 실패를
+          뜻하며, 해가 없다는 증명과는 다릅니다. 실제 근 소멸, 분모 0·정의역
+          이탈, 수치 보정 실패를 구분하려면 지점 안내와 리포트를 확인하세요.
+          수렴하지 않은 구간을 다른 해로 연결하지 않습니다.
+        </p>
+        <p>
+          전체 해 탐색은 설정한 범위의 여러 파라미터에서 발견한 해를 최대
+          6개까지 함께 추적합니다. 유한한 탐색이므로 이 그래프만으로 모든 해가
+          포함되었다고 판정하지 않습니다. 가로축 파라미터를 바꾸면 기존 기준
+          해에서 새 곡선을 계산하며 세트를 삭제할 필요가 없습니다.
+        </p>
+      </details>
       <footer className="simulation-panel-actions">
         <button
           type="button"
@@ -4941,7 +5064,7 @@ export function WorkspaceNavigation({
 
 ## src/styles.css
 
-원본: [src/styles.css](../../src/styles.css) · 3,725줄 · SHA-256: `a8fa168484925c6070d45c4a4ec30980c40cd3e847d7e6c3d45a635f6a726821`
+원본: [src/styles.css](../../src/styles.css) · 3,791줄 · SHA-256: `3a61760e55a15f2428dee05b945cfc4381047378c3baf8d59f8c43bafc11b019`
 
 ```css
 :root {
@@ -8668,6 +8791,72 @@ h2 {
 }
 .search-window-note {
   color: #206a57;
+}
+
+/* Live calculation updates must not move the browser's scroll anchor. */
+.results-panel,
+.results-expanded {
+  overflow-anchor: none;
+}
+.merged-parameter-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  padding: 6px 0;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid #e5e9e1;
+}
+.merged-parameter-controls .results-parameters {
+  position: static;
+  flex: 1 1 260px;
+  padding: 6px 0;
+  border: 0;
+  box-shadow: none;
+}
+.merged-parameter-controls .results-parameters-heading {
+  display: none;
+}
+.sweep-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #536b60;
+  font-size: 12px;
+}
+.sweep-selector select {
+  padding: 7px 12px;
+  border: 1px solid #d7e1d3;
+  border-radius: 5px;
+  background: #fff;
+  color: inherit;
+}
+.simulation-reading-help {
+  margin: 8px 20px;
+}
+.simulation-reading-help p,
+.condition-help p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #68766e;
+  max-width: 90ch;
+}
+.condition-help {
+  max-width: 80ch;
+  border: 0;
+  padding: 5px 0;
+}
+
+.merged-parameter-controls .results-parameter-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+@media (max-width: 600px) {
+  .merged-parameter-controls {
+    gap: 4px;
+  }
+  .merged-parameter-controls .results-parameters {
+    flex-basis: 100%;
+  }
 }
 ```
 

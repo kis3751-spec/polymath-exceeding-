@@ -14,10 +14,11 @@ import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const inputs = process.argv.slice(2)
+const underflow = process.argv.includes('--underflow')
+const inputs = process.argv.slice(2).filter((arg) => arg !== '--underflow')
 if (inputs.length !== 3) {
   process.stderr.write(
-    'Usage: node scripts/audit-uploaded-patches.mjs <fixes.md> <probability1.ts> <probability2.ts>\n',
+    'Usage: node scripts/audit-uploaded-patches.mjs <fixes.md> <probability1.ts> <probability2.ts> [--underflow]\n',
   )
   process.exit(2)
 }
@@ -54,6 +55,18 @@ await cp(
   join(root, 'scripts/audit-fixtures/upload-gates.fixture'),
   join(target, 'upload-gates.test.ts'),
 )
+if (underflow) {
+  const gates = join(target, 'upload-gates.test.ts')
+  await writeFile(
+    gates,
+    (await readFile(gates, 'utf8')) +
+      '\n' +
+      (await readFile(
+        join(root, 'scripts/audit-fixtures/underflow-gates.fixture'),
+        'utf8',
+      )),
+  )
+}
 await writeFile(
   join(target, 'vite.config.mts'),
   `import { defineConfig } from 'vitest/config'\nexport default defineConfig({root:${JSON.stringify(target)},test:{include:['upload-gates.test.ts'],reporters:['verbose']}})\n`,

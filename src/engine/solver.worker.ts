@@ -1,3 +1,5 @@
+import { compileNonlinear } from './nonlinear-parser'
+import { createManualSimulation } from './manual-simulation'
 import { createDefaultOverview } from './default-overview'
 import type { VariableBounds } from './search-analysis'
 import { sameComputedRoot } from './root-comparison'
@@ -30,6 +32,7 @@ type Request = {
   // Interactions may display current anchored values first while the full
   // discovery list is refreshed after a short quiet period.
   defaultOverview?: boolean
+  restartBranch?: boolean
   deferDiscovery?: boolean
 }
 type QueuedRequest = {
@@ -41,6 +44,7 @@ const ready = createSolver()
 const nonlinearReady = createNonlinearSolver()
 let automaticReady: ReturnType<typeof createAutomaticSolver> | undefined
 const searches = new Map<string, AutomaticSearchResult>()
+let computeManual: ReturnType<typeof createManualSimulation> | undefined
 let computeOverview: ReturnType<typeof createDefaultOverview> | undefined
 let computePanels: ReturnType<typeof createSimulationPanelComputer> | undefined
 let pendingRequest: QueuedRequest | undefined
@@ -334,16 +338,54 @@ async function handleRequest(work: QueuedRequest) {
     }
     const solve = await (mode === 'nonlinear' ? nonlinearReady : ready)
     if (work.generation !== generation) return
+    if (
+      mode === 'nonlinear' &&
+      sweep &&
+      compileNonlinear(source, Object.keys(parameters)).variables.length
+    ) {
+      const automatic = await (automaticReady ??= createAutomaticSolver())
+      if (work.generation !== generation) return
+      computeManual ??= createManualSimulation(solve, automatic.solveNear)
+      const { anchor, panel } = computeManual(
+        source,
+        parameters,
+        sweep,
+        conditionNorm,
+        work.request.restartBranch,
+      )
+      if (!panel.result) {
+        self.postMessage({
+          id,
+          ok: false,
+          discoveryPending: false,
+          error:
+            panel.error ?? '현재 파라미터까지 선택한 해를 추적하지 못했습니다.',
+          selectedSimulation: panel,
+          manualAnchor: anchor,
+        })
+      } else {
+        self.postMessage({
+          id,
+          ok: true,
+          discoveryPending: false,
+          manualAnchor: anchor,
+          payload: {
+            result: panel.result,
+            selectedSimulation: panel,
+            sweep: panel.sweep,
+            dataset: panel.dataset,
+            datasetError: panel.datasetError,
+            sweepName: panel.sweepName,
+          },
+        })
+      }
+      return
+    }
     const calculationSource = source
     const result = solve(calculationSource, parameters, { conditionNorm })
     const payload: SolvePayload = {
       result,
-      ...computeSweeps(
-        solve,
-        calculationSource,
-        parameters,
-        mode === 'nonlinear' && sweep ? { ...sweep, maxPoints: 500 } : sweep,
-      ),
+      ...computeSweeps(solve, calculationSource, parameters, sweep),
     }
     self.postMessage({ id, ok: true, discoveryPending: false, payload })
   } catch (error) {

@@ -12,7 +12,7 @@ export type SweepSettings = {
   name: string
   min: number
   max: number
-  /** Uniform rendering samples; independent from the tabulated interval. */
+  /** Base rendering samples, supplemented by the tabulated vertices. */
   steps: number
   /** User-selected interval for the table and CSV dataset. */
   step: number
@@ -109,7 +109,7 @@ type Sweeps = Pick<
   'sweep' | 'dataset' | 'datasetError' | 'sweepName'
 >
 
-/** Graph density stays stable while the table and CSV preserve the user's step. */
+/** Supplement the base graph with every table/CSV vertex, preserving exact samples. */
 export function computeSweeps(
   solve: Solver,
   source: string,
@@ -156,14 +156,16 @@ export function computeSweeps(
     return pointAt(min * (1 - fraction) + max * fraction)
   })
   try {
+    const dataset = parameterValues(
+      min,
+      max,
+      step,
+      settings.maxPoints ?? MAX_DATASET_POINTS,
+    ).map(pointAt)
     return {
-      sweep,
-      dataset: parameterValues(
-        min,
-        max,
-        step,
-        settings.maxPoints ?? MAX_DATASET_POINTS,
-      ).map(pointAt),
+      // Every sample marker must also be a vertex of the rendered polyline.
+      sweep: [...cache.values()].sort((a, b) => a.parameter - b.parameter),
+      dataset,
       sweepName: name,
     }
   } catch (error) {

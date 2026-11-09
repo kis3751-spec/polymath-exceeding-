@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `069fc4f958780bf957dfcfaa1cc69a109be881751e1fef403619e14b64f37715`
+소스 묶음 SHA-256: `6f23a81fda20042ef4c3901d8fa84a399f5cf291b703dbd7eedf8e873257d247`
 
 ## 다른 코드 묶음
 
@@ -676,7 +676,7 @@ export async function createSolver(
 
 ## src/engine/nonlinear-parser.ts
 
-원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 712줄 · SHA-256: `bd383467ec6d584c9b38764a4d911aa847d068e96ff741f3486c3046aab4fd60`
+원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 715줄 · SHA-256: `ac527befe89c5e02d05634e0563c988164cb61d6a6cf05745e27d5a5eea5c880`
 
 ```typescript
 import { evaluateDual, type Dual } from './expression-derivative'
@@ -1030,7 +1030,10 @@ export function compileNonlinear(
   )
 }
 
-function manualEquationSource(source: string, parameters: string[]): string {
+export function manualEquationSource(
+  source: string,
+  parameters: string[],
+): string {
   const oldRoot = /^\s*f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/m.test(source)
   if (oldRoot && !/^\s*f\d+\s*(?:\([^)]*\))?\s*=/m.test(source)) return source
   source = preprocessSolverSource(source, parameters, 'nonlinear')

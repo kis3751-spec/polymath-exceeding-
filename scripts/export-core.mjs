@@ -75,6 +75,8 @@ const books = [
       'src/engine/branches.ts',
       'src/engine/branch-events.ts',
       'src/engine/simulation-panels.ts',
+      'src/engine/manual-simulation.ts',
+      'src/use-interaction-viewport.ts',
       'src/engine/default-overview.ts',
       'src/engine/solver.worker.ts',
       'src/App.tsx',

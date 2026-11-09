@@ -349,7 +349,10 @@ export function compileNonlinear(
   )
 }
 
-function manualEquationSource(source: string, parameters: string[]): string {
+export function manualEquationSource(
+  source: string,
+  parameters: string[],
+): string {
   const oldRoot = /^\s*f\(\s*[A-Za-z][A-Za-z0-9_]*\s*\)\s*=/m.test(source)
   if (oldRoot && !/^\s*f\d+\s*(?:\([^)]*\))?\s*=/m.test(source)) return source
   source = preprocessSolverSource(source, parameters, 'nonlinear')
