@@ -1,0 +1,160 @@
+import { it, expect } from 'vitest'
+import { parseNonlinearExpression } from './probability/engine/nonlinear-parser'
+import {
+  certifyScalarRoots,
+  computeCompletenessMetrics,
+} from './probability/engine/interval-certification'
+import { evaluateIntervalJet } from './probability/engine/interval-arithmetic'
+import { certifyScalarRoots as fixesCertify } from './fixes/engine/interval-certification'
+import * as automatic from './probability/engine/automatic'
+import * as tangency from './fixes/engine/tangency'
+const node = (text: string) => parseNonlinearExpression(text).node
+for (const [version, certify] of [
+  ['fixes', fixesCertify],
+  ['probability', certifyScalarRoots],
+] as const) {
+  it(`${version}: never certifies a root of (x-1)^2 + a positive constant`, () => {
+    const c = certify(
+      node('x^2-2*x+1.000000000000001'),
+      'x',
+      {},
+      new Map(),
+      { min: 0.9, max: 1.1 },
+      { maxMs: 500 },
+    )
+    console.log(
+      JSON.stringify({
+        version,
+        case: 'no roots',
+        complete: c.complete,
+        count: c.uniqueRootCount,
+      }),
+    )
+    expect(c.uniqueRootCount).toBe(0)
+  })
+  it(`${version}: never certifies just one root when two distinct roots exist`, () => {
+    const c = certify(
+      node('x^2-2*x+0.999999999999999'),
+      'x',
+      {},
+      new Map(),
+      { min: 0.9, max: 1.1 },
+      { maxMs: 500 },
+    )
+    console.log(
+      JSON.stringify({
+        version,
+        case: 'two roots',
+        complete: c.complete,
+        count: c.uniqueRootCount,
+      }),
+    )
+    if (c.complete) expect(c.uniqueRootCount).toBe(2)
+    else expect(c.uniqueRootCount).not.toBe(1)
+  })
+}
+it('the discovery probability must not change just by repartitioning an unsupported region', () => {
+  const n = node('x^2-2*x+1'),
+    base = certifyScalarRoots(n, 'x', {}, new Map(), { min: 0.9, max: 1.1 })
+  const cell = { lo: 0.99, hi: 1.01, reason: 'unsupported' as const }
+  const values = [
+    [cell],
+    [
+      { ...cell, hi: 1 },
+      { ...cell, lo: 1 },
+    ],
+  ].map((parts) => {
+    const c = {
+      ...base,
+      complete: false,
+      uniqueRootCount: 0,
+      rootIntervals: [],
+      unresolved: parts,
+      unresolvedDiagnostics: undefined,
+      allRootsRepresented: false,
+    }
+    return computeCompletenessMetrics(
+      c,
+      (x) => evaluateIntervalJet(n, 'x', x, {}),
+      null,
+      'x',
+      {},
+      new Map(),
+    ).allRootsFoundProbability
+  })
+  console.log(JSON.stringify({ partitionProbabilities: values }))
+  expect(values[0]).toBe(values[1])
+})
+it('counts a root leaving the search domain under a Gaussian constant offset', () => {
+  const n = node('x-1'),
+    c = certifyScalarRoots(n, 'x', {}, new Map(), { min: 0, max: 1 })
+  const m = computeCompletenessMetrics(
+    c,
+    (x) => evaluateIntervalJet(n, 'x', x, {}),
+    null,
+    'x',
+    {},
+    new Map(),
+    1e-6,
+  )
+  // Root is 1-epsilon. In [0,1] iff 0 <= epsilon <= 1: probability ~1/2.
+  console.log(
+    JSON.stringify({
+      boundaryStability: m.inputPerturbationStability,
+      expected: 0.5,
+    }),
+  )
+  expect(m.inputPerturbationStability).toBeCloseTo(0.5, 8)
+})
+it('distinguishes Gaussian safety-radius probability from unchanged-root-count probability', () => {
+  const n = node('x^2+0.000001'),
+    c = certifyScalarRoots(n, 'x', {}, new Map(), { min: 0, max: 1 })
+  const m = computeCompletenessMetrics(
+    c,
+    (x) => evaluateIntervalJet(n, 'x', x, {}),
+    null,
+    'x',
+    {},
+    new Map(),
+    1e-6,
+  )
+  // On R, no roots iff epsilon > -1e-6: Phi(1). On [0,1] the
+  // additional far-tail term Phi(-1000001) is negligible at this precision.
+  console.log(
+    JSON.stringify({
+      quadraticStability: m.inputPerturbationStability,
+      expected: 0.8413447460685429,
+    }),
+  )
+  expect(m.inputPerturbationStability).toBeCloseTo(0.8413447460685429, 6)
+})
+it('outward root radius encloses the root relative to the reported Float64 center', () => {
+  const hi = 1 + Number.EPSILON,
+    n = node(`x-${hi}`)
+  const base = certifyScalarRoots(n, 'x', {}, new Map(), { min: 0, max: 2 })
+  const c = { ...base, rootIntervals: [{ lo: 1, hi }], uniqueRootCount: 1 }
+  const metric = computeCompletenessMetrics(
+    c,
+    (x) => evaluateIntervalJet(n, 'x', x, {}),
+    null,
+    'x',
+    {},
+    new Map(),
+  ).rootSensitivities[0]
+  console.log(
+    JSON.stringify({
+      center: metric.rootValue,
+      radius: metric.enclosureRadius,
+      root: hi,
+      actualError: Math.abs(hi - metric.rootValue),
+    }),
+  )
+  expect(metric.enclosureRadius).toBeGreaterThanOrEqual(
+    Math.abs(hi - metric.rootValue),
+  )
+})
+it('preserves the named exports required by the current report and chart', () => {
+  expect(typeof automatic.diagnosticModel).toBe('function')
+  expect(typeof tangency.rootStructureLabel).toBe('function')
+  expect(typeof tangency.tangencyOrderLabel).toBe('function')
+})
