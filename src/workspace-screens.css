@@ -290,3 +290,121 @@
     margin-inline: 16px;
   }
 }
+
+/* Simulation is a working canvas: compact tools above a wide default overview. */
+.simulation-focused .topbar {
+  display: none;
+}
+.simulation-focused .breadcrumbs,
+.simulation-focused .page-heading > div:first-child,
+.simulation-focused .example-walkthrough,
+.simulation-focused .insight-card,
+.simulation-focused .workspace-footer {
+  display: none;
+}
+.simulation-focused .workspace-nav-container {
+  padding-top: 6px;
+}
+.simulation-focused .workspace-content {
+  max-width: none;
+  padding: 0 16px 16px;
+}
+.simulation-focused .page-heading {
+  margin: 0;
+  padding: 5px 0;
+  min-height: 0;
+  justify-content: flex-end;
+}
+.simulation-focused .heading-actions button {
+  padding: 7px 11px;
+  font-size: 11px;
+}
+.simulation-focused .results-heading {
+  padding: 10px 16px;
+}
+.simulation-focused .results-parameters {
+  padding: 10px 16px;
+}
+.simulation-focused .results-parameters-heading {
+  display: none;
+}
+.simulation-focused .merge-actions {
+  padding: 7px 16px;
+}
+.simulation-focused .default-overview {
+  padding: 8px;
+}
+.default-overview .simulation-panel {
+  padding: 12px 16px;
+}
+.default-overview .simulation-panel-anchor {
+  display: none;
+}
+.default-overview .merged-set-Chips {
+  padding: 8px 0;
+}
+.default-overview .merged-current-wrap {
+  margin: 5px 0;
+  font-size: 12px;
+  color: #587666;
+}
+.default-overview .merged-current-wrap summary {
+  cursor: pointer;
+}
+.default-overview .merged-current-grid {
+  padding: 10px 0;
+}
+.default-overview .merged-current-card button {
+  font-size: 11px;
+  color: #286b5b;
+}
+.default-overview .sc-stage,
+.default-overview .solution-chart {
+  max-width: none;
+}
+.default-overview .simulation-panel-actions {
+  margin-top: 6px;
+}
+@media (max-width: 600px) {
+  .simulation-focused .workspace-content {
+    padding: 0 6px 10px;
+  }
+  .default-overview .simulation-panel {
+    padding: 10px;
+  }
+}
+.simulation-focused .page-heading {
+  display: none;
+}
+.simulation-focused .workspace-nav-container {
+  max-width: none;
+  padding: 4px 16px 0;
+}
+.simulation-focused .workspace-navigation {
+  padding-bottom: 5px;
+}
+.simulation-focused .results-parameters {
+  padding: 6px 16px;
+}
+.simulation-focused .result-parameter .parameter-slider {
+  margin-top: 5px;
+}
+.simulation-focused .merge-actions {
+  padding-block: 4px;
+}
+.simulation-focused .solutions-title {
+  padding-block: 6px;
+}
+.default-overview .sc-legend-row {
+  min-height: 25px;
+  padding-bottom: 2px;
+}
+.default-overview .overview-limit {
+  color: #84927b;
+  font-size: 10px;
+  margin-top: 6px;
+}
+.default-overview .merged-current-card[data-selected='true'] {
+  border-color: #3d8371;
+  background: #e8f3ee;
+}

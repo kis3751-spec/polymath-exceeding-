@@ -231,3 +231,5 @@ npm run test:e2e
 일반 등식의 수동 초기값·범위 설정, 이전 저장 모델 전환, 중복 없는 근 병합 안내는 [입력·이벤트 정리](docs/EQUATION_INPUT_AND_EVENTS.md)를 참고하세요.
 
 리포트의 오차 상한·민감도 시나리오·검증률, 2~8중근 기호와 스크롤 수정은 [리포트·근 표시 안내](docs/REPORT_AND_ROOT_TYPES.md)를 참고하세요.
+
+Nonlinear 자동 탐색의 시뮬레이션은 이제 [기본 병합 그래프](docs/DEFAULT_MERGED_SIMULATION.md)로 시작합니다. 별도의 병합 추가 없이 발견한 가지를 함께 비교하고 개별 해를 선택할 수 있습니다.

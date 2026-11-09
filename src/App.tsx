@@ -243,6 +243,17 @@ export default function App() {
   const [project, setProject] = useState<Project>(initialProject)
   const [basePayload, setPayload] = useState<SolvePayload | null>(null)
   const [computeError, setError] = useState('')
+  const [overview, setOverview] = useState<{
+    anchors: SimulationAnchor[]
+    panels: SimulationPanel[]
+  } | null>(null)
+  const [overviewHidden, setOverviewHidden] = useState(false)
+  const [overviewExcluded, setOverviewExcluded] = useState<string[]>([])
+  useEffect(() => {
+    setOverview(null)
+    setOverviewHidden(false)
+    setOverviewExcluded([])
+  }, [project.source, project.mode])
   const [selectedSimulation, setSelectedSimulation] =
     useState<SimulationPanel | null>(null)
   const [simulationResults, setSimulationResults] = useState<SimulationPanel[]>(
@@ -376,6 +387,7 @@ export default function App() {
     worker.current = w
     w.onmessage = ({ data }) => {
       if (data.id !== requestId.current) return
+      if (data.overview) setOverview(data.overview)
       setPending(false)
       setDiscoveryPending(data.discoveryPending === true)
       if (data.ok) {
@@ -1034,7 +1046,9 @@ export default function App() {
     }
   }
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
+    >
       <div className="workspace">
         <header className="topbar">
           <div className="wordmark">
@@ -1663,7 +1677,9 @@ export default function App() {
                       {pending
                         ? '계산 중'
                         : error
-                          ? '입력 확인'
+                          ? automatic && overview?.anchors.length
+                            ? '현재 해 미확인'
+                            : '입력 확인'
                           : !result
                             ? '입력 대기'
                             : result?.engine === 'wasm'
@@ -1700,6 +1716,14 @@ export default function App() {
                     >
                       <Layers3 size={15} /> 시뮬레이션 병합 세트 추가
                     </button>
+                    {overviewHidden && (
+                      <button
+                        className="secondary-button"
+                        onClick={() => setOverviewHidden(false)}
+                      >
+                        기본 병합 보기
+                      </button>
+                    )}
                     <span>최대 6개 세트 · 해별 색상 비교</span>
                   </div>
                 )}
@@ -1778,7 +1802,9 @@ export default function App() {
                 )}
                 {automatic &&
                 view === 'simulation' &&
-                selectedBranch ? null : error ? (
+                (selectedBranch ||
+                  (!overviewHidden &&
+                    overview?.anchors.length)) ? null : error ? (
                   <div className="error-state" role="alert">
                     <div className="error-icon">
                       <Sigma size={24} />
@@ -2367,6 +2393,7 @@ export default function App() {
                 {automatic &&
                   view === 'simulation' &&
                   anchors.length === 0 &&
+                  (!overview || overviewHidden) &&
                   selectedBranch &&
                   project.selectedAnchor && (
                     <div className="selected-simulation-workspace">
@@ -2409,6 +2436,48 @@ export default function App() {
                             : undefined
                         }
                         onReport={() => navigate('report')}
+                      />
+                    </div>
+                  )}
+                {automatic &&
+                  view === 'simulation' &&
+                  !overviewHidden &&
+                  overview &&
+                  overview.anchors.length > 0 && (
+                    <div className="default-overview">
+                      <MergedSimulationSetView
+                        mergedSet={{
+                          id: 'default-overview',
+                          name: '전체 해 탐색',
+                          anchorIds: overview.anchors
+                            .filter((a) => !overviewExcluded.includes(a.id))
+                            .map((a) => a.id),
+                        }}
+                        anchors={overview.anchors}
+                        selectedAnchorId={project.selectedAnchor?.id}
+                        panels={overview.panels}
+                        parameters={project.parameters}
+                        sweepName={project.sweepName}
+                        expanded={expanded}
+                        large
+                        pending={pending}
+                        onRemoveSet={() => setOverviewHidden(true)}
+                        onToggleAnchorInSet={(id) =>
+                          setOverviewExcluded((ids) =>
+                            ids.includes(id)
+                              ? ids.filter((v) => v !== id)
+                              : [...ids, id],
+                          )
+                        }
+                        onParameterChange={
+                          sweepParam
+                            ? (value) => updateParameter(sweepParam.id, value)
+                            : undefined
+                        }
+                        onSelectAnchor={(anchor) =>
+                          setProject((p) => ({ ...p, selectedAnchor: anchor }))
+                        }
+                        onReportAnchor={openSimulationReport}
                       />
                     </div>
                   )}

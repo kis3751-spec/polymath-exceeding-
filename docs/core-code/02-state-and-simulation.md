@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `98fe5b7def08e3c1157ae2729c36f9662bf9c9370463d445ad4e1fb0a60ef285`
+소스 묶음 SHA-256: `a93e4a27b35ece77f2335e8f62c298a7ba02761290a4fb634c6ecc2b10ca3a15`
 
 ## 다른 코드 묶음
 
@@ -36,8 +36,9 @@
 - [src/engine/branches.ts](#source-10) · [저장소 원본](../../src/engine/branches.ts)
 - [src/engine/branch-events.ts](#source-11) · [저장소 원본](../../src/engine/branch-events.ts)
 - [src/engine/simulation-panels.ts](#source-12) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/solver.worker.ts](#source-13) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-14) · [저장소 원본](../../src/App.tsx)
+- [src/engine/default-overview.ts](#source-13) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-14) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-15) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -625,7 +626,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
 
 ## src/solver-input.ts
 
-원본: [src/solver-input.ts](../../src/solver-input.ts) · 33줄 · SHA-256: `3ca2bb87c4650b981380ff1a890ba8304a10c7ae5d12f87523b38abbc68cc9a2`
+원본: [src/solver-input.ts](../../src/solver-input.ts) · 36줄 · SHA-256: `468c816b434c20fe5efded58863bdd30f0de30ce886c4ef17105a8547ed76440`
 
 ```typescript
 import type { Project } from './models'
@@ -634,6 +635,9 @@ import type { Project } from './models'
 export function createSolverInput(project: Project) {
   const sweep = project.parameters.find((p) => p.name === project.sweepName)
   return {
+    defaultOverview:
+      project.mode === 'nonlinear' &&
+      (project.nonlinearSearch ?? 'auto') === 'auto',
     source: project.source,
     conditionNorm: project.conditionNorm ?? 'infinity',
     mode: project.mode ?? 'linear',
@@ -2143,11 +2147,138 @@ export function detectMergedBranchEvents(
 
 <a id="source-13"></a>
 
-## src/engine/solver.worker.ts
+## src/engine/default-overview.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 331줄 · SHA-256: `51b1dddd2ed6b59ae96faa8c77098d4e9a2553a3fcd57cf6f057f9abbea9f80f`
+원본: [src/engine/default-overview.ts](../../src/engine/default-overview.ts) · 117줄 · SHA-256: `382b854d5522e48b4eed91f150b76407ab32261b1fb064ae4d4a98e476ec0e5c`
 
 ```typescript
+import type { AutomaticSolver } from './automatic'
+import type { SimulationAnchor, SimulationPanel } from './index'
+import type { SweepSettings } from './sweep'
+import { createSimulationPanelComputer } from './simulation-panels'
+import { sameComputedRoot } from './root-comparison'
+
+/** Bounded discovery at several parameter positions, then immutable anchored
+ * sweeps. This is an overview of discovered branches, not a completeness proof. */
+export function createDefaultOverview(search: AutomaticSolver) {
+  const compute = createSimulationPanelComputer(search.solveNear)
+  const cache = new Map<string, SimulationAnchor[]>()
+  return (
+    source: string,
+    parameters: Record<string, number>,
+    sweep: SweepSettings | null,
+    options: Parameters<AutomaticSolver>[2],
+    current?: ReturnType<AutomaticSolver>,
+  ): { anchors: SimulationAnchor[]; panels: SimulationPanel[] } => {
+    const key = JSON.stringify([
+      source,
+      Object.entries(parameters)
+        .filter(([k]) => k !== sweep?.name)
+        .sort(),
+      sweep,
+      options?.searchBounds,
+      options?.variableBounds,
+    ])
+    let anchors = cache.get(key)
+    if (!anchors) {
+      anchors = []
+      const start = performance.now()
+      const candidates = [
+        parameters,
+        ...(sweep
+          ? [0.5, 0, 1, 0.25, 0.75].map((t) => ({
+              ...parameters,
+              [sweep.name]: sweep.min * (1 - t) + sweep.max * t,
+            }))
+          : []),
+      ]
+      for (let i = 0; i < candidates.length; i++) {
+        if (anchors.length >= 6 || (i > 0 && performance.now() - start > 900))
+          break
+        const at = candidates[i]
+        try {
+          const found =
+            i === 0 && current
+              ? current
+              : search(source, at, { ...options, certifyRoots: false })
+          const existing = compute(source, at, sweep, anchors)
+          for (const root of found.solutions) {
+            if (anchors.length >= 6) break
+            if (
+              existing.some((p) => p.result && sameComputedRoot(p.result, root))
+            )
+              continue
+            if (sweep && root.condition === Infinity) continue
+            anchors.push({
+              id: crypto.randomUUID(),
+              label: `해 ${anchors.length + 1}`,
+              variables: [...root.variables],
+              values: [...root.values],
+              parameters: { ...at },
+            })
+          }
+        } catch {
+          /* Invalid domain at one position does not invalidate others. */
+        }
+      }
+      if (!anchors.length && current)
+        for (const root of current.solutions.slice(0, 6))
+          anchors.push({
+            id: crypto.randomUUID(),
+            label: `해 ${anchors.length + 1}`,
+            variables: [...root.variables],
+            values: [...root.values],
+            parameters: { ...parameters },
+          })
+      if (cache.size >= 6) cache.delete(cache.keys().next().value!)
+      cache.set(key, anchors)
+    }
+    let panels = compute(
+      source,
+      parameters,
+      sweep,
+      anchors,
+      options?.conditionNorm,
+    )
+    // A narrow branch may lie between the initial probe positions. Include
+    // newly discovered roots without replacing any existing reference curve.
+    if (current)
+      for (const root of current.solutions) {
+        if (anchors.length >= 6) break
+        if (panels.some((p) => p.result && sameComputedRoot(p.result, root)))
+          continue
+        anchors = [
+          ...anchors,
+          {
+            id: crypto.randomUUID(),
+            label: `해 ${anchors.length + 1}`,
+            variables: [...root.variables],
+            values: [...root.values],
+            parameters: { ...parameters },
+          },
+        ]
+        cache.set(key, anchors)
+        panels = compute(
+          source,
+          parameters,
+          sweep,
+          anchors,
+          options?.conditionNorm,
+        )
+      }
+    return { anchors, panels }
+  }
+}
+```
+
+<a id="source-14"></a>
+
+## src/engine/solver.worker.ts
+
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 360줄 · SHA-256: `2422c68b62c94a6ea904c70320458191a58c5daf827d15d072a3a11809f70510`
+
+```typescript
+import { createDefaultOverview } from './default-overview'
 import type { VariableBounds } from './search-analysis'
 import { sameComputedRoot } from './root-comparison'
 /// <reference lib="webworker" />
@@ -2178,6 +2309,7 @@ type Request = {
   selectedAnchor?: SimulationAnchor
   // Interactions may display current anchored values first while the full
   // discovery list is refreshed after a short quiet period.
+  defaultOverview?: boolean
   deferDiscovery?: boolean
 }
 type QueuedRequest = {
@@ -2189,6 +2321,7 @@ const ready = createSolver()
 const nonlinearReady = createNonlinearSolver()
 let automaticReady: ReturnType<typeof createAutomaticSolver> | undefined
 const searches = new Map<string, AutomaticSearchResult>()
+let computeOverview: ReturnType<typeof createDefaultOverview> | undefined
 let computePanels: ReturnType<typeof createSimulationPanelComputer> | undefined
 let pendingRequest: QueuedRequest | undefined
 let processing = false
@@ -2319,6 +2452,14 @@ async function handleRequest(work: QueuedRequest) {
           [selectedAnchor],
           conditionNorm,
         )[0]
+        const overview =
+          request.defaultOverview && computeOverview
+            ? computeOverview(source, parameters, sweep, {
+                conditionNorm,
+                searchBounds,
+                variableBounds,
+              })
+            : undefined
         const result = selectedSimulation.result
         if (result) {
           const payload: SolvePayload = {
@@ -2333,12 +2474,19 @@ async function handleRequest(work: QueuedRequest) {
               : {}),
             sweepName: selectedSimulation.sweepName,
           }
-          self.postMessage({ id, ok: true, discoveryPending: true, payload })
+          self.postMessage({
+            id,
+            ok: true,
+            discoveryPending: true,
+            payload,
+            overview,
+          })
         } else {
           self.postMessage({
             id,
             ok: false,
             discoveryPending: true,
+            overview,
             error:
               selectedSimulation.error ||
               '선택한 해의 현재값을 계산하지 못했습니다.',
@@ -2362,6 +2510,15 @@ async function handleRequest(work: QueuedRequest) {
         if (searches.size >= 8) searches.delete(searches.keys().next().value!)
         searches.set(key, found)
       }
+      const overview = request.defaultOverview
+        ? (computeOverview ??= createDefaultOverview(search))(
+            source,
+            parameters,
+            sweep,
+            { conditionNorm, searchBounds, variableBounds },
+            found,
+          )
+        : undefined
       lastDiscoveryContext = context
       const simulations = simulationAnchors
         ? computePanels(
@@ -2394,6 +2551,7 @@ async function handleRequest(work: QueuedRequest) {
                 ? '구간 검증에서 유일근 구간을 분리했지만 표시할 근의 수치 보정에 실패했습니다. 구간 검증 내역을 확인하세요.'
                 : '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
           search: found.search,
+          overview,
           ...(simulations ? { simulations } : {}),
           ...(selectedSimulation ? { selectedSimulation } : {}),
         })
@@ -2449,6 +2607,7 @@ async function handleRequest(work: QueuedRequest) {
         ok: true,
         discoveryPending: false,
         payload,
+        overview,
         ...(adoptedAnchor ? { adoptedAnchor } : {}),
       })
       return
@@ -2481,11 +2640,11 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-15"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,331줄 · SHA-256: `b3e17797e424ee075103a0bae67151e02dd524d9a80cb7dea8af31a8437de5a1`
+원본: [src/App.tsx](../../src/App.tsx) · 3,400줄 · SHA-256: `4b9781520faa0201a700a518058bb4c5467db09a04b0b1e9cf759291d6f90fa0`
 
 ```tsx
 import AnalysisSummary from './components/AnalysisSummary'
@@ -2733,6 +2892,17 @@ export default function App() {
   const [project, setProject] = useState<Project>(initialProject)
   const [basePayload, setPayload] = useState<SolvePayload | null>(null)
   const [computeError, setError] = useState('')
+  const [overview, setOverview] = useState<{
+    anchors: SimulationAnchor[]
+    panels: SimulationPanel[]
+  } | null>(null)
+  const [overviewHidden, setOverviewHidden] = useState(false)
+  const [overviewExcluded, setOverviewExcluded] = useState<string[]>([])
+  useEffect(() => {
+    setOverview(null)
+    setOverviewHidden(false)
+    setOverviewExcluded([])
+  }, [project.source, project.mode])
   const [selectedSimulation, setSelectedSimulation] =
     useState<SimulationPanel | null>(null)
   const [simulationResults, setSimulationResults] = useState<SimulationPanel[]>(
@@ -2866,6 +3036,7 @@ export default function App() {
     worker.current = w
     w.onmessage = ({ data }) => {
       if (data.id !== requestId.current) return
+      if (data.overview) setOverview(data.overview)
       setPending(false)
       setDiscoveryPending(data.discoveryPending === true)
       if (data.ok) {
@@ -3524,7 +3695,9 @@ export default function App() {
     }
   }
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
+    >
       <div className="workspace">
         <header className="topbar">
           <div className="wordmark">
@@ -4153,7 +4326,9 @@ export default function App() {
                       {pending
                         ? '계산 중'
                         : error
-                          ? '입력 확인'
+                          ? automatic && overview?.anchors.length
+                            ? '현재 해 미확인'
+                            : '입력 확인'
                           : !result
                             ? '입력 대기'
                             : result?.engine === 'wasm'
@@ -4190,6 +4365,14 @@ export default function App() {
                     >
                       <Layers3 size={15} /> 시뮬레이션 병합 세트 추가
                     </button>
+                    {overviewHidden && (
+                      <button
+                        className="secondary-button"
+                        onClick={() => setOverviewHidden(false)}
+                      >
+                        기본 병합 보기
+                      </button>
+                    )}
                     <span>최대 6개 세트 · 해별 색상 비교</span>
                   </div>
                 )}
@@ -4268,7 +4451,9 @@ export default function App() {
                 )}
                 {automatic &&
                 view === 'simulation' &&
-                selectedBranch ? null : error ? (
+                (selectedBranch ||
+                  (!overviewHidden &&
+                    overview?.anchors.length)) ? null : error ? (
                   <div className="error-state" role="alert">
                     <div className="error-icon">
                       <Sigma size={24} />
@@ -4857,6 +5042,7 @@ export default function App() {
                 {automatic &&
                   view === 'simulation' &&
                   anchors.length === 0 &&
+                  (!overview || overviewHidden) &&
                   selectedBranch &&
                   project.selectedAnchor && (
                     <div className="selected-simulation-workspace">
@@ -4899,6 +5085,48 @@ export default function App() {
                             : undefined
                         }
                         onReport={() => navigate('report')}
+                      />
+                    </div>
+                  )}
+                {automatic &&
+                  view === 'simulation' &&
+                  !overviewHidden &&
+                  overview &&
+                  overview.anchors.length > 0 && (
+                    <div className="default-overview">
+                      <MergedSimulationSetView
+                        mergedSet={{
+                          id: 'default-overview',
+                          name: '전체 해 탐색',
+                          anchorIds: overview.anchors
+                            .filter((a) => !overviewExcluded.includes(a.id))
+                            .map((a) => a.id),
+                        }}
+                        anchors={overview.anchors}
+                        selectedAnchorId={project.selectedAnchor?.id}
+                        panels={overview.panels}
+                        parameters={project.parameters}
+                        sweepName={project.sweepName}
+                        expanded={expanded}
+                        large
+                        pending={pending}
+                        onRemoveSet={() => setOverviewHidden(true)}
+                        onToggleAnchorInSet={(id) =>
+                          setOverviewExcluded((ids) =>
+                            ids.includes(id)
+                              ? ids.filter((v) => v !== id)
+                              : [...ids, id],
+                          )
+                        }
+                        onParameterChange={
+                          sweepParam
+                            ? (value) => updateParameter(sweepParam.id, value)
+                            : undefined
+                        }
+                        onSelectAnchor={(anchor) =>
+                          setProject((p) => ({ ...p, selectedAnchor: anchor }))
+                        }
+                        onReportAnchor={openSimulationReport}
                       />
                     </div>
                   )}

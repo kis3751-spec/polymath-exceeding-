@@ -39,6 +39,7 @@ export type MultiBranchSeries = {
 export interface SolutionChartProps {
   modelKind?: 'linear' | 'nonlinear'
   expanded?: boolean
+  large?: boolean
   points: CurvePoint[]
   selectionPoints?: CurvePoint[]
   variables: string[]
@@ -93,6 +94,7 @@ function axisNumber(value: number): string {
 export default function SolutionChart({
   modelKind = 'linear',
   expanded = false,
+  large = false,
   points,
   selectionPoints,
   variables,
@@ -130,7 +132,14 @@ export default function SolutionChart({
   const isMultiBranch = Boolean(
     multiBranchSeries && multiBranchSeries.length > 0,
   )
-  const height = expanded ? Math.min(520, Math.max(420, width * 0.48)) : HEIGHT
+  const height = large
+    ? Math.max(
+        420,
+        Math.min(880, (globalThis.innerHeight || 900) - (expanded ? 240 : 360)),
+      )
+    : expanded
+      ? Math.min(520, Math.max(420, width * 0.48))
+      : HEIGHT
   const innerWidth = width - PLOT.left - PLOT.right
   const innerHeight = height - PLOT.top - PLOT.bottom
 
@@ -168,7 +177,7 @@ export default function SolutionChart({
       if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
         setWidth(
           Math.min(
-            expanded ? EXPANDED_MAX_WIDTH : MAX_WIDTH,
+            large ? 2400 : expanded ? EXPANDED_MAX_WIDTH : MAX_WIDTH,
             Math.max(MIN_WIDTH, Math.round(measuredWidth)),
           ),
         )
@@ -181,7 +190,7 @@ export default function SolutionChart({
     })
     observer.observe(container)
     return () => observer.disconnect()
-  }, [expanded])
+  }, [expanded, large])
 
   const visible = variables
     .map((name, index) => ({ name, index }))

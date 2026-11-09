@@ -20,6 +20,10 @@ export type MergedSimulationSetViewProps = {
   panels: SimulationPanel[]
   parameters: Parameter[]
   sweepName: string
+  selectedAnchorId?: string
+  large?: boolean
+  onSelectAnchor?: (anchor: SimulationAnchor) => void
+  onReportAnchor?: (anchor: SimulationAnchor) => void
   expanded: boolean
   pending: boolean
   onRemoveSet: () => void
@@ -40,6 +44,10 @@ export default function MergedSimulationSetView({
   parameters,
   sweepName,
   expanded,
+  large = false,
+  selectedAnchorId,
+  onSelectAnchor,
+  onReportAnchor,
   pending,
   onRemoveSet,
   onToggleAnchorInSet,
@@ -136,6 +144,7 @@ export default function MergedSimulationSetView({
   return (
     <section
       className={`simulation-panel merged-simulation-panel${expanded ? ' is-expanded' : ''}`}
+      aria-busy={pending}
       aria-label={`${mergedSet.name} 병합 시뮬레이션`}
     >
       <header className="simulation-panel-header">
@@ -207,41 +216,62 @@ export default function MergedSimulationSetView({
       )}
 
       {/* 현재 파라미터에서 각 해의 상태 요약 (생존 vs 소멸/병합) */}
-      <div className="merged-current-grid">
-        {includedPanels.map((panel, idx) => {
-          const val = panel.result?.values[activeVarIdx]
-          const color = branchColor(panel.id)
-          const mergeEvent = mergedEvents.find(
-            (event) =>
-              event.kind === 'merge' &&
-              (event.branchId === panel.id ||
-                event.mergedWithAnchorId === panel.id),
-          )
-          return (
-            <div
-              key={panel.id}
-              className={`merged-current-card${!panel.result ? ' is-vanished' : ''}`}
-            >
-              <span className="merged-card-label">
-                <i style={{ background: color }} />
-                {panel.label}
-              </span>
-              <strong>
-                {panel.result
-                  ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
-                  : mergeEvent
-                    ? `${branchEventLabel(mergeEvent)} · 현재 추적 불가`
-                    : '현재 분기 추적 불가'}
-              </strong>
-            </div>
-          )
-        })}
-      </div>
-
+      <details className="merged-current-wrap" open={!large}>
+        <summary>각 해 결과·선택</summary>
+        <div className="merged-current-grid">
+          {includedPanels.map((panel, idx) => {
+            const val = panel.result?.values[activeVarIdx]
+            const color = branchColor(panel.id)
+            const mergeEvent = mergedEvents.find(
+              (event) =>
+                event.kind === 'merge' &&
+                (event.branchId === panel.id ||
+                  event.mergedWithAnchorId === panel.id),
+            )
+            return (
+              <div
+                key={panel.id}
+                className={`merged-current-card${!panel.result ? ' is-vanished' : ''}`}
+                data-selected={selectedAnchorId === panel.id}
+              >
+                <span className="merged-card-label">
+                  <i style={{ background: color }} />
+                  {panel.label}
+                </span>
+                <strong>
+                  {panel.result
+                    ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
+                    : mergeEvent
+                      ? `${branchEventLabel(mergeEvent)} · 현재 추적 불가`
+                      : '현재 분기 추적 불가'}
+                </strong>
+                {onSelectAnchor && (
+                  <button
+                    type="button"
+                    aria-pressed={selectedAnchorId === panel.id}
+                    onClick={() => onSelectAnchor(includedAnchors[idx])}
+                  >
+                    해 선택
+                  </button>
+                )}
+                {onReportAnchor && (
+                  <button
+                    type="button"
+                    onClick={() => onReportAnchor(includedAnchors[idx])}
+                  >
+                    리포트
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </details>
       {sweepParam ? (
         <div className="simulation-panel-chart">
           <SolutionChart
             expanded={expanded}
+            large={large}
             modelKind="nonlinear"
             points={includedPanels[0]?.sweep ?? []}
             selectionPoints={includedPanels[0]?.dataset ?? []}
@@ -271,6 +301,9 @@ export default function MergedSimulationSetView({
         </p>
       )}
 
+      {large && (
+        <p className="overview-limit">설정 범위에서 발견한 가지 · 최대 6개</p>
+      )}
       <footer className="simulation-panel-actions">
         <button
           type="button"

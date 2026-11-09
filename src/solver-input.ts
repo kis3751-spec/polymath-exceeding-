@@ -4,6 +4,9 @@ import type { Project } from './models'
 export function createSolverInput(project: Project) {
   const sweep = project.parameters.find((p) => p.name === project.sweepName)
   return {
+    defaultOverview:
+      project.mode === 'nonlinear' &&
+      (project.nonlinearSearch ?? 'auto') === 'auto',
     source: project.source,
     conditionNorm: project.conditionNorm ?? 'infinity',
     mode: project.mode ?? 'linear',

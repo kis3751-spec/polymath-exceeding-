@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `b255fd93666ae85d4096b2508ecb23406d3452c528f68fb1a7a33fff7e4accb2`
+소스 묶음 SHA-256: `41b255acb0c455350c5a3a38e058af779905d142e770d9b3b13259ac4c5899f5`
 
 ## 다른 코드 묶음
 
@@ -1902,7 +1902,7 @@ export default function Guide({
 
 ## src/components/SolutionChart.tsx
 
-원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,145줄 · SHA-256: `1027c719ffb79bcaf47a1f825a99774cd81d952edaaca9d273166baf80584a30`
+원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,154줄 · SHA-256: `e043a05084d6bc3addc28935e5026b8600a1ed9c1cccf853fcdf8141e1e5f5e5`
 
 ```tsx
 import { tangencyOrderLabel } from '../engine/tangency'
@@ -1946,6 +1946,7 @@ export type MultiBranchSeries = {
 export interface SolutionChartProps {
   modelKind?: 'linear' | 'nonlinear'
   expanded?: boolean
+  large?: boolean
   points: CurvePoint[]
   selectionPoints?: CurvePoint[]
   variables: string[]
@@ -2000,6 +2001,7 @@ function axisNumber(value: number): string {
 export default function SolutionChart({
   modelKind = 'linear',
   expanded = false,
+  large = false,
   points,
   selectionPoints,
   variables,
@@ -2037,7 +2039,14 @@ export default function SolutionChart({
   const isMultiBranch = Boolean(
     multiBranchSeries && multiBranchSeries.length > 0,
   )
-  const height = expanded ? Math.min(520, Math.max(420, width * 0.48)) : HEIGHT
+  const height = large
+    ? Math.max(
+        420,
+        Math.min(880, (globalThis.innerHeight || 900) - (expanded ? 240 : 360)),
+      )
+    : expanded
+      ? Math.min(520, Math.max(420, width * 0.48))
+      : HEIGHT
   const innerWidth = width - PLOT.left - PLOT.right
   const innerHeight = height - PLOT.top - PLOT.bottom
 
@@ -2075,7 +2084,7 @@ export default function SolutionChart({
       if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
         setWidth(
           Math.min(
-            expanded ? EXPANDED_MAX_WIDTH : MAX_WIDTH,
+            large ? 2400 : expanded ? EXPANDED_MAX_WIDTH : MAX_WIDTH,
             Math.max(MIN_WIDTH, Math.round(measuredWidth)),
           ),
         )
@@ -2088,7 +2097,7 @@ export default function SolutionChart({
     })
     observer.observe(container)
     return () => observer.disconnect()
-  }, [expanded])
+  }, [expanded, large])
 
   const visible = variables
     .map((name, index) => ({ name, index }))
@@ -3710,7 +3719,7 @@ export default function SimulationPanelView({
 
 ## src/components/MergedSimulationSetView.tsx
 
-원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 293줄 · SHA-256: `d80439076df429245478a46d2e97427b1c9720daa3bc3fe7ae3f6da0c4ab3240`
+원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 326줄 · SHA-256: `abdc68d880405c619cfe1ad34dcbc6491fe98bac57b756add9c06dab84a189ce`
 
 ```tsx
 import { useEffect, useState } from 'react'
@@ -3735,6 +3744,10 @@ export type MergedSimulationSetViewProps = {
   panels: SimulationPanel[]
   parameters: Parameter[]
   sweepName: string
+  selectedAnchorId?: string
+  large?: boolean
+  onSelectAnchor?: (anchor: SimulationAnchor) => void
+  onReportAnchor?: (anchor: SimulationAnchor) => void
   expanded: boolean
   pending: boolean
   onRemoveSet: () => void
@@ -3755,6 +3768,10 @@ export default function MergedSimulationSetView({
   parameters,
   sweepName,
   expanded,
+  large = false,
+  selectedAnchorId,
+  onSelectAnchor,
+  onReportAnchor,
   pending,
   onRemoveSet,
   onToggleAnchorInSet,
@@ -3851,6 +3868,7 @@ export default function MergedSimulationSetView({
   return (
     <section
       className={`simulation-panel merged-simulation-panel${expanded ? ' is-expanded' : ''}`}
+      aria-busy={pending}
       aria-label={`${mergedSet.name} 병합 시뮬레이션`}
     >
       <header className="simulation-panel-header">
@@ -3922,41 +3940,62 @@ export default function MergedSimulationSetView({
       )}
 
       {/* 현재 파라미터에서 각 해의 상태 요약 (생존 vs 소멸/병합) */}
-      <div className="merged-current-grid">
-        {includedPanels.map((panel, idx) => {
-          const val = panel.result?.values[activeVarIdx]
-          const color = branchColor(panel.id)
-          const mergeEvent = mergedEvents.find(
-            (event) =>
-              event.kind === 'merge' &&
-              (event.branchId === panel.id ||
-                event.mergedWithAnchorId === panel.id),
-          )
-          return (
-            <div
-              key={panel.id}
-              className={`merged-current-card${!panel.result ? ' is-vanished' : ''}`}
-            >
-              <span className="merged-card-label">
-                <i style={{ background: color }} />
-                {panel.label}
-              </span>
-              <strong>
-                {panel.result
-                  ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
-                  : mergeEvent
-                    ? `${branchEventLabel(mergeEvent)} · 현재 추적 불가`
-                    : '현재 분기 추적 불가'}
-              </strong>
-            </div>
-          )
-        })}
-      </div>
-
+      <details className="merged-current-wrap" open={!large}>
+        <summary>각 해 결과·선택</summary>
+        <div className="merged-current-grid">
+          {includedPanels.map((panel, idx) => {
+            const val = panel.result?.values[activeVarIdx]
+            const color = branchColor(panel.id)
+            const mergeEvent = mergedEvents.find(
+              (event) =>
+                event.kind === 'merge' &&
+                (event.branchId === panel.id ||
+                  event.mergedWithAnchorId === panel.id),
+            )
+            return (
+              <div
+                key={panel.id}
+                className={`merged-current-card${!panel.result ? ' is-vanished' : ''}`}
+                data-selected={selectedAnchorId === panel.id}
+              >
+                <span className="merged-card-label">
+                  <i style={{ background: color }} />
+                  {panel.label}
+                </span>
+                <strong>
+                  {panel.result
+                    ? `${variables[activeVarIdx]} = ${formatNumber(val)}`
+                    : mergeEvent
+                      ? `${branchEventLabel(mergeEvent)} · 현재 추적 불가`
+                      : '현재 분기 추적 불가'}
+                </strong>
+                {onSelectAnchor && (
+                  <button
+                    type="button"
+                    aria-pressed={selectedAnchorId === panel.id}
+                    onClick={() => onSelectAnchor(includedAnchors[idx])}
+                  >
+                    해 선택
+                  </button>
+                )}
+                {onReportAnchor && (
+                  <button
+                    type="button"
+                    onClick={() => onReportAnchor(includedAnchors[idx])}
+                  >
+                    리포트
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </details>
       {sweepParam ? (
         <div className="simulation-panel-chart">
           <SolutionChart
             expanded={expanded}
+            large={large}
             modelKind="nonlinear"
             points={includedPanels[0]?.sweep ?? []}
             selectionPoints={includedPanels[0]?.dataset ?? []}
@@ -3986,6 +4025,9 @@ export default function MergedSimulationSetView({
         </p>
       )}
 
+      {large && (
+        <p className="overview-limit">설정 범위에서 발견한 가지 · 최대 6개</p>
+      )}
       <footer className="simulation-panel-actions">
         <button
           type="button"
@@ -8633,7 +8675,7 @@ h2 {
 
 ## src/workspace-screens.css
 
-원본: [src/workspace-screens.css](../../src/workspace-screens.css) · 292줄 · SHA-256: `f14e5e6d45b2cbcf3e10803aa2b7a765d6dcc45fa59845d402366eb3cbef3987`
+원본: [src/workspace-screens.css](../../src/workspace-screens.css) · 410줄 · SHA-256: `15d85306676189a9ac2e1a43a820e936a3e14edaee71f754fd8a0f13fbb6fcb3`
 
 ```css
 [hidden] {
@@ -8927,5 +8969,123 @@ h2 {
   .sectioned-workspace .solutions-section .solution-list {
     margin-inline: 16px;
   }
+}
+
+/* Simulation is a working canvas: compact tools above a wide default overview. */
+.simulation-focused .topbar {
+  display: none;
+}
+.simulation-focused .breadcrumbs,
+.simulation-focused .page-heading > div:first-child,
+.simulation-focused .example-walkthrough,
+.simulation-focused .insight-card,
+.simulation-focused .workspace-footer {
+  display: none;
+}
+.simulation-focused .workspace-nav-container {
+  padding-top: 6px;
+}
+.simulation-focused .workspace-content {
+  max-width: none;
+  padding: 0 16px 16px;
+}
+.simulation-focused .page-heading {
+  margin: 0;
+  padding: 5px 0;
+  min-height: 0;
+  justify-content: flex-end;
+}
+.simulation-focused .heading-actions button {
+  padding: 7px 11px;
+  font-size: 11px;
+}
+.simulation-focused .results-heading {
+  padding: 10px 16px;
+}
+.simulation-focused .results-parameters {
+  padding: 10px 16px;
+}
+.simulation-focused .results-parameters-heading {
+  display: none;
+}
+.simulation-focused .merge-actions {
+  padding: 7px 16px;
+}
+.simulation-focused .default-overview {
+  padding: 8px;
+}
+.default-overview .simulation-panel {
+  padding: 12px 16px;
+}
+.default-overview .simulation-panel-anchor {
+  display: none;
+}
+.default-overview .merged-set-Chips {
+  padding: 8px 0;
+}
+.default-overview .merged-current-wrap {
+  margin: 5px 0;
+  font-size: 12px;
+  color: #587666;
+}
+.default-overview .merged-current-wrap summary {
+  cursor: pointer;
+}
+.default-overview .merged-current-grid {
+  padding: 10px 0;
+}
+.default-overview .merged-current-card button {
+  font-size: 11px;
+  color: #286b5b;
+}
+.default-overview .sc-stage,
+.default-overview .solution-chart {
+  max-width: none;
+}
+.default-overview .simulation-panel-actions {
+  margin-top: 6px;
+}
+@media (max-width: 600px) {
+  .simulation-focused .workspace-content {
+    padding: 0 6px 10px;
+  }
+  .default-overview .simulation-panel {
+    padding: 10px;
+  }
+}
+.simulation-focused .page-heading {
+  display: none;
+}
+.simulation-focused .workspace-nav-container {
+  max-width: none;
+  padding: 4px 16px 0;
+}
+.simulation-focused .workspace-navigation {
+  padding-bottom: 5px;
+}
+.simulation-focused .results-parameters {
+  padding: 6px 16px;
+}
+.simulation-focused .result-parameter .parameter-slider {
+  margin-top: 5px;
+}
+.simulation-focused .merge-actions {
+  padding-block: 4px;
+}
+.simulation-focused .solutions-title {
+  padding-block: 6px;
+}
+.default-overview .sc-legend-row {
+  min-height: 25px;
+  padding-bottom: 2px;
+}
+.default-overview .overview-limit {
+  color: #84927b;
+  font-size: 10px;
+  margin-top: 6px;
+}
+.default-overview .merged-current-card[data-selected='true'] {
+  border-color: #3d8371;
+  background: #e8f3ee;
 }
 ```

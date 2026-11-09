@@ -1,3 +1,4 @@
+import { createDefaultOverview } from './default-overview'
 import type { VariableBounds } from './search-analysis'
 import { sameComputedRoot } from './root-comparison'
 /// <reference lib="webworker" />
@@ -28,6 +29,7 @@ type Request = {
   selectedAnchor?: SimulationAnchor
   // Interactions may display current anchored values first while the full
   // discovery list is refreshed after a short quiet period.
+  defaultOverview?: boolean
   deferDiscovery?: boolean
 }
 type QueuedRequest = {
@@ -39,6 +41,7 @@ const ready = createSolver()
 const nonlinearReady = createNonlinearSolver()
 let automaticReady: ReturnType<typeof createAutomaticSolver> | undefined
 const searches = new Map<string, AutomaticSearchResult>()
+let computeOverview: ReturnType<typeof createDefaultOverview> | undefined
 let computePanels: ReturnType<typeof createSimulationPanelComputer> | undefined
 let pendingRequest: QueuedRequest | undefined
 let processing = false
@@ -169,6 +172,14 @@ async function handleRequest(work: QueuedRequest) {
           [selectedAnchor],
           conditionNorm,
         )[0]
+        const overview =
+          request.defaultOverview && computeOverview
+            ? computeOverview(source, parameters, sweep, {
+                conditionNorm,
+                searchBounds,
+                variableBounds,
+              })
+            : undefined
         const result = selectedSimulation.result
         if (result) {
           const payload: SolvePayload = {
@@ -183,12 +194,19 @@ async function handleRequest(work: QueuedRequest) {
               : {}),
             sweepName: selectedSimulation.sweepName,
           }
-          self.postMessage({ id, ok: true, discoveryPending: true, payload })
+          self.postMessage({
+            id,
+            ok: true,
+            discoveryPending: true,
+            payload,
+            overview,
+          })
         } else {
           self.postMessage({
             id,
             ok: false,
             discoveryPending: true,
+            overview,
             error:
               selectedSimulation.error ||
               '선택한 해의 현재값을 계산하지 못했습니다.',
@@ -212,6 +230,15 @@ async function handleRequest(work: QueuedRequest) {
         if (searches.size >= 8) searches.delete(searches.keys().next().value!)
         searches.set(key, found)
       }
+      const overview = request.defaultOverview
+        ? (computeOverview ??= createDefaultOverview(search))(
+            source,
+            parameters,
+            sweep,
+            { conditionNorm, searchBounds, variableBounds },
+            found,
+          )
+        : undefined
       lastDiscoveryContext = context
       const simulations = simulationAnchors
         ? computePanels(
@@ -244,6 +271,7 @@ async function handleRequest(work: QueuedRequest) {
                 ? '구간 검증에서 유일근 구간을 분리했지만 표시할 근의 수치 보정에 실패했습니다. 구간 검증 내역을 확인하세요.'
                 : '자동 탐색 범위에서 실수 해를 찾지 못했습니다. 수식을 확인하거나 고급 설정에서 탐색 범위를 조정해 주세요. 일반적인 수치 탐색은 모든 실수 해의 존재 여부를 판정하지 못합니다.',
           search: found.search,
+          overview,
           ...(simulations ? { simulations } : {}),
           ...(selectedSimulation ? { selectedSimulation } : {}),
         })
@@ -299,6 +327,7 @@ async function handleRequest(work: QueuedRequest) {
         ok: true,
         discoveryPending: false,
         payload,
+        overview,
         ...(adoptedAnchor ? { adoptedAnchor } : {}),
       })
       return
