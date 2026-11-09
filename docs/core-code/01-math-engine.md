@@ -14,13 +14,14 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `3b832e38b0d9657c92e7310e4397973385ddae15e809a987bcb5cf908f6c5cca`
+소스 묶음 SHA-256: `21abb803eff59c5f8f85ef4b8dbad9405a8e6fad184a3bc031d22800437b2393`
 
 ## 다른 코드 묶음
 
 - [01 · 수식 파싱과 수치해석 엔진](./01-math-engine.md) · 현재 문서
 - [02 · 상태 관리, 분기 추적과 비동기 계산](./02-state-and-simulation.md)
 - [03 · 그래프, 마우스 조작과 화면 표현](./03-chart-and-interaction.md)
+- [04 · 미분방정식·회귀·적분·최적화](./04-scientific-modules.md)
 
 ## 포함한 원본
 
@@ -1828,7 +1829,7 @@ export function periodicWindow(
 
 ## src/engine/interval-arithmetic.ts
 
-원본: [src/engine/interval-arithmetic.ts](../../src/engine/interval-arithmetic.ts) · 500줄 · SHA-256: `0313735dd342e97d510e6580b2ec4d1c51b4cfc85db34e9234e0b7da4971008c`
+원본: [src/engine/interval-arithmetic.ts](../../src/engine/interval-arithmetic.ts) · 1,073줄 · SHA-256: `70b539ad904275ecdd87d9fb94f65d2255505a02d98677f11bc9f4fd78fa7d92`
 
 ```typescript
 import type { NonlinearNode as Node } from './nonlinear-parser'
@@ -1876,11 +1877,11 @@ export function mul(a: Interval, b: Interval): Interval {
   if (p.some(Number.isNaN)) return WHOLE
   let lo = nextDown(Math.min(...p))
   let hi = nextUp(Math.max(...p))
-  // Intersect with the known sign, retaining all real values between zero
-  // and MIN_VALUE when a positive or negative product underflows.
-  if ((a.lo >= 0 && b.lo >= 0) || (a.hi <= 0 && b.hi <= 0)) lo = Math.max(0, lo)
-  else if ((a.lo >= 0 && b.hi <= 0) || (a.hi <= 0 && b.lo >= 0))
+  if ((a.lo >= 0 && b.lo >= 0) || (a.hi <= 0 && b.hi <= 0)) {
+    lo = Math.max(0, lo)
+  } else if ((a.lo >= 0 && b.hi <= 0) || (a.hi <= 0 && b.lo >= 0)) {
     hi = Math.min(0, hi)
+  }
   return bounded(lo, hi)
 }
 export function div(a: Interval, b: Interval): Interval {
@@ -1921,6 +1922,377 @@ export function integerPower(a: Interval, n: number): Interval {
 }
 const maxAbs = (a: Interval) => Math.max(Math.abs(a.lo), Math.abs(a.hi))
 
+export type ExactDyadic = { m: bigint; e: number }
+
+export function toExactDyadic(x: number): ExactDyadic {
+  if (!Number.isFinite(x))
+    throw new Error('Exact dyadic arithmetic requires finite inputs.')
+  if (x === 0) return { m: 0n, e: 0 }
+  bits.setFloat64(0, x)
+  const raw = bits.getBigUint64(0)
+  const sign = raw >> 63n ? -1n : 1n
+  const exp = Number((raw >> 52n) & 0x7ffn)
+  const frac = raw & ((1n << 52n) - 1n)
+  const sig = exp === 0 ? frac : frac | (1n << 52n)
+  const e = (exp === 0 ? 1 : exp) - 1075
+  return { m: sign * sig, e }
+}
+
+function guardDyadic(d: ExactDyadic): ExactDyadic {
+  if (
+    !Number.isSafeInteger(d.e) ||
+    Math.abs(d.e) > 131072 ||
+    d.m.toString(2).length > 32768
+  )
+    throw new Error('Exact polynomial arithmetic budget exceeded.')
+  return d
+}
+export function addExactDyadic(a: ExactDyadic, b: ExactDyadic): ExactDyadic {
+  guardDyadic(a)
+  guardDyadic(b)
+  if (Math.abs(a.e - b.e) > 131072)
+    throw new Error('Exact dyadic alignment budget exceeded.')
+  if (a.m === 0n) return b
+  if (b.m === 0n) return a
+  if (a.e === b.e) {
+    const m = a.m + b.m
+    return m === 0n ? { m: 0n, e: 0 } : { m, e: a.e }
+  }
+  if (a.e > b.e) {
+    const shift = a.e - b.e
+    const m = (a.m << BigInt(shift)) + b.m
+    return m === 0n ? { m: 0n, e: 0 } : { m, e: b.e }
+  }
+  const shift = b.e - a.e
+  const m = a.m + (b.m << BigInt(shift))
+  return m === 0n ? { m: 0n, e: 0 } : { m, e: a.e }
+}
+
+export function mulExactDyadic(a: ExactDyadic, b: ExactDyadic): ExactDyadic {
+  if (a.m === 0n || b.m === 0n) return { m: 0n, e: 0 }
+  return guardDyadic({ m: a.m * b.m, e: a.e + b.e })
+}
+
+export function compareExactDyadic(a: ExactDyadic, b: ExactDyadic): number {
+  const diff = addExactDyadic(a, { m: -b.m, e: b.e })
+  return diff.m < 0n ? -1 : diff.m > 0n ? 1 : 0
+}
+
+/** Convert an exact dyadic rational m * 2^e to its tightest directed-rounding Float64 interval. */
+export function dyadicToInterval(d: ExactDyadic): Interval {
+  if (d.m === 0n) return ZERO
+  const sign = d.m < 0n ? -1 : 1
+  const absM = d.m < 0n ? -d.m : d.m
+  const bitLen = absM.toString(2).length
+  const topExp = d.e + bitLen - 1
+
+  if (topExp < -1074) {
+    return sign > 0
+      ? { lo: 0, hi: Number.MIN_VALUE }
+      : { lo: -Number.MIN_VALUE, hi: 0 }
+  }
+  if (topExp > 1023) {
+    return sign > 0
+      ? { lo: Number.MAX_VALUE, hi: Infinity }
+      : { lo: -Infinity, hi: -Number.MAX_VALUE }
+  }
+
+  const lsbExp = Math.max(-1074, topExp - 52)
+  const shift = d.e - lsbExp
+  let q: bigint
+  let hasRemainder: boolean
+  if (shift >= 0) {
+    q = absM << BigInt(shift)
+    hasRemainder = false
+  } else {
+    const rShift = BigInt(-shift)
+    q = absM >> rShift
+    hasRemainder = (absM & ((1n << rShift) - 1n)) !== 0n
+  }
+
+  let rawMag: bigint
+  if (topExp < -1022) {
+    rawMag = q
+  } else {
+    const biasedExp = BigInt(topExp + 1023)
+    rawMag = (biasedExp << 52n) | (q & ((1n << 52n) - 1n))
+  }
+  bits.setBigUint64(0, rawMag)
+  const mag = bits.getFloat64(0)
+
+  if (!hasRemainder) {
+    const exact = sign > 0 ? mag : -mag
+    return { lo: exact, hi: exact }
+  }
+  return sign > 0
+    ? { lo: mag, hi: nextUp(mag) }
+    : { lo: nextDown(-mag), hi: -mag }
+}
+
+const ZERO_DYADIC: ExactDyadic = { m: 0n, e: 0 }
+const ONE_DYADIC: ExactDyadic = { m: 1n, e: 0 }
+
+function trimDyadicPoly(p: ExactDyadic[]): ExactDyadic[] {
+  const out = [...p]
+  while (out.length > 1 && out.at(-1)!.m === 0n) out.pop()
+  return out.length ? out : [ZERO_DYADIC]
+}
+
+function addDyadicPoly(
+  a: readonly ExactDyadic[],
+  b: readonly ExactDyadic[],
+  subOp = false,
+): ExactDyadic[] {
+  const n = Math.max(a.length, b.length)
+  const out: ExactDyadic[] = []
+  for (let i = 0; i < n; i++) {
+    const ai = a[i] ?? ZERO_DYADIC
+    const bi = b[i] ?? ZERO_DYADIC
+    const rhs = subOp ? { m: -bi.m, e: bi.e } : bi
+    out.push(addExactDyadic(ai, rhs))
+  }
+  return trimDyadicPoly(out)
+}
+
+function mulDyadicPoly(
+  a: readonly ExactDyadic[],
+  b: readonly ExactDyadic[],
+): ExactDyadic[] | null {
+  if ((a.length === 1 && a[0].m === 0n) || (b.length === 1 && b[0].m === 0n)) {
+    return [ZERO_DYADIC]
+  }
+  const deg = a.length - 1 + (b.length - 1)
+  if (deg > 64) return null
+  const out: ExactDyadic[] = Array.from({ length: deg + 1 }, () => ZERO_DYADIC)
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].m === 0n) continue
+    for (let j = 0; j < b.length; j++) {
+      if (b[j].m === 0n) continue
+      out[i + j] = addExactDyadic(out[i + j], mulExactDyadic(a[i], b[j]))
+    }
+  }
+  return trimDyadicPoly(out)
+}
+
+/** Extract exact dyadic polynomial coefficients directly from the AST without Float64
+ * expansion rounding (preserving terms like `(x - 1)^4 + 1e-20` exactly in BigInt). */
+export function exactDyadicPolynomialCoefficients(
+  node: Node,
+  variable: string,
+  constants: Record<string, number>,
+  helpers: Map<string, Node> = new Map(),
+): ExactDyadic[] | null {
+  const active = new Set<string>()
+  const memo = new Map<string, ExactDyadic[] | null>()
+  const visit = (n: Node, depth = 0): ExactDyadic[] | null => {
+    if (depth > 128) return null
+    if (n.kind === 'number') {
+      if (!Number.isFinite(n.value)) return null
+      return [toExactDyadic(n.value)]
+    }
+    if (n.kind === 'name') {
+      if (n.name === variable) return [ZERO_DYADIC, ONE_DYADIC]
+      if (Object.hasOwn(constants, n.name)) {
+        const v = constants[n.name]
+        return Number.isFinite(v) ? [toExactDyadic(v)] : null
+      }
+      if (n.name === 'pi') return [toExactDyadic(Math.PI)]
+      if (n.name === 'e') return [toExactDyadic(Math.E)]
+      if (memo.has(n.name)) return memo.get(n.name)!
+      const h = helpers.get(n.name)
+      if (!h || active.has(n.name)) return null
+      active.add(n.name)
+      const r = visit(h, depth + 1)
+      active.delete(n.name)
+      memo.set(n.name, r)
+      return r
+    }
+    if (n.kind === 'unary') {
+      const c = visit(n.child, depth + 1)
+      if (!c) return null
+      return n.sign === '+'
+        ? c
+        : c.map((d) => (d.m === 0n ? ZERO_DYADIC : { m: -d.m, e: d.e }))
+    }
+    if (n.kind === 'binary' || n.name === 'pow') {
+      const op = n.kind === 'binary' ? n.operator : '^'
+      const lNode = n.kind === 'binary' ? n.left : n.args[0]
+      const rNode = n.kind === 'binary' ? n.right : n.args[1]
+      const l = visit(lNode, depth + 1)
+      const r = visit(rNode, depth + 1)
+      if (!l || !r) return null
+      if (op === '+') return addDyadicPoly(l, r, false)
+      if (op === '-') return addDyadicPoly(l, r, true)
+      if (op === '*') return mulDyadicPoly(l, r)
+      if (op === '/') {
+        if (r.length !== 1 || r[0].m === 0n) return null
+        let absDiv = r[0].m < 0n ? -r[0].m : r[0].m
+        let tz = 0
+        while ((absDiv & 1n) === 0n) {
+          absDiv >>= 1n
+          tz++
+        }
+        if (absDiv !== 1n) return null
+        const signDiv = r[0].m < 0n ? -1n : 1n
+        const shiftExp = r[0].e + tz
+        return l.map((d) =>
+          d.m === 0n ? ZERO_DYADIC : { m: signDiv * d.m, e: d.e - shiftExp },
+        )
+      }
+      if (op === '^') {
+        if (r.length !== 1) return null
+        const expIv = dyadicToInterval(r[0])
+        if (
+          expIv.lo !== expIv.hi ||
+          !Number.isInteger(expIv.lo) ||
+          expIv.lo < 0 ||
+          expIv.lo > 64
+        )
+          return null
+        let k = expIv.lo
+        if (k === 0) return [ONE_DYADIC]
+        if ((l.length - 1) * k > 64) return null
+        let acc: ExactDyadic[] = [ONE_DYADIC]
+        let base: ExactDyadic[] = l
+        while (k > 0) {
+          if (k % 2 === 1) {
+            const next = mulDyadicPoly(acc, base)
+            if (!next) return null
+            acc = next
+          }
+          k = Math.floor(k / 2)
+          if (k > 0) {
+            const nextBase = mulDyadicPoly(base, base)
+            if (!nextBase) return null
+            base = nextBase
+          }
+        }
+        return acc
+      }
+      return null
+    }
+    return null
+  }
+  try {
+    return visit(node)
+  } catch {
+    return null
+  }
+}
+
+export function differentiateExactDyadicPoly(
+  coeffs: readonly ExactDyadic[],
+): ExactDyadic[] {
+  if (coeffs.length <= 1) return [ZERO_DYADIC]
+  const out: ExactDyadic[] = []
+  for (let i = 1; i < coeffs.length; i++) {
+    out.push(
+      coeffs[i].m === 0n
+        ? ZERO_DYADIC
+        : { m: coeffs[i].m * BigInt(i), e: coeffs[i].e },
+    )
+  }
+  return trimDyadicPoly(out)
+}
+
+export function evalExactDyadicPoly(
+  coeffs: readonly ExactDyadic[],
+  x: number,
+): ExactDyadic {
+  const dx = toExactDyadic(x)
+  let acc = ZERO_DYADIC
+  for (let i = coeffs.length - 1; i >= 0; i--) {
+    acc = addExactDyadic(mulExactDyadic(acc, dx), coeffs[i])
+  }
+  return acc
+}
+
+export function exactPolynomialTaylorFromDyadic(
+  exactCoeffs: readonly ExactDyadic[],
+  x0: number,
+): Interval[] {
+  const work = exactCoeffs.map((d) => ({ m: d.m, e: d.e }))
+  const dx0 = toExactDyadic(x0)
+  const n = work.length
+  for (let k = 0; k < n; k++) {
+    for (let i = n - 2; i >= k; i--) {
+      work[i] = addExactDyadic(work[i], mulExactDyadic(work[i + 1], dx0))
+    }
+  }
+  return work.map(dyadicToInterval)
+}
+
+/** Compute the exact Taylor coefficients P^(k)(x0)/k! of a Float64-coefficient polynomial at x0. */
+export function exactPolynomialTaylorIntervals(
+  coefficients: readonly number[],
+  x0: number,
+): Interval[] {
+  return exactPolynomialTaylorFromDyadic(coefficients.map(toExactDyadic), x0)
+}
+
+export function evaluateExactDyadicPolynomialCenteredJet(
+  exactCoeffs: readonly ExactDyadic[],
+  cell: Interval,
+  criticalPoints: readonly number[] = [],
+): IntervalJet {
+  const evalAtCenter = (x0: number): { val: Interval; der: Interval } => {
+    const t = exactPolynomialTaylorFromDyadic(exactCoeffs, x0)
+    if (cell.lo === x0 && cell.hi === x0) {
+      return { val: t[0] ?? ZERO, der: t[1] ?? ZERO }
+    }
+    const nx0 = toExactDyadic(-x0)
+    const dLo = dyadicToInterval(addExactDyadic(toExactDyadic(cell.lo), nx0))
+    const dHi = dyadicToInterval(addExactDyadic(toExactDyadic(cell.hi), nx0))
+    const dx: Interval = { lo: dLo.lo, hi: dHi.hi }
+    let val = t[0] ?? ZERO
+    let der = ZERO
+    for (let k = 1; k < t.length; k++) {
+      const powK = integerPower(dx, k)
+      val = add(val, mul(t[k], powK))
+      const powKm1 = k === 1 ? ONE : integerPower(dx, k - 1)
+      der = add(der, mul(mul(point(k), t[k]), powKm1))
+    }
+    return { val, der }
+  }
+
+  const mid = cell.lo / 2 + cell.hi / 2
+  const center = Number.isFinite(mid) ? mid : 0
+  let res = evalAtCenter(center)
+  if (cell.lo < cell.hi) {
+    for (const cp of criticalPoints) {
+      if (
+        Number.isFinite(cp) &&
+        Math.abs(cp - center) <= Math.max(1e-2, 4 * (cell.hi - cell.lo))
+      ) {
+        const alt = evalAtCenter(cp)
+        res = {
+          val: {
+            lo: Math.max(res.val.lo, alt.val.lo),
+            hi: Math.min(res.val.hi, alt.val.hi),
+          },
+          der: {
+            lo: Math.max(res.der.lo, alt.der.lo),
+            hi: Math.min(res.der.hi, alt.der.hi),
+          },
+        }
+      }
+    }
+  }
+  return { ...res, domain: 'all' }
+}
+
+export function evaluatePolynomialCenteredIntervalJet(
+  coefficients: readonly number[],
+  cell: Interval,
+  criticalPoints: readonly number[] = [],
+): IntervalJet {
+  return evaluateExactDyadicPolynomialCenteredJet(
+    coefficients.map(toExactDyadic),
+    cell,
+    criticalPoints,
+  )
+}
+
 // exp(z) = sum(z^k/k!) + R, |z|<=1/8. After k=20,
 // |R| <= 2*|z^21/21!| since every subsequent term ratio is <1/2.
 function expSmall(z: Interval): Interval {
@@ -1954,8 +2326,7 @@ const expRange = (a: Interval): Interval => ({
   hi: expPoint(a.hi).hi,
 })
 
-// ln(m) = 2*atanh((m-1)/(m+1)), 1<=m<=2. The remaining
-// positive series is bounded by its first term / (1-t^2).
+// ln(m) = 2*atanh((m-1)/(m+1)), 1<=m<=2.
 function logMantissa(m: number): Interval {
   if (m === 1) return ZERO
   const t = div(sub(point(m), ONE), add(point(m), ONE)),
@@ -1981,7 +2352,6 @@ function logPoint(x: number): Interval {
   }
   bits.setFloat64(0, normalized)
   const exponent = Number((bits.getBigUint64(0) >> 52n) & 2047n) - 1023 + shift
-  // Construct the exact binary power instead of relying on Math.pow.
   bits.setBigUint64(
     0,
     exponent >= -1022
@@ -1997,12 +2367,11 @@ const logRange = (a: Interval): Interval => ({
 })
 const LN10 = logPoint(10)
 
-// A known rational enclosure of mathematical pi (both endpoints are dyadic).
 const PI: Interval = { lo: Math.PI, hi: nextUp(Math.PI) }
 const HALF_PI = div(PI, point(2))
 function trigPoint(x: number, cosine: boolean): Interval {
   if (x === 0) return cosine ? ONE : ZERO
-  if (!Number.isFinite(x) || Math.abs(x) > 1e6) return { lo: -1, hi: 1 }
+  if (!Number.isFinite(x) || Math.abs(x) > 1e8) return { lo: -1, hi: 1 }
   const quadrant = Math.round(x / (Math.PI / 2))
   const y = sub(point(x), mul(point(quadrant), HALF_PI)),
     y2 = square(y)
@@ -2016,7 +2385,6 @@ function trigPoint(x: number, cosine: boolean): Interval {
       )
       sum = add(sum, term)
     }
-    // Taylor's theorem; all real derivatives of sin/cos have magnitude <=1.
     const degree = isCos ? 32 : 33
     let tail = ONE
     for (let k = 1; k <= degree; k++)
@@ -2033,7 +2401,7 @@ function trigRange(a: Interval, cosine: boolean): Interval {
   if (
     !Number.isFinite(a.lo) ||
     !Number.isFinite(a.hi) ||
-    maxAbs(a) > 1e6 ||
+    maxAbs(a) > 1e8 ||
     a.hi - a.lo >= 2 * PI.lo
   )
     return { lo: -1, hi: 1 }
@@ -2084,8 +2452,6 @@ const tanhRange = (a: Interval): Interval => ({
   hi: tanhPoint(a.hi).hi,
 })
 
-// Verify a sqrt seed with exact dyadic integer comparisons. We do not assume
-// an implementation-specific error bound for Math.sqrt.
 function dyadic(x: number): [bigint, number] {
   bits.setFloat64(0, x)
   const raw = bits.getBigUint64(0),
@@ -2119,6 +2485,77 @@ const sqrtRange = (a: Interval): Interval => ({
   lo: sqrtPoint(a.lo).lo,
   hi: sqrtPoint(a.hi).hi,
 })
+
+const SQRT_PI = sqrtRange(PI)
+const SQRT_2 = sqrtRange(point(2))
+const TWO_OVER_SQRT_PI = div(point(2), SQRT_PI)
+
+/** Rigorous interval enclosure of erf(x) using the purely positive series
+ * (2/sqrt(pi))*exp(-x^2)*sum_{n>=0} (2^n x^(2n+1) / (2n+1)!!) for |x| <= 5.5
+ * and alternating asymptotic erfc bracketing for |x| > 5.5. */
+export function erfPoint(x: number): Interval {
+  if (Number.isNaN(x)) return { lo: -1, hi: 1 }
+  if (x === 0) return ZERO
+  if (x < 0) return neg(erfPoint(-x))
+  if (!Number.isFinite(x)) return ONE
+  if (x > 5.5) {
+    const ix = point(x)
+    const x2 = square(ix)
+    const twoX2 = mul(point(2), x2)
+    const inv = div(ONE, twoX2)
+    const inv2 = square(inv)
+    const inv3 = mul(inv2, inv)
+    const inv4 = square(inv2)
+    const inv5 = mul(inv4, inv)
+    const sUpper = add(
+      sub(ONE, inv),
+      add(
+        mul(point(3), inv2),
+        sub(mul(point(105), inv4), mul(point(15), inv3)),
+      ),
+    )
+    const sLower = sub(sUpper, mul(point(945), inv5))
+    const pref = div(expRange(neg(x2)), mul(SQRT_PI, ix))
+    const erfcHi = mul(pref, sUpper).hi
+    const erfcLo = Math.max(0, mul(pref, sLower).lo)
+    return {
+      lo: Math.max(0, nextDown(1 - erfcHi)),
+      hi: Math.min(1, nextUp(1 - erfcLo)),
+    }
+  }
+  const ix = point(x)
+  const x2 = square(ix)
+  const twoX2 = mul(point(2), x2)
+  let term = ix
+  let sum = ix
+  for (let n = 1; n <= 96; n++) {
+    term = div(mul(term, twoX2), point(2 * n + 1))
+    sum = add(sum, term)
+  }
+  const nextTerm = div(mul(term, twoX2), point(195))
+  const tailHi = mul(point(2), nextTerm).hi
+  const totalSeries = add(sum, { lo: 0, hi: tailHi })
+  const res = mul(TWO_OVER_SQRT_PI, mul(expRange(neg(x2)), totalSeries))
+  return { lo: Math.max(0, res.lo), hi: Math.min(1, res.hi) }
+}
+
+export function erfRange(a: Interval): Interval {
+  if (Number.isNaN(a.lo) || Number.isNaN(a.hi)) return { lo: -1, hi: 1 }
+  return { lo: erfPoint(a.lo).lo, hi: erfPoint(a.hi).hi }
+}
+
+export function normalCdfRange(a: Interval): Interval {
+  if (Number.isNaN(a.lo) || Number.isNaN(a.hi)) return { lo: 0, hi: 1 }
+  if (a.lo === -Infinity && a.hi === -Infinity) return ZERO
+  if (a.lo === Infinity && a.hi === Infinity) return ONE
+  const scaled = div(a, SQRT_2)
+  const e = erfRange(scaled)
+  const c = mul(point(0.5), add(ONE, e))
+  return {
+    lo: a.lo === -Infinity ? 0 : Math.max(0, c.lo),
+    hi: a.hi === Infinity ? 1 : Math.min(1, c.hi),
+  }
+}
 
 const unknown = (issue: IntervalJet['issue'] = 'unsupported'): IntervalJet => ({
   val: WHOLE,
@@ -2161,10 +2598,10 @@ export function evaluateIntervalJet(
     if (n.kind === 'name') {
       if (n.name === variable) return { val: x, der: ONE, domain: 'all' }
       if (Object.hasOwn(constants, n.name)) {
-        const c = constants[n.name]
-        return typeof c === 'number'
-          ? constant(c)
-          : { val: c, der: ZERO, domain: 'all' }
+        const value = constants[n.name]
+        return typeof value === 'number'
+          ? constant(value)
+          : { val: value, der: ZERO, domain: 'all' }
       }
       if (n.name === 'pi') return constant(Math.PI)
       if (n.name === 'e') return constant(Math.E)
@@ -2210,15 +2647,6 @@ export function evaluateIntervalJet(
           der: div(sub(mul(l.der, r.val), mul(l.val, r.der)), square(r.val)),
         }
       }
-      if (op === '^' && r.val.lo === 0.5 && r.val.hi === 0.5 && isZero(r.der))
-        return visit(
-          {
-            kind: 'call',
-            name: 'sqrt',
-            args: [n.kind === 'binary' ? n.left : n.args[0]],
-          },
-          depth + 1,
-        )
       if (
         op === '^' &&
         r.val.lo === r.val.hi &&
@@ -2239,6 +2667,16 @@ export function evaluateIntervalJet(
             k === 0
               ? ZERO
               : mul(mul(point(k), integerPower(l.val, k - 1)), l.der),
+        }
+      }
+      if (op === '^' && r.val.lo === 0.5 && r.val.hi === 0.5 && isZero(r.der)) {
+        if (l.val.hi < 0) return { ...unknown('domain'), domain: 'none' }
+        if (l.val.lo < 0) return unknown('domain')
+        const v = sqrtRange(l.val)
+        return {
+          ...flags,
+          val: v,
+          der: div(l.der, mul(point(2), v)),
         }
       }
       return unknown()
@@ -2331,40 +2769,284 @@ export function evaluateIntervalJet(
   }
   return visit(node)
 }
+
+const numNode = (value: number): Node => ({ kind: 'number', value })
+const isZeroNode = (n: Node) => n.kind === 'number' && n.value === 0
+const isOneNode = (n: Node) => n.kind === 'number' && n.value === 1
+const binNode = (operator: string, left: Node, right: Node): Node => {
+  if (operator === '+') {
+    if (isZeroNode(left)) return right
+    if (isZeroNode(right)) return left
+  }
+  if (operator === '-') {
+    if (isZeroNode(right)) return left
+    if (isZeroNode(left)) return { kind: 'unary', sign: '-', child: right }
+  }
+  if (operator === '*') {
+    if (isZeroNode(left) || isZeroNode(right)) return numNode(0)
+    if (isOneNode(left)) return right
+    if (isOneNode(right)) return left
+  }
+  if (operator === '/' && isZeroNode(left)) return numNode(0)
+  return { kind: 'binary', operator, left, right }
+}
+
+export function differentiateNode(
+  node: Node,
+  variable: string,
+  helpers: Map<string, Node> = new Map(),
+  depth = 0,
+): Node | null {
+  if (depth > 64) return null
+  if (node.kind === 'number') return numNode(0)
+  if (node.kind === 'name') {
+    if (node.name === variable) return numNode(1)
+    if (helpers.has(node.name))
+      return differentiateNode(
+        helpers.get(node.name)!,
+        variable,
+        helpers,
+        depth + 1,
+      )
+    return numNode(0)
+  }
+  if (node.kind === 'unary') {
+    const dc = differentiateNode(node.child, variable, helpers, depth + 1)
+    if (!dc) return null
+    return node.sign === '+'
+      ? dc
+      : isZeroNode(dc)
+        ? numNode(0)
+        : { kind: 'unary', sign: '-', child: dc }
+  }
+  if (node.kind === 'binary' || node.name === 'pow') {
+    const op = node.kind === 'binary' ? node.operator : '^'
+    const l = node.kind === 'binary' ? nLeft(node) : node.args[0]
+    const r = node.kind === 'binary' ? nRight(node) : node.args[1]
+    const dl = differentiateNode(l, variable, helpers, depth + 1)
+    const dr = differentiateNode(r, variable, helpers, depth + 1)
+    if (!dl || !dr) return null
+    if (op === '+' || op === '-') return binNode(op, dl, dr)
+    if (op === '*')
+      return binNode('+', binNode('*', dl, r), binNode('*', l, dr))
+    if (op === '/')
+      return binNode(
+        '/',
+        binNode('-', binNode('*', dl, r), binNode('*', l, dr)),
+        binNode('^', r, numNode(2)),
+      )
+    if (op === '^' && r.kind === 'number' && Number.isInteger(r.value)) {
+      const k = r.value
+      if (k === 0) return numNode(0)
+      if (k === 1) return dl
+      return binNode(
+        '*',
+        binNode('*', numNode(k), binNode('^', l, numNode(k - 1))),
+        dl,
+      )
+    }
+    return null
+  }
+  if (node.args.length !== 1) return null
+  const u = node.args[0]
+  const du = differentiateNode(u, variable, helpers, depth + 1)
+  if (!du) return null
+  if (isZeroNode(du)) return numNode(0)
+  switch (node.name) {
+    case 'sin':
+      return binNode('*', { kind: 'call', name: 'cos', args: [u] }, du)
+    case 'cos':
+      return {
+        kind: 'unary',
+        sign: '-',
+        child: binNode('*', { kind: 'call', name: 'sin', args: [u] }, du),
+      }
+    case 'tan':
+      return binNode(
+        '/',
+        du,
+        binNode('^', { kind: 'call', name: 'cos', args: [u] }, numNode(2)),
+      )
+    case 'exp':
+      return binNode('*', { kind: 'call', name: 'exp', args: [u] }, du)
+    case 'sinh':
+      return binNode('*', { kind: 'call', name: 'cosh', args: [u] }, du)
+    case 'cosh':
+      return binNode('*', { kind: 'call', name: 'sinh', args: [u] }, du)
+    case 'tanh':
+      return binNode(
+        '/',
+        du,
+        binNode('^', { kind: 'call', name: 'cosh', args: [u] }, numNode(2)),
+      )
+    case 'ln':
+      return binNode('/', du, u)
+    case 'log':
+    case 'log10':
+      return binNode(
+        '/',
+        du,
+        binNode('*', u, { kind: 'call', name: 'ln', args: [numNode(10)] }),
+      )
+    case 'sqrt':
+      return binNode(
+        '/',
+        du,
+        binNode('*', numNode(2), { kind: 'call', name: 'sqrt', args: [u] }),
+      )
+    default:
+      return null
+  }
+}
+
+function nLeft(n: Extract<Node, { kind: 'binary' }>): Node {
+  return n.left
+}
+function nRight(n: Extract<Node, { kind: 'binary' }>): Node {
+  return n.right
+}
 ```
 
 <a id="source-7"></a>
 
 ## src/engine/interval-certification.ts
 
-원본: [src/engine/interval-certification.ts](../../src/engine/interval-certification.ts) · 253줄 · SHA-256: `dfe56a970d5f9f88798d80d0f414b0eb564ecfb6c41dc6003fd7d9e553733549`
+원본: [src/engine/interval-certification.ts](../../src/engine/interval-certification.ts) · 1,182줄 · SHA-256: `765491fd279e7fc189b41fd77a855dc4f3b8df89be196b75c2126a7e4d18fa8f`
 
 ```typescript
 import type { NonlinearNode } from './nonlinear-parser'
 import {
+  add,
   sub,
+  mul,
   div,
   containsZero,
   evaluateIntervalJet,
+  exactDyadicPolynomialCoefficients,
+  differentiateExactDyadicPoly,
+  evaluateExactDyadicPolynomialCenteredJet,
+  differentiateNode,
+  erfPoint,
+  erfRange,
+  normalCdfRange,
   nextDown,
   nextUp,
   type Interval,
   type IntervalJet,
+  type ExactDyadic,
+  dyadicToInterval,
 } from './interval-arithmetic'
+import { findPolynomialRealRoots } from './automatic-polynomial'
+import { peelZeroPower, zeroPowerMultiplicity } from './search-analysis'
+/** Approximate split hints only. Every resulting cell is still proved using
+ * original AST/exact dyadic enclosures; a missing hint cannot certify absence. */
+function approximateDyadicRoots(
+  coefficients: readonly ExactDyadic[],
+  bounds?: { min: number; max: number },
+) {
+  if (coefficients.length > 13) return { roots: [] as number[] }
+  const scale = Math.max(
+    ...coefficients
+      .filter((c) => c.m !== 0n)
+      .map((c) => c.e + c.m.toString(2).replace('-', '').length - 1),
+  )
+  const floats = coefficients.map((c) => {
+    if (c.m === 0n) return 0
+    const b = dyadicToInterval({ m: c.m, e: c.e - scale })
+    return b.lo / 2 + b.hi / 2
+  })
+  if (!floats.every(Number.isFinite)) return { roots: [] as number[] }
+  return findPolynomialRealRoots(floats, bounds)
+}
 
 export type UnresolvedInterval = Interval & {
   reason: 'domain' | 'unsupported' | 'nonsmooth' | 'resolution' | 'budget'
 }
+
+export type UnresolvedDiagnostic = UnresolvedInterval & {
+  width: number
+  valueEnclosure?: Interval
+  derivativeEnclosure?: Interval
+  signChange?: boolean
+  detail: string
+}
+
+export type RootFreeInterval = Interval & { openLo?: boolean; openHi?: boolean }
+
+export type RootSensitivityMetric = {
+  rootValue: number
+  bracket: Interval
+  derivativeEnclosure: Interval
+  /** Rigorous upper bound on |dx_star/dF| = 1 / |F'(x_star)| across the bracket when 0 not in F'(bracket) */
+  perturbationGain?: number
+  /** Outward-rounded upper bound on max(|rootValue - lo|, |hi - rootValue|) */
+  enclosureRadius: number
+}
+
+export type GaussianPerturbationModel = {
+  /** Single constant additive offset model: F(x) + epsilon = 0, epsilon ~ N(0, sigma^2) in residual units */
+  model: 'additive_gaussian_residual'
+  sigma: number
+  /** True iff F and F' were completely certified on [min, max] with no exclusions */
+  criticalPointsCertified: boolean
+  /** True when scalar values are point estimates from midpoints while Bounds fields hold rigorous enclosures */
+  pointApproximation?: boolean
+  /** Minimum distance |F(x)| at domain endpoints and interior critical points */
+  twoSidedSafetyMargin?: number
+  /** Rigorous interval enclosure [lo, hi] of twoSidedSafetyMargin over certified critical-point brackets */
+  twoSidedSafetyMarginBounds?: Interval
+  /** P(|epsilon| < twoSidedSafetyMargin) = erf(margin / (sqrt(2)*sigma)) */
+  twoSidedSafetyProbability?: number
+  /** Rigorous interval enclosure [lo, hi] of twoSidedSafetyProbability */
+  twoSidedSafetyProbabilityBounds?: Interval
+  /** Point estimate of P(N_[min,max](epsilon) == N_0) under constant additive offset epsilon ~ N(0, sigma^2) */
+  domainRootCountInvariance?: number
+  /** Rigorous interval enclosure [lo, hi] of P(N_[min,max](epsilon) == N_0) over certified critical-point brackets */
+  domainRootCountInvarianceBounds?: Interval
+  /** Point estimate of P(N_R(epsilon) == N_0_R) over all real numbers (when polynomial) */
+  realLineRootCountInvariance?: number
+}
+
+export type CompletenessMetrics = {
+  /** 'certified' (when complete && allRootsRepresented === true), 'unresolved', or 'budget_truncated' */
+  grade: 'certified' | 'unresolved' | 'budget_truncated'
+  /** Lower bound on verified length fraction of [min, max] (in [0, 1], subdivision-invariant) */
+  domainCoverage: number
+  /** Outward-rounded total length of unresolved intervals (subdivision-invariant) */
+  unresolvedMeasureUpper: number
+  /** Defined ONLY when mathematically proven AND verified against solver list (complete && allRootsRepresented === true) */
+  allRootsFoundProbability?: number
+  /** Minimum |F(x_ext)| at certified non-root interior extrema */
+  bifurcationMargin?: number
+  /** Probability P(N_[min,max](epsilon) == N_0) under F(x) + epsilon = 0, epsilon ~ N(0, sigma^2) */
+  inputPerturbationStability?: number
+  /** Detailed Gaussian perturbation model metadata and rigorous interval enclosures */
+  gaussianPerturbation?: GaussianPerturbationModel
+  /** Why no probability is emitted; never converted into a guessed confidence. */
+  perturbationUnavailableReason?: string
+  /** Per-root rigorous enclosure radius and sensitivity upper bound */
+  rootSensitivities: RootSensitivityMetric[]
+}
+
 export type RootCertificate = {
-  reduction?: string
   model?: { source: string; parameters: Record<string, number> }
   domain: { min: number; max: number }
   variable: string
+  /** Note when an outer positive integer power was peeled via a zero-equivalent expression */
+  reduction?: string
   /** Domain classification, not a probability or a bound on the root error. */
   complete: boolean
   coverageLowerBound: number
   uniqueRootCount: number
   rootIntervals: Interval[]
+  /** Root-free sets; open endpoint flags preserve a neighbouring known root. */
+  rootFreeIntervals?: RootFreeInterval[]
+  /** Contiguous intervals proven to lie outside the real expression domain */
+  excludedIntervals?: Interval[]
+  /** Deterministic diagnostics for each merged unresolved interval */
+  unresolvedDiagnostics?: UnresolvedDiagnostic[]
+  /** Rigorous completeness, enclosure radius, and Gaussian perturbation metrics */
+  completeness?: CompletenessMetrics
   unresolved: UnresolvedInterval[]
   excludedDomainCount: number
   processedIntervals: number
@@ -2373,15 +3055,620 @@ export type RootCertificate = {
   /** Filled only by the solver after comparing the certificate with its list. */
   allRootsRepresented?: boolean
 }
+
 type Options = {
   maxIntervals?: number
   maxDepth?: number
   maxMs?: number
   maxRoots?: number
+  inputNoiseSigma?: number
+  perturbationSigma?: number
+  skipPerturbationModel?: boolean
 }
+
 const sign = (a: Interval) =>
   a.lo > 0 ? 1 : a.hi < 0 ? -1 : a.lo === 0 && a.hi === 0 ? 0 : undefined
 const finite = (a: Interval) => Number.isFinite(a.lo) && Number.isFinite(a.hi)
+
+function midpoint(a: Interval): number {
+  const m = a.lo / 2 + a.hi / 2
+  return Number.isFinite(m) ? m : 0
+}
+
+/** Merge intervals ONLY when they share an exact real endpoint (`prev.hi === curr.lo`) or overlap.
+ * Never bridge across `(prev.hi, nextUp(prev.hi))`, which would absorb an unverified 1-ULP real gap. */
+export function mergeContiguousIntervals(
+  intervals: readonly Interval[],
+): Interval[] {
+  if (!intervals.length) return []
+  const sorted = [...intervals].sort((a, b) => a.lo - b.lo || a.hi - b.hi)
+  const merged: Interval[] = [{ ...sorted[0] }]
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = merged.at(-1)!
+    const curr = sorted[i]
+    if (curr.lo <= prev.hi) {
+      prev.hi = Math.max(prev.hi, curr.hi)
+    } else {
+      merged.push({ ...curr })
+    }
+  }
+  return merged
+}
+
+/** Merge root-free sets without filling a point removed for a known root. */
+function mergeRootFreeIntervals(
+  intervals: RootFreeInterval[],
+): RootFreeInterval[] {
+  const sorted = [...intervals].sort((a, b) => a.lo - b.lo || a.hi - b.hi)
+  const merged: RootFreeInterval[] = []
+  for (const item of sorted) {
+    const last = merged.at(-1)
+    if (
+      last &&
+      (item.lo < last.hi ||
+        (item.lo === last.hi && !(last.openHi && item.openLo)))
+    ) {
+      if (item.lo === last.lo) last.openLo = Boolean(last.openLo && item.openLo)
+      if (item.hi > last.hi) {
+        last.hi = item.hi
+        last.openHi = item.openHi
+      } else if (item.hi === last.hi)
+        last.openHi = Boolean(last.openHi && item.openHi)
+    } else merged.push({ ...item })
+  }
+  return merged
+}
+
+/** Outward-rounded upper bound on max(|center - interval.lo|, |interval.hi - center|).
+ * Guarantees that [center - R, center + R] encloses [interval.lo, interval.hi] even when
+ * the Float64 midpoint `lo/2 + hi/2` rounds to one endpoint (such as `[1, 1 + EPS]` -> `1`). */
+export function enclosureRadiusFromCenter(
+  interval: Interval,
+  center = interval.lo / 2 + interval.hi / 2,
+): number {
+  const distUpper = (a: number, b: number): number => {
+    if (b <= a) return 0
+    const d = b - a
+    if (!Number.isFinite(d)) return Infinity
+    return nextUp(d)
+  }
+  return Math.max(
+    distUpper(interval.lo, center),
+    distUpper(center, interval.hi),
+  )
+}
+
+export function buildRootSensitivityMetric(
+  bracket: Interval,
+  evaluateOrig: (x: Interval) => IntervalJet,
+  reportedCenter = bracket.lo / 2 + bracket.hi / 2,
+): RootSensitivityMetric {
+  const radius = enclosureRadiusFromCenter(bracket, reportedCenter)
+  const jet = evaluateOrig(bracket)
+  const der = jet.domain === 'all' ? jet.der : { lo: -Infinity, hi: Infinity }
+  let perturbationGain: number | undefined
+  if (
+    jet.domain === 'all' &&
+    !jet.issue &&
+    !containsZero(der) &&
+    Number.isFinite(der.lo) &&
+    Number.isFinite(der.hi)
+  ) {
+    const minAbsSlope = Math.min(Math.abs(der.lo), Math.abs(der.hi))
+    if (minAbsSlope > 0) {
+      perturbationGain = nextUp(1 / minAbsSlope)
+    }
+  }
+  return {
+    rootValue: reportedCenter,
+    bracket,
+    derivativeEnclosure: der,
+    ...(perturbationGain !== undefined ? { perturbationGain } : {}),
+    enclosureRadius: radius,
+  }
+}
+
+function normalCdfSliceInterval(
+  lo: number,
+  hi: number,
+  sigma: number,
+): Interval {
+  const s = { lo: sigma, hi: sigma }
+  const zLo =
+    lo === -Infinity
+      ? { lo: -Infinity, hi: -Infinity }
+      : lo === Infinity
+        ? { lo: Infinity, hi: Infinity }
+        : div({ lo, hi: lo }, s)
+  const zHi =
+    hi === -Infinity
+      ? { lo: -Infinity, hi: -Infinity }
+      : hi === Infinity
+        ? { lo: Infinity, hi: Infinity }
+        : div({ lo: hi, hi }, s)
+  const cdfLo = normalCdfRange(zLo)
+  const cdfHi = normalCdfRange(zHi)
+  const diff = sub(cdfHi, cdfLo)
+  return {
+    lo: Math.max(0, Math.min(1, diff.lo)),
+    hi: Math.max(0, Math.min(1, diff.hi)),
+  }
+}
+
+function computeMonotoneSegmentGaussianBounds(
+  knotIntervals: readonly Interval[],
+  n0: number,
+  sigma: number,
+): Interval {
+  const innerSegs: { lo: number; hi: number }[] = []
+  const outerSegs: { lo: number; hi: number }[] = []
+  const thresholdSet = new Set<number>()
+  for (const y of knotIntervals) {
+    if (Number.isFinite(y.lo)) thresholdSet.add(-y.lo)
+    if (Number.isFinite(y.hi)) thresholdSet.add(-y.hi)
+  }
+  for (let i = 0; i + 1 < knotIntervals.length; i++) {
+    const a = { lo: -knotIntervals[i].hi, hi: -knotIntervals[i].lo }
+    const b = { lo: -knotIntervals[i + 1].hi, hi: -knotIntervals[i + 1].lo }
+    outerSegs.push({ lo: Math.min(a.lo, b.lo), hi: Math.max(a.hi, b.hi) })
+    const inLo = Math.min(a.hi, b.hi)
+    const inHi = Math.max(a.lo, b.lo)
+    innerSegs.push({ lo: inLo, hi: inHi })
+  }
+  const taus = [...thresholdSet].sort((a, b) => a - b)
+  const bounds = [-Infinity, ...taus, Infinity]
+  let probLo: Interval = { lo: 0, hi: 0 }
+  let probHi: Interval = { lo: 0, hi: 0 }
+  for (let r = 0; r + 1 < bounds.length; r++) {
+    const lo = bounds[r]
+    const hi = bounds[r + 1]
+    if (lo === hi) continue
+    let minCount = 0
+    let maxCount = 0
+    // Endpoints partition the real offset axis into open slabs. Compare the
+    // complete slab, avoiding overflowing or unrepresentable Float64 midpoints.
+    for (let i = 0; i < outerSegs.length; i++) {
+      if (
+        innerSegs[i].lo < innerSegs[i].hi &&
+        lo >= innerSegs[i].lo &&
+        hi <= innerSegs[i].hi
+      )
+        minCount++
+      if (hi > outerSegs[i].lo && lo < outerSegs[i].hi) maxCount++
+    }
+    const slice = normalCdfSliceInterval(lo, hi, sigma)
+    if (minCount === n0 && maxCount === n0) {
+      probLo = add(probLo, slice)
+      probHi = add(probHi, slice)
+    } else if (minCount <= n0 && n0 <= maxCount) {
+      probHi = add(probHi, slice)
+    }
+  }
+  const lo = Math.max(0, Math.min(1, probLo.lo))
+  const hi = Math.max(lo, Math.min(1, probHi.hi))
+  return { lo, hi }
+}
+
+function computeMonotoneSegmentGaussianProbability(
+  knotValues: readonly number[],
+  n0: number,
+  sigma: number,
+): number {
+  const ivs = knotValues.map((v) => ({ lo: v, hi: v }))
+  const b = computeMonotoneSegmentGaussianBounds(ivs, n0, sigma)
+  return 0.5 * (b.lo + b.hi)
+}
+
+function analyzeUnresolvedCell(
+  cell: UnresolvedInterval,
+  evaluateOrig: (x: Interval) => IntervalJet,
+): UnresolvedDiagnostic {
+  const width = Math.max(0, nextUp(cell.hi - cell.lo))
+  const cellJet = evaluateOrig(cell)
+  const lJet = evaluateOrig({ lo: cell.lo, hi: cell.lo })
+  const rJet = evaluateOrig({ lo: cell.hi, hi: cell.hi })
+  const sL = lJet.domain === 'all' ? sign(lJet.val) : undefined
+  const sR = rJet.domain === 'all' ? sign(rJet.val) : undefined
+  const signChange =
+    sL !== undefined && sR !== undefined && sL !== 0 && sR !== 0 && sL !== sR
+  const reasonText = unresolvedReason(cell.reason)
+  const signText = signChange ? ' [양끝 부호 반전 확인]' : ''
+  return {
+    ...cell,
+    width,
+    ...(cellJet.domain === 'all' ? { valueEnclosure: cellJet.val } : {}),
+    ...(cellJet.domain === 'all' ? { derivativeEnclosure: cellJet.der } : {}),
+    ...(signChange ? { signChange: true } : {}),
+    detail: `[${Number(cell.lo.toPrecision(8))}, ${Number(cell.hi.toPrecision(8))}] (폭 ≤ ${width.toExponential(2)}, 사유: ${reasonText})${signText}`,
+  }
+}
+
+function isolateCriticalPointsFromJet(
+  evaluateOrig: (x: Interval) => IntervalJet,
+  domain: { min: number; max: number },
+): { complete: boolean; brackets: Interval[] } {
+  const queue: { iv: Interval; depth: number }[] = [
+    { iv: { lo: domain.min, hi: domain.max }, depth: 0 },
+  ]
+  const rawBrackets: Interval[] = []
+  let steps = 0
+  while (queue.length > 0) {
+    if (++steps > 2048) return { complete: false, brackets: [] }
+    const { iv, depth } = queue.pop()!
+    const jet = evaluateOrig(iv)
+    if (jet.domain !== 'all') return { complete: false, brackets: [] }
+    if (!containsZero(jet.der)) continue
+    const mid = iv.lo / 2 + iv.hi / 2
+    const span = Math.max(1, Math.abs(domain.min), Math.abs(domain.max))
+    if (
+      depth >= 44 ||
+      mid === iv.lo ||
+      mid === iv.hi ||
+      iv.hi - iv.lo <= 1e-12 * span
+    ) {
+      return { complete: false, brackets: [] }
+    }
+    queue.push(
+      { iv: { lo: mid, hi: iv.hi }, depth: depth + 1 },
+      { iv: { lo: iv.lo, hi: mid }, depth: depth + 1 },
+    )
+  }
+  const merged = mergeContiguousIntervals(rawBrackets).filter(
+    (b) => b.hi > domain.min && b.lo < domain.max,
+  )
+  return { complete: true, brackets: merged }
+}
+
+/**
+ * Compute rigorous completeness, enclosure radius, and certified Gaussian additive
+ * perturbation metrics (`F(x) + epsilon = 0, epsilon ~ N(0, sigma^2)`).
+ * Always evaluates perturbation, critical points, and safety margins on the ORIGINAL
+ * unpeeled expression `F` and `F'` rather than any zero-power reduced helper.
+ */
+export function computeCompletenessMetrics(
+  cert: RootCertificate,
+  arg2: NonlinearNode | ((x: Interval) => IntervalJet),
+  arg3?: ((x: Interval) => IntervalJet) | NonlinearNode | null,
+  arg4?: readonly ExactDyadic[] | readonly number[] | null | string,
+  arg5?: NonlinearNode | null | Record<string, number>,
+  arg6?: string | Map<string, NonlinearNode>,
+  arg7?: Record<string, number> | number,
+  arg8?: Map<string, NonlinearNode>,
+  arg9 = 1e-6,
+): CompletenessMetrics {
+  let origNode: NonlinearNode | undefined
+  let evaluateOrig: (x: Interval) => IntervalJet
+  let exactPoly: readonly ExactDyadic[] | null = null
+  let d1Node: NonlinearNode | null = null
+  let variable: string = cert.variable ?? 'x'
+  let parameters: Record<string, number> = {}
+  let helpers: Map<string, NonlinearNode> = new Map()
+  let sigma = 1e-6
+
+  if (typeof arg2 === 'function') {
+    // 7-argument signature: (cert, evaluateOrig, d1Node, variable, parameters, helpers, sigma)
+    evaluateOrig = arg2
+    d1Node = (arg3 as NonlinearNode | null) ?? null
+    if (typeof arg4 === 'string') variable = arg4
+    if (arg5 && typeof arg5 === 'object' && !('kind' in arg5)) {
+      parameters = arg5 as Record<string, number>
+    }
+    if (arg6 instanceof Map) helpers = arg6
+    if (typeof arg7 === 'number') sigma = arg7
+  } else {
+    // 9-argument signature: (cert, origNode, evaluateOrig, exactPoly, origD1Node, variable, parameters, helpers, sigma)
+    origNode = arg2
+    evaluateOrig = arg3 as (x: Interval) => IntervalJet
+    if (
+      Array.isArray(arg4) &&
+      arg4.length > 0 &&
+      typeof arg4[0] === 'object' &&
+      arg4[0] !== null &&
+      'm' in arg4[0]
+    ) {
+      exactPoly = arg4 as readonly ExactDyadic[]
+    }
+    d1Node = (arg5 as NonlinearNode | null) ?? null
+    if (typeof arg6 === 'string') variable = arg6
+    if (arg7 && typeof arg7 === 'object') {
+      parameters = arg7 as Record<string, number>
+    }
+    if (arg8 instanceof Map) helpers = arg8
+    sigma = arg9
+  }
+
+  // Merge contiguous unresolved cells of the same reason so subdivision of an unresolved
+  // region into 1 cell vs k cells never alters any measure or diagnostic.
+  const mergedUnresolved: UnresolvedInterval[] = []
+  for (const item of [...cert.unresolved].sort(
+    (a, b) => a.lo - b.lo || a.hi - b.hi,
+  )) {
+    const prev = mergedUnresolved.at(-1)
+    if (prev && prev.reason === item.reason && item.lo <= prev.hi) {
+      prev.hi = Math.max(prev.hi, item.hi)
+    } else {
+      mergedUnresolved.push({ ...item })
+    }
+  }
+
+  let unresolvedMeasureUpper = 0
+  for (const cell of mergedUnresolved) {
+    unresolvedMeasureUpper = nextUp(
+      unresolvedMeasureUpper + nextUp(cell.hi - cell.lo),
+    )
+  }
+
+  const rootSensitivities = cert.rootIntervals.map((iv) =>
+    buildRootSensitivityMetric(iv, evaluateOrig),
+  )
+
+  // Section E: Require strict `cert.allRootsRepresented === true` before claiming
+  // `grade: 'certified'` or `allRootsFoundProbability: 1`.
+  const grade: CompletenessMetrics['grade'] =
+    cert.complete && cert.allRootsRepresented === true
+      ? 'certified'
+      : cert.budgetExhausted
+        ? 'budget_truncated'
+        : 'unresolved'
+
+  const allRootsFoundProbability =
+    cert.complete && cert.allRootsRepresented === true ? 1 : undefined
+
+  let bifurcationMargin: number | undefined
+  let inputPerturbationStability: number | undefined
+  let gaussianPerturbation: GaussianPerturbationModel | undefined
+
+  if (
+    cert.complete &&
+    cert.excludedDomainCount === 0 &&
+    Number.isFinite(sigma) &&
+    sigma > 0
+  ) {
+    // Section D: Always certify critical points of the ORIGINAL function F (not the peeled expression)
+    function peelZeroFactorsAndPowers(n: NonlinearNode): NonlinearNode {
+      if (n.kind === 'unary') return peelZeroFactorsAndPowers(n.child)
+      if (
+        n.kind === 'binary' &&
+        (n.operator === '+' || n.operator === '-') &&
+        n.right.kind === 'number' &&
+        n.right.value === 0
+      ) {
+        return peelZeroFactorsAndPowers(n.left)
+      }
+      if (n.kind === 'binary' && n.operator === '*') {
+        if (
+          n.left.kind === 'number' &&
+          Number.isFinite(n.left.value) &&
+          n.left.value !== 0
+        ) {
+          return peelZeroFactorsAndPowers(n.right)
+        }
+        if (
+          n.right.kind === 'number' &&
+          Number.isFinite(n.right.value) &&
+          n.right.value !== 0
+        ) {
+          return peelZeroFactorsAndPowers(n.left)
+        }
+      }
+      if (
+        n.kind === 'binary' &&
+        n.operator === '/' &&
+        n.right.kind === 'number' &&
+        Number.isFinite(n.right.value) &&
+        n.right.value !== 0
+      ) {
+        return peelZeroFactorsAndPowers(n.left)
+      }
+      if (
+        n.kind === 'binary' &&
+        n.operator === '^' &&
+        n.right.kind === 'number' &&
+        Number.isInteger(n.right.value) &&
+        n.right.value > 0
+      ) {
+        return peelZeroFactorsAndPowers(n.left)
+      }
+      if (
+        n.kind === 'call' &&
+        n.name === 'pow' &&
+        n.args[1]?.kind === 'number' &&
+        Number.isInteger(n.args[1].value) &&
+        n.args[1].value > 0
+      ) {
+        return peelZeroFactorsAndPowers(n.args[0])
+      }
+      return n
+    }
+    const rawOrigD1 = origNode
+      ? differentiateNode(origNode, variable, helpers)
+      : d1Node
+    const origD1 = rawOrigD1 ? peelZeroFactorsAndPowers(rawOrigD1) : null
+    let dCert: RootCertificate | undefined
+    if (origD1) {
+      try {
+        dCert = certifyScalarRoots(
+          origD1,
+          variable,
+          parameters,
+          helpers,
+          cert.domain,
+          {
+            maxIntervals: 2000,
+            maxMs: 80,
+            skipPerturbationModel: true,
+          },
+        )
+      } catch {
+        dCert = undefined
+      }
+    }
+
+    const narrowDerivBracket = (iv: Interval): Interval => {
+      if (iv.lo === iv.hi) return iv
+      let { lo, hi } = iv
+      const evalD1Sign = (x: number): number | undefined => {
+        const j = origD1
+          ? evaluateIntervalJet(
+              origD1,
+              variable,
+              { lo: x, hi: x },
+              parameters,
+              helpers,
+            )
+          : evaluateOrig({ lo: x, hi: x })
+        if (j.domain !== 'all') return undefined
+        const v = origD1 ? j.val : j.der
+        return sign(v)
+      }
+      const left = evalD1Sign(lo)
+      if (left === undefined) return iv
+      if (left === 0) return { lo, hi: lo }
+      const right = evalD1Sign(hi)
+      if (right === 0) return { lo: hi, hi }
+      for (let i = 0; i < 64; i++) {
+        const mid = lo / 2 + hi / 2
+        if (mid === lo || mid === hi) break
+        const sm = evalD1Sign(mid)
+        if (sm === undefined) break
+        if (sm === 0) return { lo: mid, hi: mid }
+        if (sm === left) lo = mid
+        else hi = mid
+      }
+      return { lo, hi }
+    }
+
+    let critBrackets: Interval[] | undefined
+    if (dCert && dCert.complete && dCert.excludedDomainCount === 0) {
+      critBrackets = dCert.rootIntervals
+        .map(narrowDerivBracket)
+        .filter((iv) => iv.hi > cert.domain.min && iv.lo < cert.domain.max)
+        .sort((a, b) => a.lo - b.lo)
+    } else if (!origD1) {
+      const fallback = isolateCriticalPointsFromJet(evaluateOrig, cert.domain)
+      if (fallback.complete) {
+        critBrackets = mergeContiguousIntervals(
+          fallback.brackets.map(narrowDerivBracket),
+        )
+          .filter((iv) => iv.hi > cert.domain.min && iv.lo < cert.domain.max)
+          .sort((a, b) => a.lo - b.lo)
+      }
+    }
+
+    if (critBrackets !== undefined) {
+      const knotBrackets: Interval[] = [
+        { lo: cert.domain.min, hi: cert.domain.min },
+        ...critBrackets,
+        { lo: cert.domain.max, hi: cert.domain.max },
+      ]
+      const knotIntervals: Interval[] = []
+      const knotValues: number[] = []
+      let validKnots = true
+      for (const kb of knotBrackets) {
+        const kj = evaluateOrig(kb)
+        if (
+          kj.domain !== 'all' ||
+          !Number.isFinite(kj.val.lo) ||
+          !Number.isFinite(kj.val.hi)
+        ) {
+          validKnots = false
+          break
+        }
+        knotIntervals.push(kj.val)
+        knotValues.push(midpoint(kj.val))
+      }
+
+      if (validKnots) {
+        const distFromZero = (iv: Interval): Interval => {
+          if (iv.lo > 0) return { lo: iv.lo, hi: iv.hi }
+          if (iv.hi < 0) return { lo: -iv.hi, hi: -iv.lo }
+          return { lo: 0, hi: Math.max(Math.abs(iv.lo), Math.abs(iv.hi)) }
+        }
+        const interiorMargins = critBrackets
+          .map((cb, idx) => ({
+            cb,
+            dist: distFromZero(knotIntervals[idx + 1]),
+          }))
+          .filter(
+            ({ cb, dist }) =>
+              dist.lo > 0 &&
+              !cert.rootIntervals.some(
+                (r) => Math.max(cb.lo, r.lo) <= Math.min(cb.hi, r.hi),
+              ),
+          )
+          .map(({ dist }) => dist.lo)
+        if (interiorMargins.length > 0) {
+          bifurcationMargin = Math.min(...interiorMargins)
+        }
+
+        const knotDists = knotIntervals.map(distFromZero)
+        const safetyMarginBounds: Interval = {
+          lo: Math.min(...knotDists.map((d) => d.lo)),
+          hi: Math.min(...knotDists.map((d) => d.hi)),
+        }
+        const twoSidedSafetyMargin = midpoint(safetyMarginBounds)
+
+        // Section B: Use rigorous interval erfRange(div(marginBounds, sqrt(2)*sigma))
+        const SQRT2_IV: Interval = {
+          lo: Math.SQRT2,
+          hi: nextUp(Math.SQRT2),
+        }
+        const denomIv = mul(SQRT2_IV, { lo: sigma, hi: sigma })
+        const safetyProbBounds = erfRange(div(safetyMarginBounds, denomIv))
+        const twoSidedSafetyProbability = midpoint(safetyProbBounds)
+
+        const domainInvarianceBounds = computeMonotoneSegmentGaussianBounds(
+          knotIntervals,
+          cert.uniqueRootCount,
+          sigma,
+        )
+        const domainInvariance = midpoint(domainInvarianceBounds)
+        const pointApproximation =
+          domainInvarianceBounds.lo < domainInvarianceBounds.hi ||
+          safetyMarginBounds.lo < safetyMarginBounds.hi
+
+        inputPerturbationStability = domainInvariance
+        gaussianPerturbation = {
+          model: 'additive_gaussian_residual',
+          sigma,
+          criticalPointsCertified: true,
+          pointApproximation,
+          twoSidedSafetyMargin,
+          twoSidedSafetyMarginBounds: safetyMarginBounds,
+          twoSidedSafetyProbability,
+          twoSidedSafetyProbabilityBounds: safetyProbBounds,
+          domainRootCountInvariance: domainInvariance,
+          domainRootCountInvarianceBounds: domainInvarianceBounds,
+        }
+      }
+    }
+  }
+
+  return {
+    grade,
+    domainCoverage: cert.coverageLowerBound,
+    unresolvedMeasureUpper,
+    ...(allRootsFoundProbability !== undefined
+      ? { allRootsFoundProbability }
+      : {}),
+    ...(bifurcationMargin !== undefined ? { bifurcationMargin } : {}),
+    ...(inputPerturbationStability !== undefined
+      ? { inputPerturbationStability }
+      : {}),
+    ...(gaussianPerturbation
+      ? { gaussianPerturbation }
+      : {
+          perturbationUnavailableReason: !cert.complete
+            ? '미결정 구간이 남아 근 개수 변화를 결정할 수 없습니다.'
+            : cert.excludedDomainCount > 0
+              ? '열린 정의역 경계 또는 제외 구간이 있어 닫힌 연속 구간 모형을 적용하지 않습니다.'
+              : !Number.isFinite(sigma) || sigma <= 0
+                ? '가정한 오프셋 표준편차 σ는 양의 유한한 수여야 합니다.'
+                : '원래 함수 도함수의 모든 임계점을 분리하지 못해 확률 상하한을 승인하지 않았습니다.',
+        }),
+    rootSensitivities,
+  }
+}
 
 /** Exhaustive subdivision of a finite scalar domain. No point-value sign
  * products, guessed curvature probabilities or fixed minimum root spacing.
@@ -2401,19 +3688,135 @@ export function certifyScalarRoots(
     throw new Error('구간 검증에는 유한한 증가 구간이 필요합니다.')
   if (!Object.values(parameters).every(Number.isFinite))
     throw new Error('구간 검증의 파라미터는 유한한 숫자여야 합니다.')
+
   const maxIntervals = options.maxIntervals ?? 6000,
     maxDepth = options.maxDepth ?? 64,
     maxRoots = options.maxRoots ?? 128
   const start = performance.now(),
     deadline = start + (options.maxMs ?? 250)
-  const queue = [{ lo: bounds.min, hi: bounds.max, depth: 0 }],
-    unresolved: UnresolvedInterval[] = [],
-    rootIntervals: Interval[] = []
+
+  // Peel only explicit symbolic outer positive integer powers: (f(x))^k = 0 <=> f(x) = 0.
+  // Never replace the AST with Float64-expanded polynomial coefficients or approximate GCDs.
+  const working = peelZeroPower(node)
+  const reduction =
+    zeroPowerMultiplicity(node) > 1
+      ? '양의 정수 거듭제곱을 제거한 영점 동치식으로 서로 다른 근을 검증했습니다. 중복도 자체를 구간으로 증명하지는 않습니다.'
+      : undefined
+
+  const constants = { pi: Math.PI, e: Math.E, ...parameters }
+  const exactWorkingPoly = exactDyadicPolynomialCoefficients(
+    working,
+    variable,
+    constants,
+    helpers,
+  )
+  const origExactPoly =
+    working === node
+      ? exactWorkingPoly
+      : exactDyadicPolynomialCoefficients(node, variable, constants, helpers)
+  const origD1Node = differentiateNode(node, variable, helpers)
+
+  let polyCriticalPoints: number[] = []
+  if (exactWorkingPoly && exactWorkingPoly.length >= 3) {
+    const dPoly = differentiateExactDyadicPoly(exactWorkingPoly)
+    polyCriticalPoints = approximateDyadicRoots(dPoly, bounds).roots
+  }
+
+  const splitPoints = polyCriticalPoints
+    .filter((cp) => cp > bounds.min && cp < bounds.max)
+    .sort((a, b) => a - b)
+
+  const initialCells: { lo: number; hi: number; depth: number }[] = []
+  let cursor = bounds.min
+  for (const sp of splitPoints) {
+    if (sp > cursor && sp < bounds.max) {
+      initialCells.push({ lo: cursor, hi: sp, depth: 0 })
+      cursor = sp
+    }
+  }
+  initialCells.push({ lo: cursor, hi: bounds.max, depth: 0 })
+  const queue = initialCells.reverse()
+
+  const unresolved: UnresolvedInterval[] = [],
+    rootIntervals: Interval[] = [],
+    rawRootFree: RootFreeInterval[] = [],
+    rawExcluded: Interval[] = []
   let processedIntervals = 0,
     excludedDomainCount = 0,
     budgetExhausted = false
-  const evaluate = (x: Interval) =>
-    evaluateIntervalJet(node, variable, x, parameters, helpers)
+
+  const evaluateOrig = (x: Interval): IntervalJet => {
+    const astJet = evaluateIntervalJet(node, variable, x, parameters, helpers)
+    if (!origExactPoly || astJet.domain !== 'all') return astJet
+    let taylorJet: IntervalJet
+    try {
+      taylorJet = evaluateExactDyadicPolynomialCenteredJet(
+        origExactPoly,
+        x,
+        polyCriticalPoints,
+      )
+    } catch {
+      return astJet
+    }
+    if (
+      Math.max(astJet.val.lo, taylorJet.val.lo) >
+        Math.min(astJet.val.hi, taylorJet.val.hi) ||
+      Math.max(astJet.der.lo, taylorJet.der.lo) >
+        Math.min(astJet.der.hi, taylorJet.der.hi)
+    )
+      return astJet
+    return {
+      ...astJet,
+      val: {
+        lo: Math.max(astJet.val.lo, taylorJet.val.lo),
+        hi: Math.min(astJet.val.hi, taylorJet.val.hi),
+      },
+      der: {
+        lo: Math.max(astJet.der.lo, taylorJet.der.lo),
+        hi: Math.min(astJet.der.hi, taylorJet.der.hi),
+      },
+    }
+  }
+
+  const evaluate = (x: Interval): IntervalJet => {
+    const astJet = evaluateIntervalJet(
+      working,
+      variable,
+      x,
+      parameters,
+      helpers,
+    )
+    if (!exactWorkingPoly || astJet.domain !== 'all') return astJet
+    let taylorJet: IntervalJet
+    try {
+      taylorJet = evaluateExactDyadicPolynomialCenteredJet(
+        exactWorkingPoly,
+        x,
+        polyCriticalPoints,
+      )
+    } catch {
+      return astJet
+    }
+    if (
+      Math.max(astJet.val.lo, taylorJet.val.lo) >
+        Math.min(astJet.val.hi, taylorJet.val.hi) ||
+      Math.max(astJet.der.lo, taylorJet.der.lo) >
+        Math.min(astJet.der.hi, taylorJet.der.hi)
+    )
+      return astJet
+    return {
+      ...astJet,
+      val: {
+        lo: Math.max(astJet.val.lo, taylorJet.val.lo),
+        hi: Math.min(astJet.val.hi, taylorJet.val.hi),
+      },
+      der: {
+        lo: Math.max(astJet.der.lo, taylorJet.der.lo),
+        hi: Math.min(astJet.der.hi, taylorJet.der.hi),
+      },
+    }
+  }
+
   const root = (x: Interval) => {
     if (
       x.lo === x.hi &&
@@ -2422,6 +3825,7 @@ export function certifyScalarRoots(
       return
     rootIntervals.push(x)
   }
+
   while (queue.length) {
     if (
       processedIntervals >= maxIntervals ||
@@ -2436,9 +3840,13 @@ export function certifyScalarRoots(
     processedIntervals++
     if (jet.domain === 'none') {
       excludedDomainCount++
+      rawExcluded.push({ lo: cell.lo, hi: cell.hi })
       continue
     }
-    if (jet.domain === 'all' && !containsZero(jet.val)) continue
+    if (jet.domain === 'all' && !containsZero(jet.val)) {
+      rawRootFree.push({ lo: cell.lo, hi: cell.hi })
+      continue
+    }
     if (jet.domain === 'all' && !jet.issue && !containsZero(jet.der)) {
       const left = evaluate({ lo: cell.lo, hi: cell.lo }),
         right = evaluate({ lo: cell.hi, hi: cell.hi })
@@ -2446,18 +3854,21 @@ export function certifyScalarRoots(
         s1 = right.domain === 'all' ? sign(right.val) : undefined
       if (s0 === 0) {
         root({ lo: cell.lo, hi: cell.lo })
+        if (cell.lo < cell.hi)
+          rawRootFree.push({ lo: cell.lo, hi: cell.hi, openLo: true })
         continue
       }
       if (s1 === 0) {
         root({ lo: cell.hi, hi: cell.hi })
+        if (cell.lo < cell.hi)
+          rawRootFree.push({ lo: cell.lo, hi: cell.hi, openHi: true })
         continue
       }
       if (s0 !== undefined && s1 !== undefined) {
         if (s0 !== s1) root({ lo: cell.lo, hi: cell.hi })
+        else rawRootFree.push({ lo: cell.lo, hi: cell.hi })
         continue
       }
-      // Interval Newton inclusion: m-F(m)/F'(I) strictly inside I.
-      // A point evaluation here is itself an outward interval enclosure.
       const m = cell.lo / 2 + cell.hi / 2,
         fm = evaluate({ lo: m, hi: m })
       if (fm.domain === 'all') {
@@ -2478,8 +3889,6 @@ export function certifyScalarRoots(
           : jet.issue === 'nonsmooth'
             ? 'nonsmooth'
             : 'resolution'
-    // Unsupported AST operations cannot improve through subdivision. Retain
-    // the entire cell rather than spending the work budget on identical data.
     if (
       reason === 'unsupported' ||
       cell.depth >= maxDepth ||
@@ -2497,12 +3906,11 @@ export function certifyScalarRoots(
   for (const cell of queue)
     unresolved.push({ lo: cell.lo, hi: cell.hi, reason: 'budget' })
   unresolved.sort((a, b) => a.lo - b.lo)
-  // Merge only unresolved cells; never combine distinct root certificates.
   const merged: UnresolvedInterval[] = []
   for (const cell of unresolved) {
     const previous = merged.at(-1)
-    if (previous && previous.reason === cell.reason && previous.hi === cell.lo)
-      previous.hi = cell.hi
+    if (previous && previous.reason === cell.reason && previous.hi >= cell.lo)
+      previous.hi = Math.max(previous.hi, cell.hi)
     else merged.push({ ...cell })
   }
   let widthUpper = 0
@@ -2510,26 +3918,50 @@ export function certifyScalarRoots(
     widthUpper = nextUp(widthUpper + nextUp(cell.hi - cell.lo))
   const totalLower = nextDown(bounds.max - bounds.min)
   const complete = merged.length === 0
-  // Lower bound on classified length. A rounded display of 100 must never
-  // conceal an unresolved point/cell, however small its measure is.
   const coverageLowerBound = complete
     ? 1
     : totalLower <= 0
       ? 0
       : Math.max(0, nextDown(1 - nextUp(widthUpper / totalLower)))
-  return {
+
+  const sortedRoots = rootIntervals.sort((a, b) => a.lo - b.lo)
+  const rootFreeIntervals = mergeRootFreeIntervals(rawRootFree)
+  const excludedIntervals = mergeContiguousIntervals(rawExcluded)
+  const unresolvedDiagnostics = merged.map((u) =>
+    analyzeUnresolvedCell(u, evaluateOrig),
+  )
+
+  const cert: RootCertificate = {
     domain: bounds,
     variable,
+    ...(reduction ? { reduction } : {}),
     complete,
     coverageLowerBound,
-    uniqueRootCount: rootIntervals.length,
-    rootIntervals: rootIntervals.sort((a, b) => a.lo - b.lo),
+    uniqueRootCount: sortedRoots.length,
+    rootIntervals: sortedRoots,
+    rootFreeIntervals,
+    excludedIntervals,
     unresolved: merged,
+    unresolvedDiagnostics,
     excludedDomainCount,
     processedIntervals,
     budgetExhausted,
     elapsedMs: performance.now() - start,
   }
+  if (!options.skipPerturbationModel) {
+    cert.completeness = computeCompletenessMetrics(
+      cert,
+      node,
+      evaluateOrig,
+      origExactPoly,
+      origD1Node,
+      variable,
+      parameters,
+      helpers,
+      options.inputNoiseSigma ?? options.perturbationSigma ?? 1e-6,
+    )
+  }
+  return cert
 }
 
 /** Refine a PROVEN bracket with interval signs. An undecidable sign stops
@@ -2564,16 +3996,64 @@ export const unresolvedReason = (reason: UnresolvedInterval['reason']) =>
 
 export function certificateSummary(c: RootCertificate): string {
   return c.complete
-    ? `구간 검증 완료 · ${c.reduction ? '서로 다른 실근' : '단순 실근'} ${c.uniqueRootCount}개 분리${c.allRootsRepresented === false ? ' · 계산 결과 목록과 대조 필요' : ''}`
+    ? `구간 검증 완료 · ${c.reduction ? '영점 동치식 기준 서로 다른 실근' : '단순 실근'} ${c.uniqueRootCount}개 분리${c.allRootsRepresented !== true ? ' · 계산 결과 목록과 대조 필요' : ''}`
     : `구간 검증 보류 · 검증한 길이 비율 ${Math.min(99.999, Math.floor(c.coverageLowerBound * 100000) / 1000).toFixed(3)}% · 미결정 ${c.unresolved.length}곳`
 }
 
+/** Outward percentage endpoints. Displaying a near-one bound as exactly
+ * 100% would turn an interval statement into an unsupported certainty. */
+export function probabilityIntervalText(bounds?: Interval): string {
+  if (
+    !bounds ||
+    !Number.isFinite(bounds.lo) ||
+    !Number.isFinite(bounds.hi) ||
+    bounds.lo > bounds.hi ||
+    bounds.hi < 0 ||
+    bounds.lo > 1
+  )
+    return '미산정'
+  const lo = Math.max(0, bounds.lo),
+    hi = Math.min(1, bounds.hi)
+  if (lo === 0 && hi === 0) return '0%'
+  if (lo === 1 && hi === 1) return '100%'
+  const scale = 10000
+  const lower =
+    lo === 0
+      ? 0
+      : Math.max(0, Math.floor(nextDown(nextDown(lo * 100) * scale)) / scale)
+  const upper =
+    hi === 1
+      ? 100
+      : Math.min(100, Math.ceil(nextUp(nextUp(hi * 100) * scale)) / scale)
+  return `${lower.toFixed(4)}–${upper.toFixed(4)}%`
+}
+
 export function certificateReport(c: RootCertificate): string {
+  const comp = c.completeness
+  const gp = comp?.gaussianPerturbation
+  const gaussLines =
+    gp?.criticalPointsCertified && Number.isFinite(gp.sigma) && gp.sigma > 0
+      ? [
+          `### 가우스 상수 오프셋 모형 (F(x) + ε = 0, ε ~ N(0, σ²), σ = ${gp.sigma})`,
+          `- 탐색 구간 [${c.domain.min}, ${c.domain.max}] 내 근 개수(${c.uniqueRootCount}개) 유지 확률 포함 구간: ${probabilityIntervalText(gp.domainRootCountInvarianceBounds)}`,
+          ...(gp.twoSidedSafetyMarginBounds !== undefined
+            ? [
+                `- 양방향 안전 반경 Δ ∈ [${gp.twoSidedSafetyMarginBounds.lo}, ${gp.twoSidedSafetyMarginBounds.hi}]`,
+              ]
+            : []),
+          `- 안전 반경 내 오차 확률 P(|ε| < Δ) 포함 구간: ${probabilityIntervalText(gp.twoSidedSafetyProbabilityBounds)}`,
+          '이 값은 지정한 유한 범위와 하나의 일정한 가우스 오프셋 모형에 대한 포함 구간입니다. 미발견 근의 포획 확률이 아니며, 안전 반경 사건과 근 개수 유지 사건은 서로 다릅니다.',
+        ]
+      : [
+          '### 가우스 상수 오프셋 모형',
+          `확률 미산정: ${comp?.perturbationUnavailableReason ?? '원래 함수 임계점 또는 가정한 오차 모형의 검증이 완료되지 않았습니다.'}`,
+        ]
+
   return (
     [
       '## 구간 검증',
       certificateSummary(c),
-      c.reduction ?? '',
+      ...(c.reduction ? [c.reduction] : []),
       ...(c.model
         ? [
             '### 입력 모델',
@@ -2582,16 +4062,39 @@ export function certificateReport(c: RootCertificate): string {
           ]
         : []),
       `검증 범위: ${c.variable} ∈ [${c.domain.min}, ${c.domain.max}]`,
-      `유일근 분리 구간 ${c.uniqueRootCount}개 · 정의역 제외 구간 ${c.excludedDomainCount}개`,
+      `유일근 분리 구간 ${c.uniqueRootCount}개 · 해 부재 증명 구간 ${c.rootFreeIntervals?.length ?? 0}개 · 정의역 제외 구간 ${c.excludedDomainCount}개`,
       '이 비율은 구간 길이 기준이며 실근 포획 확률이 아닙니다. 입력한 Float64 상수의 실수 모델을 검증하며 측정 오차는 포함하지 않습니다.',
+      ...gaussLines,
       '### 유일근 분리 구간',
-      c.rootIntervals.map((i) => `- [${i.lo}, ${i.hi}]`).join('\n') || '없음',
+      c.rootIntervals
+        .map((i, idx) => {
+          const sens = comp?.rootSensitivities[idx]
+          const rad = sens
+            ? ` (중심 ${sens.rootValue} 기준 바깥 반올림 오차 반경 ±${sens.enclosureRadius})`
+            : ''
+          return `- [${i.lo}, ${i.hi}]${rad}`
+        })
+        .join('\n') || '없음',
       '### 미결정 구간',
       c.unresolved
         .map((i) => `- [${i.lo}, ${i.hi}]: ${unresolvedReason(i.reason)}`)
         .join('\n') || '없음',
     ].join('\n\n') + '\n'
   )
+}
+
+/** Synchronize only the list-comparison state after the automatic solver has
+ * matched its displayed solutions with the already computed certificate. */
+export function finalizeCertificateMetrics(cert: RootCertificate): void {
+  if (!cert.completeness) return
+  const matched = cert.complete && cert.allRootsRepresented === true
+  cert.completeness.grade = matched
+    ? 'certified'
+    : cert.budgetExhausted
+      ? 'budget_truncated'
+      : 'unresolved'
+  if (matched) cert.completeness.allRootsFoundProbability = 1
+  else delete cert.completeness.allRootsFoundProbability
 }
 ```
 
@@ -5751,7 +7254,7 @@ export function searchConclusion(
 
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,572줄 · SHA-256: `3dcd5c53201a03216bdf04dd3415fa8158df6e275d31eb18f0a0a111fd128ec5`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,576줄 · SHA-256: `a08c0fa34a676db2480c58e8ebd1d238472809cf680b0f269130e37a64739cca`
 
 ```typescript
 import { classifyScalarRoot } from './tangency'
@@ -5759,6 +7262,7 @@ import { squareFreeCoefficients } from './square-free'
 import {
   certifyScalarRoots,
   refineCertifiedRoot,
+  finalizeCertificateMetrics,
   type RootCertificate,
 } from './interval-certification'
 import { evaluateIntervalJet } from './interval-arithmetic'
@@ -5816,6 +7320,7 @@ export type SearchSummary = {
 }
 export type AutomaticOptions = SolverOptions & {
   certifyRoots?: boolean
+  inputNoiseSigma?: number
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
 }
@@ -7237,11 +8742,12 @@ export async function createAutomaticSolver(
           const original = prepared.originalExpression
           const node = peelZeroPower(original)
           const certificate = certifyScalarRoots(
-            node,
+            original,
             variables[0],
             parameters,
             prepared.helpers,
             { min: found.search.min, max: found.search.max },
+            { inputNoiseSigma: options.inputNoiseSigma },
           )
           if (zeroPowerMultiplicity(original) > 1)
             certificate.reduction =
@@ -7302,6 +8808,7 @@ export async function createAutomaticSolver(
                 certificate.rootIntervals.filter((b) => inside(r.values[0], b))
                   .length === 1,
             )
+          finalizeCertificateMetrics(certificate)
           found.search.certification = certificate
           for (const result of found.solutions)
             result.durationMs += performance.now() - verificationStart

@@ -14,13 +14,14 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `7a41a184dbcb1c13e41ede1adbd6e1e6fcfda038dfad75c072e76f5f61aeda05`
+소스 묶음 SHA-256: `78f436ea219e69caf2d6995ed834ce248cf8b23a22ac590586b9aad50de6a866`
 
 ## 다른 코드 묶음
 
 - [01 · 수식 파싱과 수치해석 엔진](./01-math-engine.md)
 - [02 · 상태 관리, 분기 추적과 비동기 계산](./02-state-and-simulation.md) · 현재 문서
 - [03 · 그래프, 마우스 조작과 화면 표현](./03-chart-and-interaction.md)
+- [04 · 미분방정식·회귀·적분·최적화](./04-scientific-modules.md)
 
 ## 포함한 원본
 
@@ -181,7 +182,7 @@ export function equationProject(project: Project): Project {
 
 ## src/models.ts
 
-원본: [src/models.ts](../../src/models.ts) · 172줄 · SHA-256: `f4a05427a8e463c62238ddc3cd2ebaab5c20b36b7e0336132862c0db0419e01b`
+원본: [src/models.ts](../../src/models.ts) · 173줄 · SHA-256: `03e1196a64b9d3879dd5704c855a45045f6e5b4c22b53b0f76cb8259a9de0fb6`
 
 ```typescript
 import type { VariableBounds } from './engine/search-analysis'
@@ -211,6 +212,7 @@ export type Project = {
   conditionNorm?: ConditionNorm
   nonlinearSearch?: 'auto' | 'manual'
   certifyRoots?: boolean
+  inputNoiseSigma?: number
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   selectedSolution?: number
@@ -628,7 +630,7 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
 
 ## src/solver-input.ts
 
-원본: [src/solver-input.ts](../../src/solver-input.ts) · 36줄 · SHA-256: `468c816b434c20fe5efded58863bdd30f0de30ce886c4ef17105a8547ed76440`
+원본: [src/solver-input.ts](../../src/solver-input.ts) · 37줄 · SHA-256: `6fda7923fd60c1b156e308d09ea165e63ef4b00acc3804a5d80ce40b4bc1af57`
 
 ```typescript
 import type { Project } from './models'
@@ -645,6 +647,7 @@ export function createSolverInput(project: Project) {
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',
     certifyRoots: project.certifyRoots ?? false,
+    inputNoiseSigma: project.inputNoiseSigma ?? 1e-6,
     searchBounds: project.searchBounds,
     variableBounds: project.variableBounds,
     solutionIndex: project.selectedSolution ?? 0,
@@ -2433,7 +2436,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 
 ## src/engine/solver.worker.ts
 
-원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 402줄 · SHA-256: `b5216fddc69ea4383c7fe36896ad709459871d1f14dc9df9d5b2a51726fd2c8c`
+원본: [src/engine/solver.worker.ts](../../src/engine/solver.worker.ts) · 407줄 · SHA-256: `044d836a05e74f3c3d2c3812524fa105fcfa4770e9f36a05fdc6ec716126edf2`
 
 ```typescript
 import { compileNonlinear } from './nonlinear-parser'
@@ -2462,6 +2465,7 @@ type Request = {
   mode?: 'linear' | 'nonlinear'
   nonlinearSearch?: 'auto' | 'manual'
   certifyRoots?: boolean
+  inputNoiseSigma?: number
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   solutionIndex?: number
@@ -2498,6 +2502,7 @@ const sortedParameters = (parameters: Record<string, number>) =>
 function discoveryKey(request: Request) {
   return JSON.stringify([
     request.certifyRoots ?? false,
+    request.inputNoiseSigma ?? 1e-6,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -2516,6 +2521,7 @@ function discoveryKey(request: Request) {
 function discoveryContext(request: Request) {
   return JSON.stringify([
     request.certifyRoots ?? false,
+    request.inputNoiseSigma ?? 1e-6,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -2577,6 +2583,7 @@ async function handleRequest(work: QueuedRequest) {
     mode,
     nonlinearSearch,
     certifyRoots,
+    inputNoiseSigma,
     searchBounds,
     variableBounds,
     solutionIndex,
@@ -2665,6 +2672,7 @@ async function handleRequest(work: QueuedRequest) {
       if (!found) {
         found = search(source, parameters, {
           certifyRoots,
+          inputNoiseSigma,
           conditionNorm,
           searchBounds,
           variableBounds,
@@ -2844,9 +2852,12 @@ async function handleRequest(work: QueuedRequest) {
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,497줄 · SHA-256: `c2a1b5f0cf3bdabf54595753fde314f4ec52dea26ffd9820d79229dbddb57fc3`
+원본: [src/App.tsx](../../src/App.tsx) · 3,588줄 · SHA-256: `bce17a5831e8a68cb7d512ad2639fb0c320114a71e29390a6e30327ad68a1b0f`
 
 ```tsx
+import CertificationReport from './components/CertificationReport'
+import { currentCertificate } from './components/certification-view'
+import type { ScientificModule } from './engine/scientific/types'
 import { useInteractionViewport } from './use-interaction-viewport'
 import AnalysisSummary from './components/AnalysisSummary'
 import { rootStructureLabel, tangencyOrderLabel } from './engine/tangency'
@@ -2872,7 +2883,7 @@ import type { VariableBounds, SearchWindow } from './engine/search-analysis'
 import { sameComputedRoot } from './engine/root-comparison'
 import { normalizeEquationPaste } from './editor-input'
 import ExampleWalkthrough from './components/ExampleWalkthrough'
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
 import {
   Activity,
   ArrowDownToLine,
@@ -3025,6 +3036,10 @@ function isProject(value: unknown): value is Project {
       p.nonlinearSearch === 'auto' ||
       p.nonlinearSearch === 'manual') &&
     (p.certifyRoots === undefined || typeof p.certifyRoots === 'boolean') &&
+    (p.inputNoiseSigma === undefined ||
+      (typeof p.inputNoiseSigma === 'number' &&
+        Number.isFinite(p.inputNoiseSigma) &&
+        p.inputNoiseSigma > 0)) &&
     (p.selectedSolution === undefined ||
       (Number.isInteger(p.selectedSolution) &&
         p.selectedSolution >= 0 &&
@@ -3089,7 +3104,13 @@ function downloadFile(name: string, data: string, type: string) {
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+const ScientificWorkspace = lazy(
+  () => import('./components/ScientificWorkspace'),
+)
+
 export default function App() {
+  const [scientificModule, setScientificModule] =
+    useState<ScientificModule | null>(null)
   const [project, setProject] = useState<Project>(initialProject)
   const [basePayload, setPayload] = useState<SolvePayload | null>(null)
   const [computeError, setError] = useState('')
@@ -3179,6 +3200,17 @@ export default function App() {
     ? (selectedBranch.result ?? undefined)
     : payload?.result
   const error = selectedBranch?.error || computeError
+  const certificateWithoutRoot =
+    !result && automatic
+      ? currentCertificate(
+          searchInfo?.certification,
+          project.source,
+          Object.fromEntries(project.parameters.map((p) => [p.name, p.value])),
+        )
+      : undefined
+  const verifiedEmpty =
+    certificateWithoutRoot?.complete &&
+    certificateWithoutRoot.uniqueRootCount === 0
   const solutionIndex = project.selectedSolution ?? 0
   const anchors = project.simulations ?? []
   const individualAnchors = anchors.filter(
@@ -3359,6 +3391,7 @@ export default function App() {
     project.searchBounds,
     project.variableBounds,
     project.certifyRoots,
+    project.inputNoiseSigma,
     solutionIndex,
     project.simulations,
     project.selectedAnchor,
@@ -3909,6 +3942,21 @@ export default function App() {
       setToast('올바른 Polymath 프로젝트 JSON 파일이 아닙니다.')
     }
   }
+  if (scientificModule)
+    return (
+      <Suspense
+        fallback={
+          <p className="loading-state">계산 도구를 불러오고 있습니다…</p>
+        }
+      >
+        <ScientificWorkspace
+          key={scientificModule}
+          module={scientificModule}
+          onHome={() => setScientificModule(null)}
+          onModuleChange={setScientificModule}
+        />
+      </Suspense>
+    )
   return (
     <div
       className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
@@ -3946,7 +3994,10 @@ export default function App() {
         </header>
         {screen === 'home' && (
           <main className="module-home-page" data-screen="home">
-            <LandingModules onOpenEquationSolver={() => navigate('model')} />
+            <LandingModules
+              onOpenEquationSolver={() => navigate('model')}
+              onOpenScientific={setScientificModule}
+            />
           </main>
         )}
         {screen !== 'home' && (
@@ -4675,16 +4726,25 @@ export default function App() {
                   (automatic &&
                     !overviewHidden &&
                     overview?.anchors.length)) ? null : error ? (
-                  <div className="error-state" role="alert">
+                  <div
+                    className={`error-state${verifiedEmpty ? ' certified-empty-state' : ''}`}
+                    role={verifiedEmpty ? 'status' : 'alert'}
+                  >
                     <div className="error-icon">
                       <Sigma size={24} />
                     </div>
                     <h3>
-                      {nonlinear
-                        ? '해를 구하지 못했습니다.'
-                        : '수식을 한 번 확인해 주세요.'}
+                      {verifiedEmpty
+                        ? '이 범위에는 실근이 없습니다.'
+                        : nonlinear
+                          ? '해를 구하지 못했습니다.'
+                          : '수식을 한 번 확인해 주세요.'}
                     </h3>
-                    <p>{error}</p>
+                    <p>
+                      {verifiedEmpty
+                        ? '아래에서 구간 검증과 입력 오차에 따른 근 개수 유지 확률을 확인할 수 있습니다.'
+                        : error}
+                    </p>
                     {searchInfo && <SearchCoverage search={searchInfo} />}
                     <button
                       className="secondary-button"
@@ -5037,6 +5097,14 @@ export default function App() {
                             events={selectedBranch?.events}
                             sweepName={project.sweepName}
                             pending={pending || discoveryPending}
+                            inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
+                            onInputNoiseSigmaChange={(sigma) =>
+                              setProject((p) => ({
+                                ...p,
+                                inputNoiseSigma: sigma,
+                                certifyRoots: true,
+                              }))
+                            }
                           />
                         )}
                         {!evaluation && (
@@ -5288,6 +5356,37 @@ export default function App() {
                       </span>
                     </div>
                   </>
+                )}
+                {view === 'report' && certificateWithoutRoot && (
+                  <section className="report-without-root">
+                    <CertificationReport
+                      certificate={certificateWithoutRoot}
+                      pending={pending || discoveryPending}
+                      truncated={searchInfo?.truncated}
+                      inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
+                      onInputNoiseSigmaChange={(sigma) =>
+                        setProject((p) => ({
+                          ...p,
+                          inputNoiseSigma: sigma,
+                          certifyRoots: true,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={pending || discoveryPending}
+                      onClick={() =>
+                        downloadFile(
+                          'polymath-verification-report.md',
+                          `# ${project.title}\n\n${certificateReport(certificateWithoutRoot)}\n\n## 입력 모델\n\n\`\`\`text\n${project.source}\n\`\`\``,
+                          'text/markdown;charset=utf-8',
+                        )
+                      }
+                    >
+                      검증 리포트 저장
+                    </button>
+                  </section>
                 )}
                 {nonlinear &&
                   !automatic &&

@@ -24,6 +24,7 @@ type Request = {
   mode?: 'linear' | 'nonlinear'
   nonlinearSearch?: 'auto' | 'manual'
   certifyRoots?: boolean
+  inputNoiseSigma?: number
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   solutionIndex?: number
@@ -60,6 +61,7 @@ const sortedParameters = (parameters: Record<string, number>) =>
 function discoveryKey(request: Request) {
   return JSON.stringify([
     request.certifyRoots ?? false,
+    request.inputNoiseSigma ?? 1e-6,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -78,6 +80,7 @@ function discoveryKey(request: Request) {
 function discoveryContext(request: Request) {
   return JSON.stringify([
     request.certifyRoots ?? false,
+    request.inputNoiseSigma ?? 1e-6,
     request.source,
     Object.entries(request.variableBounds ?? {}).sort(([a], [b]) =>
       a.localeCompare(b),
@@ -139,6 +142,7 @@ async function handleRequest(work: QueuedRequest) {
     mode,
     nonlinearSearch,
     certifyRoots,
+    inputNoiseSigma,
     searchBounds,
     variableBounds,
     solutionIndex,
@@ -227,6 +231,7 @@ async function handleRequest(work: QueuedRequest) {
       if (!found) {
         found = search(source, parameters, {
           certifyRoots,
+          inputNoiseSigma,
           conditionNorm,
           searchBounds,
           variableBounds,

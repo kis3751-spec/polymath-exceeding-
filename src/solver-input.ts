@@ -12,6 +12,7 @@ export function createSolverInput(project: Project) {
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',
     certifyRoots: project.certifyRoots ?? false,
+    inputNoiseSigma: project.inputNoiseSigma ?? 1e-6,
     searchBounds: project.searchBounds,
     variableBounds: project.variableBounds,
     solutionIndex: project.selectedSolution ?? 0,

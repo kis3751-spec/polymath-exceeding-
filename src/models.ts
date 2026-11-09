@@ -25,6 +25,7 @@ export type Project = {
   conditionNorm?: ConditionNorm
   nonlinearSearch?: 'auto' | 'manual'
   certifyRoots?: boolean
+  inputNoiseSigma?: number
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
   selectedSolution?: number

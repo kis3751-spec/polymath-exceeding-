@@ -3,6 +3,7 @@ import { squareFreeCoefficients } from './square-free'
 import {
   certifyScalarRoots,
   refineCertifiedRoot,
+  finalizeCertificateMetrics,
   type RootCertificate,
 } from './interval-certification'
 import { evaluateIntervalJet } from './interval-arithmetic'
@@ -60,6 +61,7 @@ export type SearchSummary = {
 }
 export type AutomaticOptions = SolverOptions & {
   certifyRoots?: boolean
+  inputNoiseSigma?: number
   searchBounds?: { min: number; max: number }
   variableBounds?: VariableBounds
 }
@@ -1481,11 +1483,12 @@ export async function createAutomaticSolver(
           const original = prepared.originalExpression
           const node = peelZeroPower(original)
           const certificate = certifyScalarRoots(
-            node,
+            original,
             variables[0],
             parameters,
             prepared.helpers,
             { min: found.search.min, max: found.search.max },
+            { inputNoiseSigma: options.inputNoiseSigma },
           )
           if (zeroPowerMultiplicity(original) > 1)
             certificate.reduction =
@@ -1546,6 +1549,7 @@ export async function createAutomaticSolver(
                 certificate.rootIntervals.filter((b) => inside(r.values[0], b))
                   .length === 1,
             )
+          finalizeCertificateMetrics(certificate)
           found.search.certification = certificate
           for (const result of found.solutions)
             result.durationMs += performance.now() - verificationStart

@@ -1,3 +1,6 @@
+import CertificationReport from './components/CertificationReport'
+import { currentCertificate } from './components/certification-view'
+import type { ScientificModule } from './engine/scientific/types'
 import { useInteractionViewport } from './use-interaction-viewport'
 import AnalysisSummary from './components/AnalysisSummary'
 import { rootStructureLabel, tangencyOrderLabel } from './engine/tangency'
@@ -23,7 +26,7 @@ import type { VariableBounds, SearchWindow } from './engine/search-analysis'
 import { sameComputedRoot } from './engine/root-comparison'
 import { normalizeEquationPaste } from './editor-input'
 import ExampleWalkthrough from './components/ExampleWalkthrough'
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
 import {
   Activity,
   ArrowDownToLine,
@@ -176,6 +179,10 @@ function isProject(value: unknown): value is Project {
       p.nonlinearSearch === 'auto' ||
       p.nonlinearSearch === 'manual') &&
     (p.certifyRoots === undefined || typeof p.certifyRoots === 'boolean') &&
+    (p.inputNoiseSigma === undefined ||
+      (typeof p.inputNoiseSigma === 'number' &&
+        Number.isFinite(p.inputNoiseSigma) &&
+        p.inputNoiseSigma > 0)) &&
     (p.selectedSolution === undefined ||
       (Number.isInteger(p.selectedSolution) &&
         p.selectedSolution >= 0 &&
@@ -240,7 +247,13 @@ function downloadFile(name: string, data: string, type: string) {
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+const ScientificWorkspace = lazy(
+  () => import('./components/ScientificWorkspace'),
+)
+
 export default function App() {
+  const [scientificModule, setScientificModule] =
+    useState<ScientificModule | null>(null)
   const [project, setProject] = useState<Project>(initialProject)
   const [basePayload, setPayload] = useState<SolvePayload | null>(null)
   const [computeError, setError] = useState('')
@@ -330,6 +343,17 @@ export default function App() {
     ? (selectedBranch.result ?? undefined)
     : payload?.result
   const error = selectedBranch?.error || computeError
+  const certificateWithoutRoot =
+    !result && automatic
+      ? currentCertificate(
+          searchInfo?.certification,
+          project.source,
+          Object.fromEntries(project.parameters.map((p) => [p.name, p.value])),
+        )
+      : undefined
+  const verifiedEmpty =
+    certificateWithoutRoot?.complete &&
+    certificateWithoutRoot.uniqueRootCount === 0
   const solutionIndex = project.selectedSolution ?? 0
   const anchors = project.simulations ?? []
   const individualAnchors = anchors.filter(
@@ -510,6 +534,7 @@ export default function App() {
     project.searchBounds,
     project.variableBounds,
     project.certifyRoots,
+    project.inputNoiseSigma,
     solutionIndex,
     project.simulations,
     project.selectedAnchor,
@@ -1060,6 +1085,21 @@ export default function App() {
       setToast('올바른 Polymath 프로젝트 JSON 파일이 아닙니다.')
     }
   }
+  if (scientificModule)
+    return (
+      <Suspense
+        fallback={
+          <p className="loading-state">계산 도구를 불러오고 있습니다…</p>
+        }
+      >
+        <ScientificWorkspace
+          key={scientificModule}
+          module={scientificModule}
+          onHome={() => setScientificModule(null)}
+          onModuleChange={setScientificModule}
+        />
+      </Suspense>
+    )
   return (
     <div
       className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
@@ -1097,7 +1137,10 @@ export default function App() {
         </header>
         {screen === 'home' && (
           <main className="module-home-page" data-screen="home">
-            <LandingModules onOpenEquationSolver={() => navigate('model')} />
+            <LandingModules
+              onOpenEquationSolver={() => navigate('model')}
+              onOpenScientific={setScientificModule}
+            />
           </main>
         )}
         {screen !== 'home' && (
@@ -1826,16 +1869,25 @@ export default function App() {
                   (automatic &&
                     !overviewHidden &&
                     overview?.anchors.length)) ? null : error ? (
-                  <div className="error-state" role="alert">
+                  <div
+                    className={`error-state${verifiedEmpty ? ' certified-empty-state' : ''}`}
+                    role={verifiedEmpty ? 'status' : 'alert'}
+                  >
                     <div className="error-icon">
                       <Sigma size={24} />
                     </div>
                     <h3>
-                      {nonlinear
-                        ? '해를 구하지 못했습니다.'
-                        : '수식을 한 번 확인해 주세요.'}
+                      {verifiedEmpty
+                        ? '이 범위에는 실근이 없습니다.'
+                        : nonlinear
+                          ? '해를 구하지 못했습니다.'
+                          : '수식을 한 번 확인해 주세요.'}
                     </h3>
-                    <p>{error}</p>
+                    <p>
+                      {verifiedEmpty
+                        ? '아래에서 구간 검증과 입력 오차에 따른 근 개수 유지 확률을 확인할 수 있습니다.'
+                        : error}
+                    </p>
                     {searchInfo && <SearchCoverage search={searchInfo} />}
                     <button
                       className="secondary-button"
@@ -2188,6 +2240,14 @@ export default function App() {
                             events={selectedBranch?.events}
                             sweepName={project.sweepName}
                             pending={pending || discoveryPending}
+                            inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
+                            onInputNoiseSigmaChange={(sigma) =>
+                              setProject((p) => ({
+                                ...p,
+                                inputNoiseSigma: sigma,
+                                certifyRoots: true,
+                              }))
+                            }
                           />
                         )}
                         {!evaluation && (
@@ -2439,6 +2499,37 @@ export default function App() {
                       </span>
                     </div>
                   </>
+                )}
+                {view === 'report' && certificateWithoutRoot && (
+                  <section className="report-without-root">
+                    <CertificationReport
+                      certificate={certificateWithoutRoot}
+                      pending={pending || discoveryPending}
+                      truncated={searchInfo?.truncated}
+                      inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
+                      onInputNoiseSigmaChange={(sigma) =>
+                        setProject((p) => ({
+                          ...p,
+                          inputNoiseSigma: sigma,
+                          certifyRoots: true,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={pending || discoveryPending}
+                      onClick={() =>
+                        downloadFile(
+                          'polymath-verification-report.md',
+                          `# ${project.title}\n\n${certificateReport(certificateWithoutRoot)}\n\n## 입력 모델\n\n\`\`\`text\n${project.source}\n\`\`\``,
+                          'text/markdown;charset=utf-8',
+                        )
+                      }
+                    >
+                      검증 리포트 저장
+                    </button>
+                  </section>
                 )}
                 {nonlinear &&
                   !automatic &&

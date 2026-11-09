@@ -1,3 +1,4 @@
+import type { ScientificModule } from '../engine/scientific/types'
 import { ArrowRight, Code2, FileText, Home, Activity } from 'lucide-react'
 import './WorkspaceNavigation.css'
 
@@ -25,26 +26,31 @@ const modules: {
   },
   {
     kind: 'differential',
+    available: true,
     letter: 'D',
     name: 'Differential Equations',
   },
   {
     kind: 'curve',
+    available: true,
     letter: 'P',
     name: 'Curve Fitting',
   },
   {
     kind: 'nonlinear',
+    available: true,
     letter: 'N',
     name: 'Nonlinear Fitting',
   },
   {
     kind: 'optimum',
+    available: true,
     letter: 'O',
     name: 'Optimum Finder',
   },
   {
     kind: 'integration',
+    available: true,
     letter: 'I',
     name: 'Discrete Integration',
   },
@@ -141,8 +147,10 @@ function ModuleIllustration({ kind }: { kind: ModuleKind }) {
 
 export function LandingModules({
   onOpenEquationSolver,
+  onOpenScientific,
 }: {
   onOpenEquationSolver: () => void
+  onOpenScientific: (module: ScientificModule) => void
 }) {
   return (
     <section className="module-home" aria-label="계산 도구">
@@ -154,7 +162,21 @@ export function LandingModules({
             key={module.kind}
             disabled={!module.available}
             aria-label={`${module.name} ${module.available ? '열기' : '준비 중'}`}
-            onClick={module.available ? onOpenEquationSolver : undefined}
+            onClick={() =>
+              module.kind === 'equation'
+                ? onOpenEquationSolver()
+                : onOpenScientific(
+                    (
+                      {
+                        differential: 'ode',
+                        curve: 'curve-fit',
+                        nonlinear: 'nonlinear-fit',
+                        optimum: 'optimization',
+                        integration: 'integration',
+                      } as const
+                    )[module.kind],
+                  )
+            }
           >
             <span className="module-card-title">
               <span className="module-letter">{module.letter}</span>

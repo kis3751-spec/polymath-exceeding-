@@ -11,7 +11,8 @@ import {
   uniqueBranchEvents,
 } from '../engine/branch-events'
 import { rootStructureLabel, tangencyOrderLabel } from '../engine/tangency'
-import { unresolvedReason } from '../engine/interval-certification'
+import CertificationReport from './CertificationReport'
+import { currentCertificate, certifiedConclusion } from './certification-view'
 import './AnalysisSummary.css'
 
 export const diagnosticNumber = (n?: number) =>
@@ -42,6 +43,8 @@ type Props = {
   events?: BranchTerminalEvent[]
   sweepName: string
   pending: boolean
+  inputNoiseSigma?: number
+  onInputNoiseSigmaChange?: (sigma: number) => void
 }
 export default function AnalysisSummary({
   result,
@@ -51,14 +54,16 @@ export default function AnalysisSummary({
   events = [],
   sweepName,
   pending,
+  inputNoiseSigma,
+  onInputNoiseSigmaChange,
 }: Props) {
   const [perturbation, setPerturbation] = useState('0.000001')
   const d = useMemo(
     () => reportDiagnostics(result, source, parameters, search),
     [result, source, JSON.stringify(parameters), search],
   )
-  const critical = uniqueBranchEvents(events),
-    c = search?.certification
+  const critical = uniqueBranchEvents(events)
+  const c = currentCertificate(search?.certification, source, parameters)
   const delta = Number(perturbation)
   const response =
     perturbation.trim() && Number.isFinite(delta) && delta >= 0
@@ -85,7 +90,14 @@ export default function AnalysisSummary({
             : `${result.rootStructure?.kind === 'multiple' ? '◆' : '●'} ${result.variables.length > 1 ? (d.rank === result.variables.length ? `일반 연립해 · 랭크 ${d.rank}/${result.variables.length}` : d.rank === undefined ? '연립해 · 랭크 미산정' : `특이 연립해 · 랭크 ${d.rank}/${result.variables.length}`) : rootStructureLabel(result.rootStructure)}`}
         </span>
         <h3>
-          {pending ? '현재 입력 검증 중…' : searchConclusion(search, linear)}
+          {pending
+            ? '현재 입력 검증 중…'
+            : c
+              ? certifiedConclusion(c).title
+              : searchConclusion(
+                  search?.certification ? undefined : search,
+                  linear,
+                )}
         </h3>
         {c && (
           <p>
@@ -161,7 +173,9 @@ export default function AnalysisSummary({
           <strong>
             {linear
               ? `${d.rank ?? '—'} / ${result.values.length}`
-              : (coveragePercent(search) ?? '미실행')}
+              : c
+                ? coveragePercent(search)
+                : '미실행'}
           </strong>
           <small>
             {linear
@@ -181,6 +195,15 @@ export default function AnalysisSummary({
           </details>
         </article>
       </div>
+      {!linear && (
+        <CertificationReport
+          certificate={c}
+          pending={pending}
+          inputNoiseSigma={inputNoiseSigma}
+          onInputNoiseSigmaChange={onInputNoiseSigmaChange}
+          truncated={search?.truncated}
+        />
+      )}
       <div className="sensitivity-scenario">
         <div>
           <h4>입력 오차가 이만큼이면?</h4>
@@ -329,47 +352,6 @@ export default function AnalysisSummary({
             )
           })}
         </div>
-      )}
-      {c && (
-        <details className="analysis-details">
-          <summary>
-            탐색 범위·미결정 구간{' '}
-            {c.unresolved.length > 0 ? `${c.unresolved.length}곳` : '없음'}
-          </summary>
-          <p>
-            검증률은 존재·부재가 판정된 구간 길이의 비율입니다. 모든 근을 찾았을
-            확률이 아닙니다. 미결정 구간이 1곳이라도 남으면 길이가 작아도 전체
-            발견 완료로 표시하지 않습니다.
-          </p>
-          {c.unresolved.length > 0 && (
-            <div className="analysis-table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>시작</th>
-                    <th>끝</th>
-                    <th>남은 검증</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {c.unresolved.map((u, i) => (
-                    <tr key={i}>
-                      <td>{diagnosticNumber(u.lo)}</td>
-                      <td>{diagnosticNumber(u.hi)}</td>
-                      <td>{unresolvedReason(u.reason)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {search?.truncated && (
-            <p>
-              탐색 또는 표시 한도에 도달했습니다. 현재 목록만으로 모든 근 발견을
-              판정하지 않습니다.
-            </p>
-          )}
-        </details>
       )}
     </section>
   )

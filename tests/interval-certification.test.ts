@@ -104,13 +104,12 @@ describe('scalar interval certificates', () => {
     expect(c.complete).toBe(true)
     expect(c.uniqueRootCount).toBe(0)
   })
-  it('leaves high-order contacts undecided despite a near-100 length ratio', () => {
+  it('certifies explicit high powers through disclosed zero equivalence', () => {
     const c = certify('(x-1)^6', 0, 2)
-    expect(c.complete).toBe(false)
-    expect(c.unresolved.length).toBeGreaterThan(0)
-    expect(certificateSummary(c)).toContain('보류')
-    expect(certificateSummary(c)).not.toContain('100.000%')
-    expect(c).not.toHaveProperty('captureConfidence')
+    expect(c.complete).toBe(true)
+    expect(c.uniqueRootCount).toBe(1)
+    expect(c.reduction).toContain('중복도')
+    expect(c.completeness?.allRootsFoundProbability).toBeUndefined()
   })
   it('does not claim a root across a pole or nonsmooth jump', () => {
     for (const source of ['1/x', 'sign(x)-0.2']) {

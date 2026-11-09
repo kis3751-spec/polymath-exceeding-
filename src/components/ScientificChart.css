@@ -1,0 +1,109 @@
+.scientific-chart {
+  min-width: 0;
+  width: 100%;
+}
+.science-chart-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin: 4px 0 12px;
+}
+.science-chart-legend {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.science-chart-legend button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px;
+  border-radius: 5px;
+}
+.science-chart-legend button[aria-pressed='false'] {
+  opacity: 0.4;
+}
+.science-chart-legend i {
+  width: 16px;
+  height: 3px;
+  border-radius: 3px;
+}
+.science-chart-tools select,
+.science-chart-tools > button {
+  border: 1px solid #dce5d9;
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: #fff;
+  color: #587165;
+}
+.scientific-chart-stage {
+  height: clamp(310px, 57vh, 620px);
+  width: 100%;
+  min-width: 0;
+  position: relative;
+}
+.scientific-chart-stage svg {
+  display: block;
+  max-width: 100%;
+  outline: none;
+  touch-action: pan-y;
+}
+.scientific-chart-stage svg:focus-visible {
+  outline: 2px solid #6b9e8a;
+  outline-offset: 3px;
+}
+.scientific-chart-stage text {
+  font:
+    11px 'IBM Plex Mono',
+    monospace;
+  fill: #84928b;
+}
+.science-chart-tooltip {
+  pointer-events: none;
+  position: absolute;
+  top: 35px;
+  right: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid #dce6d9;
+  border-radius: 6px;
+  background: #fffffff2;
+  font-size: 12px;
+  color: #426f60;
+  box-shadow: 0 4px 12px #294a3910;
+}
+.science-help {
+  font-size: 12px;
+  color: #597366;
+  line-height: 1.8;
+  margin-top: 10px;
+}
+.science-help summary {
+  cursor: pointer;
+}
+.science-help p {
+  font-size: 12px;
+  max-width: 90ch;
+  margin-top: 7px;
+}
+@media (max-width: 600px) {
+  .science-chart-tools {
+    gap: 8px;
+  }
+  .scientific-chart-stage {
+    height: 330px;
+  }
+  .science-chart-tooltip {
+    top: 0;
+    right: 3px;
+    font-size: 10px;
+    padding: 6px;
+    gap: 7px;
+  }
+}

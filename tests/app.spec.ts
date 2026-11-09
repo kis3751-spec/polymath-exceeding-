@@ -2294,7 +2294,7 @@ test.describe('Calm screens and stable interactive charts', () => {
     })
     await expect(entry).toBeVisible()
     await expect(page.locator('.module-card')).toHaveCount(6)
-    await expect(page.locator('.module-card:disabled')).toHaveCount(5)
+    await expect(page.locator('.module-card:disabled')).toHaveCount(0)
     await expect(page.locator('.rail')).toHaveCount(0)
     await expect(page.locator('.module-home-heading')).toHaveCount(0)
     await expect(page.locator('.module-home-note')).toHaveCount(0)

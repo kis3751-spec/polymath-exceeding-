@@ -1,6 +1,6 @@
-# Polymath Studio — Equation Solver
+# Polymath Studio — Engineering Workspace
 
-공학 수식을 직접 입력하고 파라미터를 움직이며 해의 변화를 탐색하는 브라우저 계산기입니다. **Equation Solver** 카테고리 안에 **Linear**와 **Nonlinear**를 제공합니다. Differential Equation Solver는 이후 확장할 별도 카테고리이며 아직 실행할 수 없습니다.
+공학 수식을 직접 입력하고 파라미터를 움직이며 해의 변화를 탐색하는 브라우저 계산기입니다. **Equation Solver**의 선형·비선형 방정식에 더해 **미분방정식, 선형·다항·다중·비선형 회귀, 이산 적분, 제약·LSQ 최적화**를 제공합니다.
 
 ## 실행하기
 
@@ -24,7 +24,7 @@ Git이 로컬 변경 때문에 업데이트를 중단하면 해당 변경을 보
 
 ## 계산기 구성과 저장
 
-- 첫 화면은 모듈 카드만 보여 줍니다. **Equation Solver**를 열면 방정식 계산기로 들어가며, 나머지 모듈은 준비 중으로 표시합니다.
+- 첫 화면은 모듈 카드만 보여 줍니다. 각 카드를 열면 해당 계산기로 들어갑니다. Curve Fitting 안에서 선형·다항·다중선형을, Optimum Finder 안에서 목적함수·제약조건과 LSQ를 선택합니다.
 - **수식·파라미터**, **시뮬레이션**, **해석 리포트**는 각각 별도 화면입니다. 상단 화면 이동 버튼으로 전환하며 작성한 모델과 선택한 해는 유지합니다. **모듈 홈**으로 돌아가도 현재 작업을 삭제하지 않습니다.
 - **Linear**는 예제 없이 빈 모델에서 시작합니다. 한 줄에 하나의 방정식을 입력합니다.
 - **Nonlinear**도 빈 모델에서 시작하며 **예제 불러오기**로 대표 모델 6개를 선택할 수 있습니다.
@@ -239,3 +239,28 @@ Nonlinear 자동 탐색의 시뮬레이션은 이제 [기본 병합 그래프](d
 - [곡선·샘플·초기값 추적과 리포트 해석](docs/SIMULATION_ALIGNMENT_REVIEW.md)
 - [첨부 2차 인증 엔진의 재검증 결과](docs/UPLOADED_PATCH_V2_AUDIT.md)
 - [3차 확률·인증 알고리즘의 확장 검증과 적용 범위](docs/UPLOADED_PATCH_V3_AUDIT.md)
+
+## 확장된 과학 계산 모듈
+
+| 도구                   | 입력의 핵심                                | 계산·시각화                                      |
+| ---------------------- | ------------------------------------------ | ------------------------------------------------ | ------------------------------------------------- |
+| Differential Equations | `d(A)/d(t)=-k*A`, `A(0)=1`, `t             | 0:10`                                            | 적응 RK45·강성 대응 음해법, 시간 재생·위상 그래프 |
+| Curve Fitting          | `[표]` + `polyfit x y 1` 또는 차수 2 이상  | 정규화 SVD, 선형·다항식 모델·데이터 오차         |
+| Multilinear Regression | `[표]` + `mlinfit x1 x2 y`                 | 여러 설명 변수의 계수·표준오차·랭크              |
+| Nonlinear Fitting      | `nlinfit y=a*x/(b+x)`, `m(a)=2`, `m(b)=1`  | AD Jacobian + LM, 국소 수렴·RMSE·R²              |
+| Discrete Integration   | `integrate y(x) 0 4 200 lin`               | 선형·자연 스플라인·Akima 보간의 조각 적분·누적량 |
+| Optimum Finder         | `min: ...`, `x                             | 초기값 최소 최대`, 등식·부등식                   | 투영 BFGS·증강 Lagrangian, 목적함수·제약 위반     |
+| LSQ Optimization       | `[표]` + `fit: y=a*x+b`와 초기값·범위·제약 | 제약 최소제곱 적합·수렴 이력                     |
+
+초기값·조건은 각 줄에 작성합니다. 각 도구의 **사용법**에서 실제 입력 예제를 확인할 수 있습니다. 프로젝트는 모듈별로 자동 저장되고 JSON으로 내보내거나 불러올 수 있습니다. 계산은 전용 Web Worker에서 수행하고, 화면과 계산 엔진은 ES 모듈로 분리해 로드합니다.
+
+- [미분방정식 사용법·계산 범위](docs/ODE_MODULE.md)
+- [회귀의 문법·통계 지표](docs/FITTING_MODULE.md)
+- [제약·LSQ 최적화와 이산 적분](docs/OPTIMIZATION_AND_INTEGRATION.md)
+- [4차 확률 엔진 통합·보완 내용](docs/PROBABILITY_V4_INTEGRATION.md)
+- [검증 지도·Gaussian 입력 오차 리포트](docs/REPORT_V4.md)
+- [새 모듈 핵심 원본 코드 묶음](docs/core-code/04-scientific-modules.md)
+
+확률 리포트는 `F(x)+ε=0`, `ε~N(0,σ²)`라는 하나의 일정한 등식 오프셋 모형에서 **현재 유한 탐색 범위의 근 개수 유지 확률**을 검증된 범위로 표시합니다. 미발견 근의 포획 확률이나 개별 측정값의 독립 오차 모형과는 다릅니다. σ를 바꾸면 실제 계산과 인증을 다시 수행합니다.
+
+전체 변경·검증 기록은 [4차 통합 결과](docs/V4_SCIENTIFIC_RELEASE.md)에 정리했습니다.

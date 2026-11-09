@@ -43,11 +43,11 @@ export function mul(a: Interval, b: Interval): Interval {
   if (p.some(Number.isNaN)) return WHOLE
   let lo = nextDown(Math.min(...p))
   let hi = nextUp(Math.max(...p))
-  // Intersect with the known sign, retaining all real values between zero
-  // and MIN_VALUE when a positive or negative product underflows.
-  if ((a.lo >= 0 && b.lo >= 0) || (a.hi <= 0 && b.hi <= 0)) lo = Math.max(0, lo)
-  else if ((a.lo >= 0 && b.hi <= 0) || (a.hi <= 0 && b.lo >= 0))
+  if ((a.lo >= 0 && b.lo >= 0) || (a.hi <= 0 && b.hi <= 0)) {
+    lo = Math.max(0, lo)
+  } else if ((a.lo >= 0 && b.hi <= 0) || (a.hi <= 0 && b.lo >= 0)) {
     hi = Math.min(0, hi)
+  }
   return bounded(lo, hi)
 }
 export function div(a: Interval, b: Interval): Interval {
@@ -88,6 +88,377 @@ export function integerPower(a: Interval, n: number): Interval {
 }
 const maxAbs = (a: Interval) => Math.max(Math.abs(a.lo), Math.abs(a.hi))
 
+export type ExactDyadic = { m: bigint; e: number }
+
+export function toExactDyadic(x: number): ExactDyadic {
+  if (!Number.isFinite(x))
+    throw new Error('Exact dyadic arithmetic requires finite inputs.')
+  if (x === 0) return { m: 0n, e: 0 }
+  bits.setFloat64(0, x)
+  const raw = bits.getBigUint64(0)
+  const sign = raw >> 63n ? -1n : 1n
+  const exp = Number((raw >> 52n) & 0x7ffn)
+  const frac = raw & ((1n << 52n) - 1n)
+  const sig = exp === 0 ? frac : frac | (1n << 52n)
+  const e = (exp === 0 ? 1 : exp) - 1075
+  return { m: sign * sig, e }
+}
+
+function guardDyadic(d: ExactDyadic): ExactDyadic {
+  if (
+    !Number.isSafeInteger(d.e) ||
+    Math.abs(d.e) > 131072 ||
+    d.m.toString(2).length > 32768
+  )
+    throw new Error('Exact polynomial arithmetic budget exceeded.')
+  return d
+}
+export function addExactDyadic(a: ExactDyadic, b: ExactDyadic): ExactDyadic {
+  guardDyadic(a)
+  guardDyadic(b)
+  if (Math.abs(a.e - b.e) > 131072)
+    throw new Error('Exact dyadic alignment budget exceeded.')
+  if (a.m === 0n) return b
+  if (b.m === 0n) return a
+  if (a.e === b.e) {
+    const m = a.m + b.m
+    return m === 0n ? { m: 0n, e: 0 } : { m, e: a.e }
+  }
+  if (a.e > b.e) {
+    const shift = a.e - b.e
+    const m = (a.m << BigInt(shift)) + b.m
+    return m === 0n ? { m: 0n, e: 0 } : { m, e: b.e }
+  }
+  const shift = b.e - a.e
+  const m = a.m + (b.m << BigInt(shift))
+  return m === 0n ? { m: 0n, e: 0 } : { m, e: a.e }
+}
+
+export function mulExactDyadic(a: ExactDyadic, b: ExactDyadic): ExactDyadic {
+  if (a.m === 0n || b.m === 0n) return { m: 0n, e: 0 }
+  return guardDyadic({ m: a.m * b.m, e: a.e + b.e })
+}
+
+export function compareExactDyadic(a: ExactDyadic, b: ExactDyadic): number {
+  const diff = addExactDyadic(a, { m: -b.m, e: b.e })
+  return diff.m < 0n ? -1 : diff.m > 0n ? 1 : 0
+}
+
+/** Convert an exact dyadic rational m * 2^e to its tightest directed-rounding Float64 interval. */
+export function dyadicToInterval(d: ExactDyadic): Interval {
+  if (d.m === 0n) return ZERO
+  const sign = d.m < 0n ? -1 : 1
+  const absM = d.m < 0n ? -d.m : d.m
+  const bitLen = absM.toString(2).length
+  const topExp = d.e + bitLen - 1
+
+  if (topExp < -1074) {
+    return sign > 0
+      ? { lo: 0, hi: Number.MIN_VALUE }
+      : { lo: -Number.MIN_VALUE, hi: 0 }
+  }
+  if (topExp > 1023) {
+    return sign > 0
+      ? { lo: Number.MAX_VALUE, hi: Infinity }
+      : { lo: -Infinity, hi: -Number.MAX_VALUE }
+  }
+
+  const lsbExp = Math.max(-1074, topExp - 52)
+  const shift = d.e - lsbExp
+  let q: bigint
+  let hasRemainder: boolean
+  if (shift >= 0) {
+    q = absM << BigInt(shift)
+    hasRemainder = false
+  } else {
+    const rShift = BigInt(-shift)
+    q = absM >> rShift
+    hasRemainder = (absM & ((1n << rShift) - 1n)) !== 0n
+  }
+
+  let rawMag: bigint
+  if (topExp < -1022) {
+    rawMag = q
+  } else {
+    const biasedExp = BigInt(topExp + 1023)
+    rawMag = (biasedExp << 52n) | (q & ((1n << 52n) - 1n))
+  }
+  bits.setBigUint64(0, rawMag)
+  const mag = bits.getFloat64(0)
+
+  if (!hasRemainder) {
+    const exact = sign > 0 ? mag : -mag
+    return { lo: exact, hi: exact }
+  }
+  return sign > 0
+    ? { lo: mag, hi: nextUp(mag) }
+    : { lo: nextDown(-mag), hi: -mag }
+}
+
+const ZERO_DYADIC: ExactDyadic = { m: 0n, e: 0 }
+const ONE_DYADIC: ExactDyadic = { m: 1n, e: 0 }
+
+function trimDyadicPoly(p: ExactDyadic[]): ExactDyadic[] {
+  const out = [...p]
+  while (out.length > 1 && out.at(-1)!.m === 0n) out.pop()
+  return out.length ? out : [ZERO_DYADIC]
+}
+
+function addDyadicPoly(
+  a: readonly ExactDyadic[],
+  b: readonly ExactDyadic[],
+  subOp = false,
+): ExactDyadic[] {
+  const n = Math.max(a.length, b.length)
+  const out: ExactDyadic[] = []
+  for (let i = 0; i < n; i++) {
+    const ai = a[i] ?? ZERO_DYADIC
+    const bi = b[i] ?? ZERO_DYADIC
+    const rhs = subOp ? { m: -bi.m, e: bi.e } : bi
+    out.push(addExactDyadic(ai, rhs))
+  }
+  return trimDyadicPoly(out)
+}
+
+function mulDyadicPoly(
+  a: readonly ExactDyadic[],
+  b: readonly ExactDyadic[],
+): ExactDyadic[] | null {
+  if ((a.length === 1 && a[0].m === 0n) || (b.length === 1 && b[0].m === 0n)) {
+    return [ZERO_DYADIC]
+  }
+  const deg = a.length - 1 + (b.length - 1)
+  if (deg > 64) return null
+  const out: ExactDyadic[] = Array.from({ length: deg + 1 }, () => ZERO_DYADIC)
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].m === 0n) continue
+    for (let j = 0; j < b.length; j++) {
+      if (b[j].m === 0n) continue
+      out[i + j] = addExactDyadic(out[i + j], mulExactDyadic(a[i], b[j]))
+    }
+  }
+  return trimDyadicPoly(out)
+}
+
+/** Extract exact dyadic polynomial coefficients directly from the AST without Float64
+ * expansion rounding (preserving terms like `(x - 1)^4 + 1e-20` exactly in BigInt). */
+export function exactDyadicPolynomialCoefficients(
+  node: Node,
+  variable: string,
+  constants: Record<string, number>,
+  helpers: Map<string, Node> = new Map(),
+): ExactDyadic[] | null {
+  const active = new Set<string>()
+  const memo = new Map<string, ExactDyadic[] | null>()
+  const visit = (n: Node, depth = 0): ExactDyadic[] | null => {
+    if (depth > 128) return null
+    if (n.kind === 'number') {
+      if (!Number.isFinite(n.value)) return null
+      return [toExactDyadic(n.value)]
+    }
+    if (n.kind === 'name') {
+      if (n.name === variable) return [ZERO_DYADIC, ONE_DYADIC]
+      if (Object.hasOwn(constants, n.name)) {
+        const v = constants[n.name]
+        return Number.isFinite(v) ? [toExactDyadic(v)] : null
+      }
+      if (n.name === 'pi') return [toExactDyadic(Math.PI)]
+      if (n.name === 'e') return [toExactDyadic(Math.E)]
+      if (memo.has(n.name)) return memo.get(n.name)!
+      const h = helpers.get(n.name)
+      if (!h || active.has(n.name)) return null
+      active.add(n.name)
+      const r = visit(h, depth + 1)
+      active.delete(n.name)
+      memo.set(n.name, r)
+      return r
+    }
+    if (n.kind === 'unary') {
+      const c = visit(n.child, depth + 1)
+      if (!c) return null
+      return n.sign === '+'
+        ? c
+        : c.map((d) => (d.m === 0n ? ZERO_DYADIC : { m: -d.m, e: d.e }))
+    }
+    if (n.kind === 'binary' || n.name === 'pow') {
+      const op = n.kind === 'binary' ? n.operator : '^'
+      const lNode = n.kind === 'binary' ? n.left : n.args[0]
+      const rNode = n.kind === 'binary' ? n.right : n.args[1]
+      const l = visit(lNode, depth + 1)
+      const r = visit(rNode, depth + 1)
+      if (!l || !r) return null
+      if (op === '+') return addDyadicPoly(l, r, false)
+      if (op === '-') return addDyadicPoly(l, r, true)
+      if (op === '*') return mulDyadicPoly(l, r)
+      if (op === '/') {
+        if (r.length !== 1 || r[0].m === 0n) return null
+        let absDiv = r[0].m < 0n ? -r[0].m : r[0].m
+        let tz = 0
+        while ((absDiv & 1n) === 0n) {
+          absDiv >>= 1n
+          tz++
+        }
+        if (absDiv !== 1n) return null
+        const signDiv = r[0].m < 0n ? -1n : 1n
+        const shiftExp = r[0].e + tz
+        return l.map((d) =>
+          d.m === 0n ? ZERO_DYADIC : { m: signDiv * d.m, e: d.e - shiftExp },
+        )
+      }
+      if (op === '^') {
+        if (r.length !== 1) return null
+        const expIv = dyadicToInterval(r[0])
+        if (
+          expIv.lo !== expIv.hi ||
+          !Number.isInteger(expIv.lo) ||
+          expIv.lo < 0 ||
+          expIv.lo > 64
+        )
+          return null
+        let k = expIv.lo
+        if (k === 0) return [ONE_DYADIC]
+        if ((l.length - 1) * k > 64) return null
+        let acc: ExactDyadic[] = [ONE_DYADIC]
+        let base: ExactDyadic[] = l
+        while (k > 0) {
+          if (k % 2 === 1) {
+            const next = mulDyadicPoly(acc, base)
+            if (!next) return null
+            acc = next
+          }
+          k = Math.floor(k / 2)
+          if (k > 0) {
+            const nextBase = mulDyadicPoly(base, base)
+            if (!nextBase) return null
+            base = nextBase
+          }
+        }
+        return acc
+      }
+      return null
+    }
+    return null
+  }
+  try {
+    return visit(node)
+  } catch {
+    return null
+  }
+}
+
+export function differentiateExactDyadicPoly(
+  coeffs: readonly ExactDyadic[],
+): ExactDyadic[] {
+  if (coeffs.length <= 1) return [ZERO_DYADIC]
+  const out: ExactDyadic[] = []
+  for (let i = 1; i < coeffs.length; i++) {
+    out.push(
+      coeffs[i].m === 0n
+        ? ZERO_DYADIC
+        : { m: coeffs[i].m * BigInt(i), e: coeffs[i].e },
+    )
+  }
+  return trimDyadicPoly(out)
+}
+
+export function evalExactDyadicPoly(
+  coeffs: readonly ExactDyadic[],
+  x: number,
+): ExactDyadic {
+  const dx = toExactDyadic(x)
+  let acc = ZERO_DYADIC
+  for (let i = coeffs.length - 1; i >= 0; i--) {
+    acc = addExactDyadic(mulExactDyadic(acc, dx), coeffs[i])
+  }
+  return acc
+}
+
+export function exactPolynomialTaylorFromDyadic(
+  exactCoeffs: readonly ExactDyadic[],
+  x0: number,
+): Interval[] {
+  const work = exactCoeffs.map((d) => ({ m: d.m, e: d.e }))
+  const dx0 = toExactDyadic(x0)
+  const n = work.length
+  for (let k = 0; k < n; k++) {
+    for (let i = n - 2; i >= k; i--) {
+      work[i] = addExactDyadic(work[i], mulExactDyadic(work[i + 1], dx0))
+    }
+  }
+  return work.map(dyadicToInterval)
+}
+
+/** Compute the exact Taylor coefficients P^(k)(x0)/k! of a Float64-coefficient polynomial at x0. */
+export function exactPolynomialTaylorIntervals(
+  coefficients: readonly number[],
+  x0: number,
+): Interval[] {
+  return exactPolynomialTaylorFromDyadic(coefficients.map(toExactDyadic), x0)
+}
+
+export function evaluateExactDyadicPolynomialCenteredJet(
+  exactCoeffs: readonly ExactDyadic[],
+  cell: Interval,
+  criticalPoints: readonly number[] = [],
+): IntervalJet {
+  const evalAtCenter = (x0: number): { val: Interval; der: Interval } => {
+    const t = exactPolynomialTaylorFromDyadic(exactCoeffs, x0)
+    if (cell.lo === x0 && cell.hi === x0) {
+      return { val: t[0] ?? ZERO, der: t[1] ?? ZERO }
+    }
+    const nx0 = toExactDyadic(-x0)
+    const dLo = dyadicToInterval(addExactDyadic(toExactDyadic(cell.lo), nx0))
+    const dHi = dyadicToInterval(addExactDyadic(toExactDyadic(cell.hi), nx0))
+    const dx: Interval = { lo: dLo.lo, hi: dHi.hi }
+    let val = t[0] ?? ZERO
+    let der = ZERO
+    for (let k = 1; k < t.length; k++) {
+      const powK = integerPower(dx, k)
+      val = add(val, mul(t[k], powK))
+      const powKm1 = k === 1 ? ONE : integerPower(dx, k - 1)
+      der = add(der, mul(mul(point(k), t[k]), powKm1))
+    }
+    return { val, der }
+  }
+
+  const mid = cell.lo / 2 + cell.hi / 2
+  const center = Number.isFinite(mid) ? mid : 0
+  let res = evalAtCenter(center)
+  if (cell.lo < cell.hi) {
+    for (const cp of criticalPoints) {
+      if (
+        Number.isFinite(cp) &&
+        Math.abs(cp - center) <= Math.max(1e-2, 4 * (cell.hi - cell.lo))
+      ) {
+        const alt = evalAtCenter(cp)
+        res = {
+          val: {
+            lo: Math.max(res.val.lo, alt.val.lo),
+            hi: Math.min(res.val.hi, alt.val.hi),
+          },
+          der: {
+            lo: Math.max(res.der.lo, alt.der.lo),
+            hi: Math.min(res.der.hi, alt.der.hi),
+          },
+        }
+      }
+    }
+  }
+  return { ...res, domain: 'all' }
+}
+
+export function evaluatePolynomialCenteredIntervalJet(
+  coefficients: readonly number[],
+  cell: Interval,
+  criticalPoints: readonly number[] = [],
+): IntervalJet {
+  return evaluateExactDyadicPolynomialCenteredJet(
+    coefficients.map(toExactDyadic),
+    cell,
+    criticalPoints,
+  )
+}
+
 // exp(z) = sum(z^k/k!) + R, |z|<=1/8. After k=20,
 // |R| <= 2*|z^21/21!| since every subsequent term ratio is <1/2.
 function expSmall(z: Interval): Interval {
@@ -121,8 +492,7 @@ const expRange = (a: Interval): Interval => ({
   hi: expPoint(a.hi).hi,
 })
 
-// ln(m) = 2*atanh((m-1)/(m+1)), 1<=m<=2. The remaining
-// positive series is bounded by its first term / (1-t^2).
+// ln(m) = 2*atanh((m-1)/(m+1)), 1<=m<=2.
 function logMantissa(m: number): Interval {
   if (m === 1) return ZERO
   const t = div(sub(point(m), ONE), add(point(m), ONE)),
@@ -148,7 +518,6 @@ function logPoint(x: number): Interval {
   }
   bits.setFloat64(0, normalized)
   const exponent = Number((bits.getBigUint64(0) >> 52n) & 2047n) - 1023 + shift
-  // Construct the exact binary power instead of relying on Math.pow.
   bits.setBigUint64(
     0,
     exponent >= -1022
@@ -164,12 +533,11 @@ const logRange = (a: Interval): Interval => ({
 })
 const LN10 = logPoint(10)
 
-// A known rational enclosure of mathematical pi (both endpoints are dyadic).
 const PI: Interval = { lo: Math.PI, hi: nextUp(Math.PI) }
 const HALF_PI = div(PI, point(2))
 function trigPoint(x: number, cosine: boolean): Interval {
   if (x === 0) return cosine ? ONE : ZERO
-  if (!Number.isFinite(x) || Math.abs(x) > 1e6) return { lo: -1, hi: 1 }
+  if (!Number.isFinite(x) || Math.abs(x) > 1e8) return { lo: -1, hi: 1 }
   const quadrant = Math.round(x / (Math.PI / 2))
   const y = sub(point(x), mul(point(quadrant), HALF_PI)),
     y2 = square(y)
@@ -183,7 +551,6 @@ function trigPoint(x: number, cosine: boolean): Interval {
       )
       sum = add(sum, term)
     }
-    // Taylor's theorem; all real derivatives of sin/cos have magnitude <=1.
     const degree = isCos ? 32 : 33
     let tail = ONE
     for (let k = 1; k <= degree; k++)
@@ -200,7 +567,7 @@ function trigRange(a: Interval, cosine: boolean): Interval {
   if (
     !Number.isFinite(a.lo) ||
     !Number.isFinite(a.hi) ||
-    maxAbs(a) > 1e6 ||
+    maxAbs(a) > 1e8 ||
     a.hi - a.lo >= 2 * PI.lo
   )
     return { lo: -1, hi: 1 }
@@ -251,8 +618,6 @@ const tanhRange = (a: Interval): Interval => ({
   hi: tanhPoint(a.hi).hi,
 })
 
-// Verify a sqrt seed with exact dyadic integer comparisons. We do not assume
-// an implementation-specific error bound for Math.sqrt.
 function dyadic(x: number): [bigint, number] {
   bits.setFloat64(0, x)
   const raw = bits.getBigUint64(0),
@@ -286,6 +651,77 @@ const sqrtRange = (a: Interval): Interval => ({
   lo: sqrtPoint(a.lo).lo,
   hi: sqrtPoint(a.hi).hi,
 })
+
+const SQRT_PI = sqrtRange(PI)
+const SQRT_2 = sqrtRange(point(2))
+const TWO_OVER_SQRT_PI = div(point(2), SQRT_PI)
+
+/** Rigorous interval enclosure of erf(x) using the purely positive series
+ * (2/sqrt(pi))*exp(-x^2)*sum_{n>=0} (2^n x^(2n+1) / (2n+1)!!) for |x| <= 5.5
+ * and alternating asymptotic erfc bracketing for |x| > 5.5. */
+export function erfPoint(x: number): Interval {
+  if (Number.isNaN(x)) return { lo: -1, hi: 1 }
+  if (x === 0) return ZERO
+  if (x < 0) return neg(erfPoint(-x))
+  if (!Number.isFinite(x)) return ONE
+  if (x > 5.5) {
+    const ix = point(x)
+    const x2 = square(ix)
+    const twoX2 = mul(point(2), x2)
+    const inv = div(ONE, twoX2)
+    const inv2 = square(inv)
+    const inv3 = mul(inv2, inv)
+    const inv4 = square(inv2)
+    const inv5 = mul(inv4, inv)
+    const sUpper = add(
+      sub(ONE, inv),
+      add(
+        mul(point(3), inv2),
+        sub(mul(point(105), inv4), mul(point(15), inv3)),
+      ),
+    )
+    const sLower = sub(sUpper, mul(point(945), inv5))
+    const pref = div(expRange(neg(x2)), mul(SQRT_PI, ix))
+    const erfcHi = mul(pref, sUpper).hi
+    const erfcLo = Math.max(0, mul(pref, sLower).lo)
+    return {
+      lo: Math.max(0, nextDown(1 - erfcHi)),
+      hi: Math.min(1, nextUp(1 - erfcLo)),
+    }
+  }
+  const ix = point(x)
+  const x2 = square(ix)
+  const twoX2 = mul(point(2), x2)
+  let term = ix
+  let sum = ix
+  for (let n = 1; n <= 96; n++) {
+    term = div(mul(term, twoX2), point(2 * n + 1))
+    sum = add(sum, term)
+  }
+  const nextTerm = div(mul(term, twoX2), point(195))
+  const tailHi = mul(point(2), nextTerm).hi
+  const totalSeries = add(sum, { lo: 0, hi: tailHi })
+  const res = mul(TWO_OVER_SQRT_PI, mul(expRange(neg(x2)), totalSeries))
+  return { lo: Math.max(0, res.lo), hi: Math.min(1, res.hi) }
+}
+
+export function erfRange(a: Interval): Interval {
+  if (Number.isNaN(a.lo) || Number.isNaN(a.hi)) return { lo: -1, hi: 1 }
+  return { lo: erfPoint(a.lo).lo, hi: erfPoint(a.hi).hi }
+}
+
+export function normalCdfRange(a: Interval): Interval {
+  if (Number.isNaN(a.lo) || Number.isNaN(a.hi)) return { lo: 0, hi: 1 }
+  if (a.lo === -Infinity && a.hi === -Infinity) return ZERO
+  if (a.lo === Infinity && a.hi === Infinity) return ONE
+  const scaled = div(a, SQRT_2)
+  const e = erfRange(scaled)
+  const c = mul(point(0.5), add(ONE, e))
+  return {
+    lo: a.lo === -Infinity ? 0 : Math.max(0, c.lo),
+    hi: a.hi === Infinity ? 1 : Math.min(1, c.hi),
+  }
+}
 
 const unknown = (issue: IntervalJet['issue'] = 'unsupported'): IntervalJet => ({
   val: WHOLE,
@@ -328,10 +764,10 @@ export function evaluateIntervalJet(
     if (n.kind === 'name') {
       if (n.name === variable) return { val: x, der: ONE, domain: 'all' }
       if (Object.hasOwn(constants, n.name)) {
-        const c = constants[n.name]
-        return typeof c === 'number'
-          ? constant(c)
-          : { val: c, der: ZERO, domain: 'all' }
+        const value = constants[n.name]
+        return typeof value === 'number'
+          ? constant(value)
+          : { val: value, der: ZERO, domain: 'all' }
       }
       if (n.name === 'pi') return constant(Math.PI)
       if (n.name === 'e') return constant(Math.E)
@@ -377,15 +813,6 @@ export function evaluateIntervalJet(
           der: div(sub(mul(l.der, r.val), mul(l.val, r.der)), square(r.val)),
         }
       }
-      if (op === '^' && r.val.lo === 0.5 && r.val.hi === 0.5 && isZero(r.der))
-        return visit(
-          {
-            kind: 'call',
-            name: 'sqrt',
-            args: [n.kind === 'binary' ? n.left : n.args[0]],
-          },
-          depth + 1,
-        )
       if (
         op === '^' &&
         r.val.lo === r.val.hi &&
@@ -406,6 +833,16 @@ export function evaluateIntervalJet(
             k === 0
               ? ZERO
               : mul(mul(point(k), integerPower(l.val, k - 1)), l.der),
+        }
+      }
+      if (op === '^' && r.val.lo === 0.5 && r.val.hi === 0.5 && isZero(r.der)) {
+        if (l.val.hi < 0) return { ...unknown('domain'), domain: 'none' }
+        if (l.val.lo < 0) return unknown('domain')
+        const v = sqrtRange(l.val)
+        return {
+          ...flags,
+          val: v,
+          der: div(l.der, mul(point(2), v)),
         }
       }
       return unknown()
@@ -497,4 +934,140 @@ export function evaluateIntervalJet(
     }
   }
   return visit(node)
+}
+
+const numNode = (value: number): Node => ({ kind: 'number', value })
+const isZeroNode = (n: Node) => n.kind === 'number' && n.value === 0
+const isOneNode = (n: Node) => n.kind === 'number' && n.value === 1
+const binNode = (operator: string, left: Node, right: Node): Node => {
+  if (operator === '+') {
+    if (isZeroNode(left)) return right
+    if (isZeroNode(right)) return left
+  }
+  if (operator === '-') {
+    if (isZeroNode(right)) return left
+    if (isZeroNode(left)) return { kind: 'unary', sign: '-', child: right }
+  }
+  if (operator === '*') {
+    if (isZeroNode(left) || isZeroNode(right)) return numNode(0)
+    if (isOneNode(left)) return right
+    if (isOneNode(right)) return left
+  }
+  if (operator === '/' && isZeroNode(left)) return numNode(0)
+  return { kind: 'binary', operator, left, right }
+}
+
+export function differentiateNode(
+  node: Node,
+  variable: string,
+  helpers: Map<string, Node> = new Map(),
+  depth = 0,
+): Node | null {
+  if (depth > 64) return null
+  if (node.kind === 'number') return numNode(0)
+  if (node.kind === 'name') {
+    if (node.name === variable) return numNode(1)
+    if (helpers.has(node.name))
+      return differentiateNode(
+        helpers.get(node.name)!,
+        variable,
+        helpers,
+        depth + 1,
+      )
+    return numNode(0)
+  }
+  if (node.kind === 'unary') {
+    const dc = differentiateNode(node.child, variable, helpers, depth + 1)
+    if (!dc) return null
+    return node.sign === '+'
+      ? dc
+      : isZeroNode(dc)
+        ? numNode(0)
+        : { kind: 'unary', sign: '-', child: dc }
+  }
+  if (node.kind === 'binary' || node.name === 'pow') {
+    const op = node.kind === 'binary' ? node.operator : '^'
+    const l = node.kind === 'binary' ? nLeft(node) : node.args[0]
+    const r = node.kind === 'binary' ? nRight(node) : node.args[1]
+    const dl = differentiateNode(l, variable, helpers, depth + 1)
+    const dr = differentiateNode(r, variable, helpers, depth + 1)
+    if (!dl || !dr) return null
+    if (op === '+' || op === '-') return binNode(op, dl, dr)
+    if (op === '*')
+      return binNode('+', binNode('*', dl, r), binNode('*', l, dr))
+    if (op === '/')
+      return binNode(
+        '/',
+        binNode('-', binNode('*', dl, r), binNode('*', l, dr)),
+        binNode('^', r, numNode(2)),
+      )
+    if (op === '^' && r.kind === 'number' && Number.isInteger(r.value)) {
+      const k = r.value
+      if (k === 0) return numNode(0)
+      if (k === 1) return dl
+      return binNode(
+        '*',
+        binNode('*', numNode(k), binNode('^', l, numNode(k - 1))),
+        dl,
+      )
+    }
+    return null
+  }
+  if (node.args.length !== 1) return null
+  const u = node.args[0]
+  const du = differentiateNode(u, variable, helpers, depth + 1)
+  if (!du) return null
+  if (isZeroNode(du)) return numNode(0)
+  switch (node.name) {
+    case 'sin':
+      return binNode('*', { kind: 'call', name: 'cos', args: [u] }, du)
+    case 'cos':
+      return {
+        kind: 'unary',
+        sign: '-',
+        child: binNode('*', { kind: 'call', name: 'sin', args: [u] }, du),
+      }
+    case 'tan':
+      return binNode(
+        '/',
+        du,
+        binNode('^', { kind: 'call', name: 'cos', args: [u] }, numNode(2)),
+      )
+    case 'exp':
+      return binNode('*', { kind: 'call', name: 'exp', args: [u] }, du)
+    case 'sinh':
+      return binNode('*', { kind: 'call', name: 'cosh', args: [u] }, du)
+    case 'cosh':
+      return binNode('*', { kind: 'call', name: 'sinh', args: [u] }, du)
+    case 'tanh':
+      return binNode(
+        '/',
+        du,
+        binNode('^', { kind: 'call', name: 'cosh', args: [u] }, numNode(2)),
+      )
+    case 'ln':
+      return binNode('/', du, u)
+    case 'log':
+    case 'log10':
+      return binNode(
+        '/',
+        du,
+        binNode('*', u, { kind: 'call', name: 'ln', args: [numNode(10)] }),
+      )
+    case 'sqrt':
+      return binNode(
+        '/',
+        du,
+        binNode('*', numNode(2), { kind: 'call', name: 'sqrt', args: [u] }),
+      )
+    default:
+      return null
+  }
+}
+
+function nLeft(n: Extract<Node, { kind: 'binary' }>): Node {
+  return n.left
+}
+function nRight(n: Extract<Node, { kind: 'binary' }>): Node {
+  return n.right
 }
