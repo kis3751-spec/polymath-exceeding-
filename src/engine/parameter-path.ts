@@ -1,3 +1,7 @@
+import {
+  evaluateIntervalJet,
+  containsZero as intervalContainsZero,
+} from './interval-arithmetic'
 import type { NonlinearNode } from './nonlinear-parser'
 
 type Node = NonlinearNode
@@ -73,6 +77,12 @@ export function createParameterPathValidator(
   variable: string,
   helpers: Map<string, Node>,
 ) {
+  const literal = (node: Node): number | undefined =>
+    node.kind === 'number'
+      ? node.value
+      : node.kind === 'unary'
+        ? (literal(node.child) ?? NaN) * (node.sign === '-' ? -1 : 1)
+        : undefined
   const denominators: Node[] = []
   const visited = new Set<Node>()
   const collect = (node: Node, depth = 0) => {
@@ -84,19 +94,17 @@ export function createParameterPathValidator(
     } else if (node.kind === 'unary') collect(node.child, depth + 1)
     else if (node.kind === 'binary') {
       if (node.operator === '/') denominators.push(node.right)
-      if (
-        node.operator === '^' &&
-        node.right.kind === 'number' &&
-        node.right.value < 0
-      )
+      if (node.operator === '^' && (literal(node.right) ?? NaN) < 0)
         denominators.push(node.left)
       collect(node.left, depth + 1)
       collect(node.right, depth + 1)
     } else if (node.kind === 'call') {
+      if (node.name === 'tan')
+        denominators.push({ kind: 'call', name: 'cos', args: [node.args[0]] })
       if (
         node.name === 'pow' &&
-        node.args[1]?.kind === 'number' &&
-        node.args[1].value < 0
+        node.args[1] &&
+        (literal(node.args[1]) ?? NaN) < 0
       )
         denominators.push(node.args[0])
       node.args.forEach((child) => collect(child, depth + 1))
@@ -234,9 +242,50 @@ export function createParameterPathValidator(
       if (node.operator === '^') return power(left, right)
       return null
     }
+    // Enclose the complete straight parameter path. A parameter-only
+    // denominator must be proven nonzero; unsupported evaluation cannot approve it.
+    const dependsOnVariable = (
+      node: Node,
+      seen = new Set<string>(),
+    ): boolean => {
+      if (node.kind === 'name') {
+        if (node.name === variable) return true
+        const helper = helpers.get(node.name)
+        if (!helper || seen.has(node.name)) return false
+        seen.add(node.name)
+        return dependsOnVariable(helper, seen)
+      }
+      if (node.kind === 'unary') return dependsOnVariable(node.child, seen)
+      if (node.kind === 'binary')
+        return (
+          dependsOnVariable(node.left, new Set(seen)) ||
+          dependsOnVariable(node.right, new Set(seen))
+        )
+      return (
+        node.kind === 'call' &&
+        node.args.some((n) => dependsOnVariable(n, new Set(seen)))
+      )
+    }
+    const pathConstants = Object.fromEntries(
+      Object.keys(from).map((name) => [
+        name,
+        {
+          lo: Math.min(from[name], to[name]),
+          hi: Math.max(from[name], to[name]),
+        },
+      ]),
+    )
     for (const denominator of denominators) {
-      const range = interval(denominator)
-      if (range && containsZero(range)) return false
+      if (dependsOnVariable(denominator)) continue
+      const jet = evaluateIntervalJet(
+        denominator,
+        '__path_coordinate',
+        { lo: 0, hi: 0 },
+        pathConstants,
+        helpers,
+      )
+      if (jet.domain !== 'all' || jet.issue || intervalContainsZero(jet.val))
+        return false
     }
     // Check if ALL non-constant coefficients c_1(p)...c_d(p) can vanish in [from, to]
     // while the constant term c_0(p) stays strictly non-zero (e.g. p*x = 1, (p*x - 1)^3 = 0).

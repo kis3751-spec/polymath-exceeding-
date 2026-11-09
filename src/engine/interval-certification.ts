@@ -14,6 +14,7 @@ export type UnresolvedInterval = Interval & {
   reason: 'domain' | 'unsupported' | 'nonsmooth' | 'resolution' | 'budget'
 }
 export type RootCertificate = {
+  reduction?: string
   model?: { source: string; parameters: Record<string, number> }
   domain: { min: number; max: number }
   variable: string
@@ -221,7 +222,7 @@ export const unresolvedReason = (reason: UnresolvedInterval['reason']) =>
 
 export function certificateSummary(c: RootCertificate): string {
   return c.complete
-    ? `구간 검증 완료 · 단순 실근 ${c.uniqueRootCount}개 분리${c.allRootsRepresented === false ? ' · 계산 결과 목록과 대조 필요' : ''}`
+    ? `구간 검증 완료 · ${c.reduction ? '서로 다른 실근' : '단순 실근'} ${c.uniqueRootCount}개 분리${c.allRootsRepresented === false ? ' · 계산 결과 목록과 대조 필요' : ''}`
     : `구간 검증 보류 · 검증한 길이 비율 ${Math.min(99.999, Math.floor(c.coverageLowerBound * 100000) / 1000).toFixed(3)}% · 미결정 ${c.unresolved.length}곳`
 }
 
@@ -230,6 +231,7 @@ export function certificateReport(c: RootCertificate): string {
     [
       '## 구간 검증',
       certificateSummary(c),
+      c.reduction ?? '',
       ...(c.model
         ? [
             '### 입력 모델',

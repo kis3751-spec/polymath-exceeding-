@@ -1,3 +1,4 @@
+import { ALL_NONLINEAR_EXAMPLES } from '../src/models'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
@@ -150,10 +151,18 @@ async function ready(page: Page) {
 async function openExample(page: Page, name: string) {
   await navigate(page, '수식·파라미터')
   await page.getByRole('button', { name: '예제 불러오기' }).click()
-  await page
+  const option = page
     .locator('.examples-menu')
     .getByRole('button', { name: new RegExp(name) })
-    .click()
+  if (await option.count()) await option.click()
+  else {
+    const fixture = ALL_NONLINEAR_EXAMPLES.find(
+      (ex) => ex.project.title === name,
+    )
+    if (!fixture) throw new Error(`Unknown regression fixture ${name}`)
+    await page.getByRole('button', { name: '예제 불러오기' }).click()
+    await importProject(page, fixture.project)
+  }
   await showSimulation(page)
   await expect(page.locator('.engine-status')).toHaveText(
     /WebAssembly|JavaScript/,
@@ -2556,6 +2565,7 @@ test.describe('Calm screens and stable interactive charts', () => {
       .selectOption('x')
     const xZoomPoint = await plotLocation(svg, 0.5)
     await page.mouse.click(xZoomPoint.x, xZoomPoint.y)
+    await expect(svg).toBeFocused()
     await page.mouse.wheel(0, -120)
     await expect(first.locator('.sc-curve')).not.toHaveAttribute('d', before!)
     await expect(first.locator('.sc-axis-label[text-anchor="end"]')).toHaveText(
@@ -3270,8 +3280,10 @@ test.describe('Interval verification', () => {
     await page.getByRole('textbox', { name: '방정식 입력' }).fill('(x-2)^6=0')
     await showSimulation(page)
     await expect(page.locator('.solution-choice')).toHaveCount(1)
-    await expect(summary).toContainText('구간 검증 보류')
-    await expect(summary).not.toContainText('100.000%')
+    await expect(summary).toContainText('서로 다른 실근 1개')
+    await expect(page.locator('.interval-certificate')).toContainText(
+      '영점 동치식',
+    )
     await setSearchMode(page, 'auto')
     await page
       .getByRole('checkbox', { name: '구간 검증 사용 (단일 변수·추가 계산)' })
@@ -3540,4 +3552,25 @@ test.describe('Stable scroll and useful analysis reports', () => {
     await expect(page.locator('.report-critical')).toContainText('6중근 · 접점')
     await expect(page.locator('.report-critical')).toContainText('근 병합')
   })
+})
+
+test('curated example menu and corrected cancellation work through the Worker', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await navigate(page, '수식·파라미터')
+  await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
+  await page.getByRole('button', { name: '예제 불러오기' }).click()
+  await expect(page.locator('.examples-menu button')).toHaveCount(6)
+  await page.getByRole('button', { name: '예제 불러오기' }).click()
+  await page
+    .getByRole('textbox', { name: '방정식 입력' })
+    .fill('(1e16+x)-1e16=1')
+  await showSimulation(page)
+  await expect(page.locator('.solution-choice')).toHaveCount(1)
+  await navigate(page, '해석 리포트')
+  await expect(page.locator('.solution-value strong')).toHaveText(['1'])
+  await expect(page.locator('.analysis-verdict')).toContainText(
+    '전체 1개 근 확인',
+  )
 })

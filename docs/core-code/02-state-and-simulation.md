@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `aead96d0338e36d5386010d78275e68985f7d34f6f7c8eeb7fa977f4d5e0cdd7`
+소스 묶음 SHA-256: `98fe5b7def08e3c1157ae2729c36f9662bf9c9370463d445ad4e1fb0a60ef285`
 
 ## 다른 코드 묶음
 
@@ -178,7 +178,7 @@ export function equationProject(project: Project): Project {
 
 ## src/models.ts
 
-원본: [src/models.ts](../../src/models.ts) · 158줄 · SHA-256: `f4743b22f1768d165580c5e77999a544d22f1d39709f60ec537008083ee72639`
+원본: [src/models.ts](../../src/models.ts) · 172줄 · SHA-256: `f4a05427a8e463c62238ddc3cd2ebaab5c20b36b7e0336132862c0db0419e01b`
 
 ```typescript
 import type { VariableBounds } from './engine/search-analysis'
@@ -251,7 +251,7 @@ export type NonlinearExample = {
   }
 }
 
-export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
+export const ALL_NONLINEAR_EXAMPLES: NonlinearExample[] = [
   {
     id: 'positive-root',
     category: '기초 · 여러 실근과 파라미터',
@@ -339,6 +339,20 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
   },
   ...SHOWCASE_EXAMPLES,
 ]
+
+// The full catalogue remains available to regression fixtures; the user menu
+// deliberately contains only complementary introductory and scientific models.
+const CORE_EXAMPLE_IDS = new Set([
+  'positive-root',
+  'circle-intersection',
+  'landau-fold',
+  'dimensional-van-der-waals',
+  'transcendental-folds',
+  'cubic-passage',
+])
+export const NONLINEAR_EXAMPLES = ALL_NONLINEAR_EXAMPLES.filter((example) =>
+  CORE_EXAMPLE_IDS.has(example.id),
+)
 ```
 
 <a id="source-4"></a>
@@ -1577,7 +1591,7 @@ export function branchEventText(
 
 ## src/engine/simulation-panels.ts
 
-원본: [src/engine/simulation-panels.ts](../../src/engine/simulation-panels.ts) · 486줄 · SHA-256: `5accd2adde8c5d88174aeaa009ded66a6a4bc23ef499e7d2261cb980e764cba1`
+원본: [src/engine/simulation-panels.ts](../../src/engine/simulation-panels.ts) · 545줄 · SHA-256: `9a89deffb65dbb394e64b808cd24c9d80fd1d82b4bf01f8c92d77b3a18d3068e`
 
 ```typescript
 import { nonsmoothSource } from './search-analysis'
@@ -1890,6 +1904,65 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
               /* A diagnostic must not prevent the verified solve result. */
             }
           }
+          // Incorporate a locally verified terminal root once, when the
+          // reference curve is built. Slider updates continue to reuse it.
+          if (sweep)
+            for (const event of curve.events ?? []) {
+              const t = event.tangency
+              if (
+                !t?.verified ||
+                event.kind === 'contact' ||
+                t.geometry === 'degenerate'
+              )
+                continue
+              const p = t.parameterStar
+              const valid = curve.sweep.filter(
+                (point) =>
+                  point.values && (point.parameter - p) * event.direction <= 0,
+              )
+              valid.sort(
+                (a, b) => Math.abs(a.parameter - p) - Math.abs(b.parameter - p),
+              )
+              const near = valid[0]
+              if (!near?.values) continue
+              try {
+                const target = solveNear(
+                  source,
+                  { ...referenceParameters, [sweep.name]: p },
+                  near.values,
+                  { computeCondition: false },
+                )
+                const scale = Math.max(
+                  Number.MIN_VALUE,
+                  ...near.values.map(Math.abs),
+                  ...t.valuesStar.map(Math.abs),
+                )
+                const gap = Math.max(
+                  ...near.values.map((v, i) => Math.abs(v - t.valuesStar[i])),
+                )
+                if (
+                  target.values.some(
+                    (v, i) =>
+                      Math.abs(v - t.valuesStar[i]) >
+                      Math.max(gap, 128 * Number.EPSILON * scale),
+                  )
+                )
+                  continue
+                const lo = Math.min(p, near.parameter),
+                  hi = Math.max(p, near.parameter)
+                curve.sweep = curve.sweep.filter(
+                  (point) =>
+                    point.parameter !== p &&
+                    (point.values ||
+                      point.parameter < lo ||
+                      point.parameter > hi),
+                )
+                curve.sweep.push({ parameter: p, values: [...t.valuesStar] })
+                curve.sweep.sort((a, b) => a.parameter - b.parameter)
+              } catch {
+                /* A marker may remain separate if the original model cannot confirm the endpoint. */
+              }
+            }
           remember(curves, curveKey, curve)
         }
 
@@ -2412,7 +2485,7 @@ async function handleRequest(work: QueuedRequest) {
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,324줄 · SHA-256: `b683fb1ebf5134c1846bbbf53167273cfb436c16dd6f94373aec217cb614d2bf`
+원본: [src/App.tsx](../../src/App.tsx) · 3,331줄 · SHA-256: `b3e17797e424ee075103a0bae67151e02dd524d9a80cb7dea8af31a8437de5a1`
 
 ```tsx
 import AnalysisSummary from './components/AnalysisSummary'
@@ -2485,6 +2558,7 @@ import {
   DEFAULT_PROJECT,
   DEFAULT_NONLINEAR_PROJECT,
   NONLINEAR_EXAMPLES,
+  ALL_NONLINEAR_EXAMPLES,
   type Project,
 } from './models'
 import {
@@ -3090,7 +3164,7 @@ export default function App() {
     setToast('새 모델을 열었습니다.')
   }
   const activeExample = nonlinear
-    ? NONLINEAR_EXAMPLES.find(
+    ? ALL_NONLINEAR_EXAMPLES.find(
         (ex) => ex.project.source === project.source && ex.guide,
       )
     : undefined
@@ -3228,14 +3302,18 @@ export default function App() {
     navigate('report')
   }
   function updateParameter(id: string, value: number) {
-    setProject((p) => ({
-      ...p,
-      parameters: p.parameters.map((v) =>
-        v.id === id
-          ? { ...v, value: Math.min(v.max, Math.max(v.min, value)) }
-          : v,
-      ),
-    }))
+    setProject((p) => {
+      const current = p.parameters.find((v) => v.id === id)
+      if (!current) return p
+      const next = Math.min(current.max, Math.max(current.min, value))
+      if (next === current.value) return p
+      return {
+        ...p,
+        parameters: p.parameters.map((v) =>
+          v.id === id ? { ...v, value: next } : v,
+        ),
+      }
+    })
   }
   function addParameter(e: React.FormEvent) {
     e.preventDefault()
@@ -5401,10 +5479,12 @@ function IntervalCertificateView({
   return (
     <details className="interval-certificate">
       <summary>{certificateSummary(c)}</summary>
+      {c.reduction && <p>{c.reduction}</p>}
       <p>
         검증 범위: {c.variable} ∈ [{String(c.domain.min)},{' '}
-        {String(c.domain.max)}]. 유일한 단순근 구간 {c.uniqueRootCount}개 ·
-        정의역 제외 구간 {c.excludedDomainCount}개.
+        {String(c.domain.max)}].{' '}
+        {c.reduction ? '서로 다른 근 구간' : '유일한 단순근 구간'}{' '}
+        {c.uniqueRootCount}개 · 정의역 제외 구간 {c.excludedDomainCount}개.
       </p>
       <p>
         길이 비율은 근을 모두 찾았을 확률이 아닙니다. 미결정 구간이 하나라도

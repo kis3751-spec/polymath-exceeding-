@@ -308,6 +308,65 @@ export function createSimulationPanelComputer(solveNear: NearSolver) {
               /* A diagnostic must not prevent the verified solve result. */
             }
           }
+          // Incorporate a locally verified terminal root once, when the
+          // reference curve is built. Slider updates continue to reuse it.
+          if (sweep)
+            for (const event of curve.events ?? []) {
+              const t = event.tangency
+              if (
+                !t?.verified ||
+                event.kind === 'contact' ||
+                t.geometry === 'degenerate'
+              )
+                continue
+              const p = t.parameterStar
+              const valid = curve.sweep.filter(
+                (point) =>
+                  point.values && (point.parameter - p) * event.direction <= 0,
+              )
+              valid.sort(
+                (a, b) => Math.abs(a.parameter - p) - Math.abs(b.parameter - p),
+              )
+              const near = valid[0]
+              if (!near?.values) continue
+              try {
+                const target = solveNear(
+                  source,
+                  { ...referenceParameters, [sweep.name]: p },
+                  near.values,
+                  { computeCondition: false },
+                )
+                const scale = Math.max(
+                  Number.MIN_VALUE,
+                  ...near.values.map(Math.abs),
+                  ...t.valuesStar.map(Math.abs),
+                )
+                const gap = Math.max(
+                  ...near.values.map((v, i) => Math.abs(v - t.valuesStar[i])),
+                )
+                if (
+                  target.values.some(
+                    (v, i) =>
+                      Math.abs(v - t.valuesStar[i]) >
+                      Math.max(gap, 128 * Number.EPSILON * scale),
+                  )
+                )
+                  continue
+                const lo = Math.min(p, near.parameter),
+                  hi = Math.max(p, near.parameter)
+                curve.sweep = curve.sweep.filter(
+                  (point) =>
+                    point.parameter !== p &&
+                    (point.values ||
+                      point.parameter < lo ||
+                      point.parameter > hi),
+                )
+                curve.sweep.push({ parameter: p, values: [...t.valuesStar] })
+                curve.sweep.sort((a, b) => a.parameter - b.parameter)
+              } catch {
+                /* A marker may remain separate if the original model cannot confirm the endpoint. */
+              }
+            }
           remember(curves, curveKey, curve)
         }
 

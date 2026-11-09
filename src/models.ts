@@ -68,7 +68,7 @@ export type NonlinearExample = {
   }
 }
 
-export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
+export const ALL_NONLINEAR_EXAMPLES: NonlinearExample[] = [
   {
     id: 'positive-root',
     category: '기초 · 여러 실근과 파라미터',
@@ -156,3 +156,17 @@ export const NONLINEAR_EXAMPLES: NonlinearExample[] = [
   },
   ...SHOWCASE_EXAMPLES,
 ]
+
+// The full catalogue remains available to regression fixtures; the user menu
+// deliberately contains only complementary introductory and scientific models.
+const CORE_EXAMPLE_IDS = new Set([
+  'positive-root',
+  'circle-intersection',
+  'landau-fold',
+  'dimensional-van-der-waals',
+  'transcendental-folds',
+  'cubic-passage',
+])
+export const NONLINEAR_EXAMPLES = ALL_NONLINEAR_EXAMPLES.filter((example) =>
+  CORE_EXAMPLE_IDS.has(example.id),
+)

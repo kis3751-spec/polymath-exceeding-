@@ -10,6 +10,7 @@ import { derivativeFreeRoots } from './derivative-free'
 import {
   nodeText,
   peelZeroPower,
+  zeroPowerMultiplicity,
   periodicFamily,
   periodicWindow,
   nonsmoothSource,
@@ -1477,7 +1478,8 @@ export async function createAutomaticSolver(
             '현재 구간 검증은 단일 미지수 방정식에 적용합니다. 연립식 전체의 완전성은 검증하지 않습니다.'
         } else {
           const verificationStart = performance.now()
-          const node = prepared.originalExpression
+          const original = prepared.originalExpression
+          const node = peelZeroPower(original)
           const certificate = certifyScalarRoots(
             node,
             variables[0],
@@ -1485,6 +1487,9 @@ export async function createAutomaticSolver(
             prepared.helpers,
             { min: found.search.min, max: found.search.max },
           )
+          if (zeroPowerMultiplicity(original) > 1)
+            certificate.reduction =
+              '양의 정수 거듭제곱·부호·0항을 제거한 영점 동치식으로 서로 다른 근을 검증했습니다. 중복도 자체의 인증은 아닙니다.'
           certificate.model = {
             source: prepared.source,
             parameters: { ...parameters },

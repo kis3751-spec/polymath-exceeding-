@@ -287,6 +287,33 @@ export function evaluateNonlinearExpression(
         value = FUNCTIONS[node.name].compute(...node.args.map(evaluate))
         break
       case 'binary': {
+        if (node.operator === '+' || node.operator === '-') {
+          // Accumulate the full additive tree before rounding its result.
+          // Neumaier compensation retains x in (1e16+x)-1e16 without
+          // cancelling undefined products/divisions or crossing call boundaries.
+          let sum = 0,
+            correction = 0
+          const add = (term: Node, sign: number): void => {
+            if (
+              term.kind === 'binary' &&
+              (term.operator === '+' || term.operator === '-')
+            ) {
+              add(term.left, sign)
+              add(term.right, term.operator === '-' ? -sign : sign)
+            } else if (term.kind === 'unary')
+              add(term.child, term.sign === '-' ? -sign : sign)
+            else {
+              const v = sign * evaluate(term),
+                next = sum + v
+              correction +=
+                Math.abs(sum) >= Math.abs(v) ? sum - next + v : v - next + sum
+              sum = next
+            }
+          }
+          add(node, 1)
+          value = sum + correction
+          break
+        }
         const left = evaluate(node.left),
           right = evaluate(node.right)
         if (node.operator === '+') value = left + right

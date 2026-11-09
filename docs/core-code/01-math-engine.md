@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `812ecd077dfe699d2de02f21b241612058413aec61a1a2323521c1b8ceb98af0`
+소스 묶음 SHA-256: `069fc4f958780bf957dfcfaa1cc69a109be881751e1fef403619e14b64f37715`
 
 ## 다른 코드 묶음
 
@@ -676,7 +676,7 @@ export async function createSolver(
 
 ## src/engine/nonlinear-parser.ts
 
-원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 685줄 · SHA-256: `52391bc41d5e80d2770d9a329cb6b5300ceb4d3c73891249db6d651d5e02564c`
+원본: [src/engine/nonlinear-parser.ts](../../src/engine/nonlinear-parser.ts) · 712줄 · SHA-256: `bd383467ec6d584c9b38764a4d911aa847d068e96ff741f3486c3046aab4fd60`
 
 ```typescript
 import { evaluateDual, type Dual } from './expression-derivative'
@@ -968,6 +968,33 @@ export function evaluateNonlinearExpression(
         value = FUNCTIONS[node.name].compute(...node.args.map(evaluate))
         break
       case 'binary': {
+        if (node.operator === '+' || node.operator === '-') {
+          // Accumulate the full additive tree before rounding its result.
+          // Neumaier compensation retains x in (1e16+x)-1e16 without
+          // cancelling undefined products/divisions or crossing call boundaries.
+          let sum = 0,
+            correction = 0
+          const add = (term: Node, sign: number): void => {
+            if (
+              term.kind === 'binary' &&
+              (term.operator === '+' || term.operator === '-')
+            ) {
+              add(term.left, sign)
+              add(term.right, term.operator === '-' ? -sign : sign)
+            } else if (term.kind === 'unary')
+              add(term.child, term.sign === '-' ? -sign : sign)
+            else {
+              const v = sign * evaluate(term),
+                next = sum + v
+              correction +=
+                Math.abs(sum) >= Math.abs(v) ? sum - next + v : v - next + sum
+              sum = next
+            }
+          }
+          add(node, 1)
+          value = sum + correction
+          break
+        }
         const left = evaluate(node.left),
           right = evaluate(node.right)
         if (node.operator === '+') value = left + right
@@ -1586,7 +1613,7 @@ export function sameComputedRoot(a: SolveResult, b: SolveResult) {
 
 ## src/engine/search-analysis.ts
 
-원본: [src/engine/search-analysis.ts](../../src/engine/search-analysis.ts) · 175줄 · SHA-256: `0ce9050171e15c06103d2fedd702b6d7d3c5313e97f142d559ce0e70c88d80d5`
+원본: [src/engine/search-analysis.ts](../../src/engine/search-analysis.ts) · 203줄 · SHA-256: `180506dccecac34e01b6177409ca926a2ece31e97a679acd92df066c5d406009`
 
 ```typescript
 import { polynomialCoefficients } from './automatic-polynomial'
@@ -1637,6 +1664,34 @@ export function peelZeroPower(n: Node): Node {
   )
     return peelZeroPower(n.args[0])
   return n
+}
+/** Multiplicity contributed only by removable outer powers, not powers
+ * inside a sum or function argument. Used to disclose zero-set reduction. */
+export function zeroPowerMultiplicity(n: Node): number {
+  if (n.kind === 'unary') return zeroPowerMultiplicity(n.child)
+  if (
+    n.kind === 'binary' &&
+    ['+', '-'].includes(n.operator) &&
+    n.right.kind === 'number' &&
+    n.right.value === 0
+  )
+    return zeroPowerMultiplicity(n.left)
+  const base =
+    n.kind === 'binary' && n.operator === '^'
+      ? n.left
+      : n.kind === 'call' && n.name === 'pow'
+        ? n.args[0]
+        : undefined
+  const exponent =
+    n.kind === 'binary' ? n.right : n.kind === 'call' ? n.args[1] : undefined
+  if (
+    base &&
+    exponent?.kind === 'number' &&
+    Number.isInteger(exponent.value) &&
+    exponent.value > 0
+  )
+    return exponent.value * zeroPowerMultiplicity(base)
+  return 1
 }
 /** A single sin/cos/tan with affine phase and constant affine outer operations. */
 export function periodicFamily(
@@ -1770,7 +1825,7 @@ export function periodicWindow(
 
 ## src/engine/interval-arithmetic.ts
 
-원본: [src/engine/interval-arithmetic.ts](../../src/engine/interval-arithmetic.ts) · 475줄 · SHA-256: `678ab4a86f4292fa119469bbb5c0786f1005ced61e93c0dd85e0706d11529b2c`
+원본: [src/engine/interval-arithmetic.ts](../../src/engine/interval-arithmetic.ts) · 489줄 · SHA-256: `9584b1f548c13a663937d6d83be320d0cb36d503ead7abc69c96395cd112c544`
 
 ```typescript
 import type { NonlinearNode as Node } from './nonlinear-parser'
@@ -2080,7 +2135,7 @@ export function evaluateIntervalJet(
   node: Node,
   variable: string,
   x: Interval,
-  constants: Record<string, number>,
+  constants: Record<string, number | Interval>,
   helpers: Map<string, Node> = new Map(),
 ): IntervalJet {
   const memo = new Map<string, IntervalJet>(),
@@ -2091,7 +2146,12 @@ export function evaluateIntervalJet(
     if (n.kind === 'number') return constant(n.value)
     if (n.kind === 'name') {
       if (n.name === variable) return { val: x, der: ONE, domain: 'all' }
-      if (Object.hasOwn(constants, n.name)) return constant(constants[n.name])
+      if (Object.hasOwn(constants, n.name)) {
+        const c = constants[n.name]
+        return typeof c === 'number'
+          ? constant(c)
+          : { val: c, der: ZERO, domain: 'all' }
+      }
       if (n.name === 'pi') return constant(Math.PI)
       if (n.name === 'e') return constant(Math.E)
       if (memo.has(n.name)) return memo.get(n.name)!
@@ -2136,6 +2196,15 @@ export function evaluateIntervalJet(
           der: div(sub(mul(l.der, r.val), mul(l.val, r.der)), square(r.val)),
         }
       }
+      if (op === '^' && r.val.lo === 0.5 && r.val.hi === 0.5 && isZero(r.der))
+        return visit(
+          {
+            kind: 'call',
+            name: 'sqrt',
+            args: [n.kind === 'binary' ? n.left : n.args[0]],
+          },
+          depth + 1,
+        )
       if (
         op === '^' &&
         r.val.lo === r.val.hi &&
@@ -2254,7 +2323,7 @@ export function evaluateIntervalJet(
 
 ## src/engine/interval-certification.ts
 
-원본: [src/engine/interval-certification.ts](../../src/engine/interval-certification.ts) · 251줄 · SHA-256: `e05648e7d75dca515c45771511624ec5d2d55470e9c00acdaaf7066f3d200287`
+원본: [src/engine/interval-certification.ts](../../src/engine/interval-certification.ts) · 253줄 · SHA-256: `dfe56a970d5f9f88798d80d0f414b0eb564ecfb6c41dc6003fd7d9e553733549`
 
 ```typescript
 import type { NonlinearNode } from './nonlinear-parser'
@@ -2273,6 +2342,7 @@ export type UnresolvedInterval = Interval & {
   reason: 'domain' | 'unsupported' | 'nonsmooth' | 'resolution' | 'budget'
 }
 export type RootCertificate = {
+  reduction?: string
   model?: { source: string; parameters: Record<string, number> }
   domain: { min: number; max: number }
   variable: string
@@ -2480,7 +2550,7 @@ export const unresolvedReason = (reason: UnresolvedInterval['reason']) =>
 
 export function certificateSummary(c: RootCertificate): string {
   return c.complete
-    ? `구간 검증 완료 · 단순 실근 ${c.uniqueRootCount}개 분리${c.allRootsRepresented === false ? ' · 계산 결과 목록과 대조 필요' : ''}`
+    ? `구간 검증 완료 · ${c.reduction ? '서로 다른 실근' : '단순 실근'} ${c.uniqueRootCount}개 분리${c.allRootsRepresented === false ? ' · 계산 결과 목록과 대조 필요' : ''}`
     : `구간 검증 보류 · 검증한 길이 비율 ${Math.min(99.999, Math.floor(c.coverageLowerBound * 100000) / 1000).toFixed(3)}% · 미결정 ${c.unresolved.length}곳`
 }
 
@@ -2489,6 +2559,7 @@ export function certificateReport(c: RootCertificate): string {
     [
       '## 구간 검증',
       certificateSummary(c),
+      c.reduction ?? '',
       ...(c.model
         ? [
             '### 입력 모델',
@@ -4723,9 +4794,13 @@ export function rationalCoefficients(
 
 ## src/engine/parameter-path.ts
 
-원본: [src/engine/parameter-path.ts](../../src/engine/parameter-path.ts) · 257줄 · SHA-256: `04bb2159e6f4de8cfb8734414507358a4dc4a72de2fe40095b5d8fe70500a952`
+원본: [src/engine/parameter-path.ts](../../src/engine/parameter-path.ts) · 306줄 · SHA-256: `64da8747b2332847f8ebbcb18b829985a095a5ce1a0b4521e1b7bf5675257a52`
 
 ```typescript
+import {
+  evaluateIntervalJet,
+  containsZero as intervalContainsZero,
+} from './interval-arithmetic'
 import type { NonlinearNode } from './nonlinear-parser'
 
 type Node = NonlinearNode
@@ -4801,6 +4876,12 @@ export function createParameterPathValidator(
   variable: string,
   helpers: Map<string, Node>,
 ) {
+  const literal = (node: Node): number | undefined =>
+    node.kind === 'number'
+      ? node.value
+      : node.kind === 'unary'
+        ? (literal(node.child) ?? NaN) * (node.sign === '-' ? -1 : 1)
+        : undefined
   const denominators: Node[] = []
   const visited = new Set<Node>()
   const collect = (node: Node, depth = 0) => {
@@ -4812,19 +4893,17 @@ export function createParameterPathValidator(
     } else if (node.kind === 'unary') collect(node.child, depth + 1)
     else if (node.kind === 'binary') {
       if (node.operator === '/') denominators.push(node.right)
-      if (
-        node.operator === '^' &&
-        node.right.kind === 'number' &&
-        node.right.value < 0
-      )
+      if (node.operator === '^' && (literal(node.right) ?? NaN) < 0)
         denominators.push(node.left)
       collect(node.left, depth + 1)
       collect(node.right, depth + 1)
     } else if (node.kind === 'call') {
+      if (node.name === 'tan')
+        denominators.push({ kind: 'call', name: 'cos', args: [node.args[0]] })
       if (
         node.name === 'pow' &&
-        node.args[1]?.kind === 'number' &&
-        node.args[1].value < 0
+        node.args[1] &&
+        (literal(node.args[1]) ?? NaN) < 0
       )
         denominators.push(node.args[0])
       node.args.forEach((child) => collect(child, depth + 1))
@@ -4962,9 +5041,50 @@ export function createParameterPathValidator(
       if (node.operator === '^') return power(left, right)
       return null
     }
+    // Enclose the complete straight parameter path. A parameter-only
+    // denominator must be proven nonzero; unsupported evaluation cannot approve it.
+    const dependsOnVariable = (
+      node: Node,
+      seen = new Set<string>(),
+    ): boolean => {
+      if (node.kind === 'name') {
+        if (node.name === variable) return true
+        const helper = helpers.get(node.name)
+        if (!helper || seen.has(node.name)) return false
+        seen.add(node.name)
+        return dependsOnVariable(helper, seen)
+      }
+      if (node.kind === 'unary') return dependsOnVariable(node.child, seen)
+      if (node.kind === 'binary')
+        return (
+          dependsOnVariable(node.left, new Set(seen)) ||
+          dependsOnVariable(node.right, new Set(seen))
+        )
+      return (
+        node.kind === 'call' &&
+        node.args.some((n) => dependsOnVariable(n, new Set(seen)))
+      )
+    }
+    const pathConstants = Object.fromEntries(
+      Object.keys(from).map((name) => [
+        name,
+        {
+          lo: Math.min(from[name], to[name]),
+          hi: Math.max(from[name], to[name]),
+        },
+      ]),
+    )
     for (const denominator of denominators) {
-      const range = interval(denominator)
-      if (range && containsZero(range)) return false
+      if (dependsOnVariable(denominator)) continue
+      const jet = evaluateIntervalJet(
+        denominator,
+        '__path_coordinate',
+        { lo: 0, hi: 0 },
+        pathConstants,
+        helpers,
+      )
+      if (jet.domain !== 'all' || jet.issue || intervalContainsZero(jet.val))
+        return false
     }
     // Check if ALL non-constant coefficients c_1(p)...c_d(p) can vanish in [from, to]
     // while the constant term c_0(p) stays strictly non-zero (e.g. p*x = 1, (p*x - 1)^3 = 0).
@@ -5617,7 +5737,7 @@ export function searchConclusion(
 
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,567줄 · SHA-256: `b5d5df2f8d3828f70a51012d1b152b153ac65610017664a0fe28464bf1d10eae`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,572줄 · SHA-256: `3dcd5c53201a03216bdf04dd3415fa8158df6e275d31eb18f0a0a111fd128ec5`
 
 ```typescript
 import { classifyScalarRoot } from './tangency'
@@ -5632,6 +5752,7 @@ import { derivativeFreeRoots } from './derivative-free'
 import {
   nodeText,
   peelZeroPower,
+  zeroPowerMultiplicity,
   periodicFamily,
   periodicWindow,
   nonsmoothSource,
@@ -7099,7 +7220,8 @@ export async function createAutomaticSolver(
             '현재 구간 검증은 단일 미지수 방정식에 적용합니다. 연립식 전체의 완전성은 검증하지 않습니다.'
         } else {
           const verificationStart = performance.now()
-          const node = prepared.originalExpression
+          const original = prepared.originalExpression
+          const node = peelZeroPower(original)
           const certificate = certifyScalarRoots(
             node,
             variables[0],
@@ -7107,6 +7229,9 @@ export async function createAutomaticSolver(
             prepared.helpers,
             { min: found.search.min, max: found.search.max },
           )
+          if (zeroPowerMultiplicity(original) > 1)
+            certificate.reduction =
+              '양의 정수 거듭제곱·부호·0항을 제거한 영점 동치식으로 서로 다른 근을 검증했습니다. 중복도 자체의 인증은 아닙니다.'
           certificate.model = {
             source: prepared.source,
             parameters: { ...parameters },

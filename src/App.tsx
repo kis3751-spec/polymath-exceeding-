@@ -68,6 +68,7 @@ import {
   DEFAULT_PROJECT,
   DEFAULT_NONLINEAR_PROJECT,
   NONLINEAR_EXAMPLES,
+  ALL_NONLINEAR_EXAMPLES,
   type Project,
 } from './models'
 import {
@@ -673,7 +674,7 @@ export default function App() {
     setToast('새 모델을 열었습니다.')
   }
   const activeExample = nonlinear
-    ? NONLINEAR_EXAMPLES.find(
+    ? ALL_NONLINEAR_EXAMPLES.find(
         (ex) => ex.project.source === project.source && ex.guide,
       )
     : undefined
@@ -811,14 +812,18 @@ export default function App() {
     navigate('report')
   }
   function updateParameter(id: string, value: number) {
-    setProject((p) => ({
-      ...p,
-      parameters: p.parameters.map((v) =>
-        v.id === id
-          ? { ...v, value: Math.min(v.max, Math.max(v.min, value)) }
-          : v,
-      ),
-    }))
+    setProject((p) => {
+      const current = p.parameters.find((v) => v.id === id)
+      if (!current) return p
+      const next = Math.min(current.max, Math.max(current.min, value))
+      if (next === current.value) return p
+      return {
+        ...p,
+        parameters: p.parameters.map((v) =>
+          v.id === id ? { ...v, value: next } : v,
+        ),
+      }
+    })
   }
   function addParameter(e: React.FormEvent) {
     e.preventDefault()
@@ -2984,10 +2989,12 @@ function IntervalCertificateView({
   return (
     <details className="interval-certificate">
       <summary>{certificateSummary(c)}</summary>
+      {c.reduction && <p>{c.reduction}</p>}
       <p>
         검증 범위: {c.variable} ∈ [{String(c.domain.min)},{' '}
-        {String(c.domain.max)}]. 유일한 단순근 구간 {c.uniqueRootCount}개 ·
-        정의역 제외 구간 {c.excludedDomainCount}개.
+        {String(c.domain.max)}].{' '}
+        {c.reduction ? '서로 다른 근 구간' : '유일한 단순근 구간'}{' '}
+        {c.uniqueRootCount}개 · 정의역 제외 구간 {c.excludedDomainCount}개.
       </p>
       <p>
         길이 비율은 근을 모두 찾았을 확률이 아닙니다. 미결정 구간이 하나라도

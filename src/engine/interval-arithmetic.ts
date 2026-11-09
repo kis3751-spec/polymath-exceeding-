@@ -305,7 +305,7 @@ export function evaluateIntervalJet(
   node: Node,
   variable: string,
   x: Interval,
-  constants: Record<string, number>,
+  constants: Record<string, number | Interval>,
   helpers: Map<string, Node> = new Map(),
 ): IntervalJet {
   const memo = new Map<string, IntervalJet>(),
@@ -316,7 +316,12 @@ export function evaluateIntervalJet(
     if (n.kind === 'number') return constant(n.value)
     if (n.kind === 'name') {
       if (n.name === variable) return { val: x, der: ONE, domain: 'all' }
-      if (Object.hasOwn(constants, n.name)) return constant(constants[n.name])
+      if (Object.hasOwn(constants, n.name)) {
+        const c = constants[n.name]
+        return typeof c === 'number'
+          ? constant(c)
+          : { val: c, der: ZERO, domain: 'all' }
+      }
       if (n.name === 'pi') return constant(Math.PI)
       if (n.name === 'e') return constant(Math.E)
       if (memo.has(n.name)) return memo.get(n.name)!
@@ -361,6 +366,15 @@ export function evaluateIntervalJet(
           der: div(sub(mul(l.der, r.val), mul(l.val, r.der)), square(r.val)),
         }
       }
+      if (op === '^' && r.val.lo === 0.5 && r.val.hi === 0.5 && isZero(r.der))
+        return visit(
+          {
+            kind: 'call',
+            name: 'sqrt',
+            args: [n.kind === 'binary' ? n.left : n.args[0]],
+          },
+          depth + 1,
+        )
       if (
         op === '^' &&
         r.val.lo === r.val.hi &&

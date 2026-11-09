@@ -175,10 +175,13 @@ describe('solver integration', () => {
     expect(r.search.certification?.complete).toBe(true)
     expect(r.search.certification?.allRootsRepresented).toBe(true)
   })
-  it('uses the original sixth-power equation rather than certifying its peeled simple factor', () => {
+  it('discloses the zero-equivalent sixth-power reduction without claiming multiplicity certification', () => {
     const r = search('(x-2)^6=0', {}, { certifyRoots: true })
     expect(r.solutions.map((s) => s.values)).toEqual([[2]])
-    expect(r.search.certification?.complete).toBe(false)
+    expect(r.search.certification?.complete).toBe(true)
+    expect(r.search.certification?.reduction).toContain(
+      '중복도 자체의 인증은 아닙니다',
+    )
   })
   it('keeps rational poles unresolved and all three van der Waals roots visible', () => {
     const r = search(

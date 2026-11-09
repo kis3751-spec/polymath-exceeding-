@@ -47,6 +47,34 @@ export function peelZeroPower(n: Node): Node {
     return peelZeroPower(n.args[0])
   return n
 }
+/** Multiplicity contributed only by removable outer powers, not powers
+ * inside a sum or function argument. Used to disclose zero-set reduction. */
+export function zeroPowerMultiplicity(n: Node): number {
+  if (n.kind === 'unary') return zeroPowerMultiplicity(n.child)
+  if (
+    n.kind === 'binary' &&
+    ['+', '-'].includes(n.operator) &&
+    n.right.kind === 'number' &&
+    n.right.value === 0
+  )
+    return zeroPowerMultiplicity(n.left)
+  const base =
+    n.kind === 'binary' && n.operator === '^'
+      ? n.left
+      : n.kind === 'call' && n.name === 'pow'
+        ? n.args[0]
+        : undefined
+  const exponent =
+    n.kind === 'binary' ? n.right : n.kind === 'call' ? n.args[1] : undefined
+  if (
+    base &&
+    exponent?.kind === 'number' &&
+    Number.isInteger(exponent.value) &&
+    exponent.value > 0
+  )
+    return exponent.value * zeroPowerMultiplicity(base)
+  return 1
+}
 /** A single sin/cos/tan with affine phase and constant affine outer operations. */
 export function periodicFamily(
   node: Node,
