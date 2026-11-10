@@ -1,21 +1,24 @@
 /// <reference lib="webworker" />
 import type { ScientificRequest } from './types'
+import { solveOde } from './ode'
+import { solveFitting } from './fitting'
+import { solveIntegration } from './integration'
+import { solveOptimization } from './optimization'
 self.onmessage = async ({
   data,
 }: MessageEvent<ScientificRequest & { id: number }>) => {
   const { id, ...request } = data
   try {
     let result
-    if (request.module === 'ode')
-      result = (await import('./ode')).solveOde(request)
+    if (request.module === 'ode') result = solveOde(request)
     else if (
       ['curve-fit', 'multilinear', 'nonlinear-fit'].includes(request.module)
     )
-      result = (await import('./fitting')).solveFitting(request)
+      result = solveFitting(request)
     else if (request.module === 'integration')
-      result = (await import('./integration')).solveIntegration(request)
+      result = solveIntegration(request)
     else if (request.module === 'optimization' || request.module === 'lsq')
-      result = (await import('./optimization')).solveOptimization(request)
+      result = solveOptimization(request)
     else throw new Error('지원하지 않는 계산 도구입니다.')
     self.postMessage({ id, ok: true, result })
   } catch (error) {

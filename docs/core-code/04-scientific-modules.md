@@ -12,7 +12,7 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `8aee3bbe010b45e0749fd1f748419a9a7de624c54adba6de490a397a3a831b2c`
+소스 묶음 SHA-256: `6902fd1dba6fc7856fed745255e11385bbf66622fc4d9411612b2e9cdf23f9fc`
 
 ## 다른 코드 묶음
 
@@ -37,14 +37,15 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 - [src/engine/scientific/optimization.ts](#source-12) · [저장소 원본](../../src/engine/scientific/optimization.ts)
 - [src/engine/scientific/optimization-examples.ts](#source-13) · [저장소 원본](../../src/engine/scientific/optimization-examples.ts)
 - [src/engine/scientific/worker.ts](#source-14) · [저장소 원본](../../src/engine/scientific/worker.ts)
-- [src/components/ScientificWorkspace.tsx](#source-15) · [저장소 원본](../../src/components/ScientificWorkspace.tsx)
-- [src/components/ScientificWorkspace.css](#source-16) · [저장소 원본](../../src/components/ScientificWorkspace.css)
-- [src/components/ScientificChart.tsx](#source-17) · [저장소 원본](../../src/components/ScientificChart.tsx)
-- [src/components/ScientificChart.css](#source-18) · [저장소 원본](../../src/components/ScientificChart.css)
-- [src/components/scientific-chart-geometry.ts](#source-19) · [저장소 원본](../../src/components/scientific-chart-geometry.ts)
-- [src/components/ScientificOutput.tsx](#source-20) · [저장소 원본](../../src/components/ScientificOutput.tsx)
-- [src/components/RegressionResult.tsx](#source-21) · [저장소 원본](../../src/components/RegressionResult.tsx)
-- [src/components/RegressionResult.css](#source-22) · [저장소 원본](../../src/components/RegressionResult.css)
+- [vite.config.ts](#source-15) · [저장소 원본](../../vite.config.ts)
+- [src/components/ScientificWorkspace.tsx](#source-16) · [저장소 원본](../../src/components/ScientificWorkspace.tsx)
+- [src/components/ScientificWorkspace.css](#source-17) · [저장소 원본](../../src/components/ScientificWorkspace.css)
+- [src/components/ScientificChart.tsx](#source-18) · [저장소 원본](../../src/components/ScientificChart.tsx)
+- [src/components/ScientificChart.css](#source-19) · [저장소 원본](../../src/components/ScientificChart.css)
+- [src/components/scientific-chart-geometry.ts](#source-20) · [저장소 원본](../../src/components/scientific-chart-geometry.ts)
+- [src/components/ScientificOutput.tsx](#source-21) · [저장소 원본](../../src/components/ScientificOutput.tsx)
+- [src/components/RegressionResult.tsx](#source-22) · [저장소 원본](../../src/components/RegressionResult.tsx)
+- [src/components/RegressionResult.css](#source-23) · [저장소 원본](../../src/components/RegressionResult.css)
 
 <a id="source-1"></a>
 
@@ -3707,27 +3708,30 @@ export const optimizationExamples: {
 
 ## src/engine/scientific/worker.ts
 
-원본: [src/engine/scientific/worker.ts](../../src/engine/scientific/worker.ts) · 29줄 · SHA-256: `37c02425ca979b8856f1b15e9f06d7b12ea873f3ab8407f7015b21205b2e542a`
+원본: [src/engine/scientific/worker.ts](../../src/engine/scientific/worker.ts) · 32줄 · SHA-256: `7b1bd29ff28faecafaa40d26c791a565b4d28ccb747dcaf2f921ac593db3b069`
 
 ```typescript
 /// <reference lib="webworker" />
 import type { ScientificRequest } from './types'
+import { solveOde } from './ode'
+import { solveFitting } from './fitting'
+import { solveIntegration } from './integration'
+import { solveOptimization } from './optimization'
 self.onmessage = async ({
   data,
 }: MessageEvent<ScientificRequest & { id: number }>) => {
   const { id, ...request } = data
   try {
     let result
-    if (request.module === 'ode')
-      result = (await import('./ode')).solveOde(request)
+    if (request.module === 'ode') result = solveOde(request)
     else if (
       ['curve-fit', 'multilinear', 'nonlinear-fit'].includes(request.module)
     )
-      result = (await import('./fitting')).solveFitting(request)
+      result = solveFitting(request)
     else if (request.module === 'integration')
-      result = (await import('./integration')).solveIntegration(request)
+      result = solveIntegration(request)
     else if (request.module === 'optimization' || request.module === 'lsq')
-      result = (await import('./optimization')).solveOptimization(request)
+      result = solveOptimization(request)
     else throw new Error('지원하지 않는 계산 도구입니다.')
     self.postMessage({ id, ok: true, result })
   } catch (error) {
@@ -3743,9 +3747,29 @@ self.onmessage = async ({
 
 <a id="source-15"></a>
 
+## vite.config.ts
+
+원본: [vite.config.ts](../../vite.config.ts) · 11줄 · SHA-256: `23ccbf8dde9a2fbb4af8750625ea4fcaf02b83efa5fc99a49915519ab1560297`
+
+```typescript
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  worker: {
+    format: 'es',
+    rollupOptions: { output: { inlineDynamicImports: true } },
+  },
+  test: { include: ['tests/**/*.test.ts'] },
+})
+```
+
+<a id="source-16"></a>
+
 ## src/components/ScientificWorkspace.tsx
 
-원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,227줄 · SHA-256: `bf778ec79d18e50cad90eddae5237330d1b6d98dbd769072d1a4e13b892ef16c`
+원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,227줄 · SHA-256: `e37684b91705e798dc822d8776f56efb145e91d88f93bc7f34a9398efca5b923`
 
 ```tsx
 import { accountStorageKey } from '../account-storage'
@@ -3902,7 +3926,7 @@ export default function ScientificWorkspace({
     timer.current = setTimeout(() => {
       const w = new Worker(
         new URL('../engine/scientific/worker.ts', import.meta.url),
-        { type: 'module' },
+        { type: 'module', credentials: 'include' },
       )
       worker.current = w
       w.onmessage = ({ data }) => {
@@ -4977,7 +5001,7 @@ export default function ScientificWorkspace({
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-17"></a>
 
 ## src/components/ScientificWorkspace.css
 
@@ -5630,7 +5654,7 @@ export default function ScientificWorkspace({
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## src/components/ScientificChart.tsx
 
@@ -6187,7 +6211,7 @@ export default function ScientificChart({
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-19"></a>
 
 ## src/components/ScientificChart.css
 
@@ -6343,7 +6367,7 @@ export default function ScientificChart({
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-20"></a>
 
 ## src/components/scientific-chart-geometry.ts
 
@@ -6480,7 +6504,7 @@ export function identitySegment(
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-21"></a>
 
 ## src/components/ScientificOutput.tsx
 
@@ -6714,7 +6738,7 @@ export default function ScientificOutput({
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-22"></a>
 
 ## src/components/RegressionResult.tsx
 
@@ -7053,7 +7077,7 @@ export default function RegressionResult({
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-23"></a>
 
 ## src/components/RegressionResult.css
 

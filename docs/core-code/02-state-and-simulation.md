@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `d3a1500d1fd09fad5b8fa5193c14927de434f25d8651dd3a46be369ff0b7e588`
+소스 묶음 SHA-256: `ef2c972907422790597f4aee74cacab02b9add325b60e5a5ce528c25d9fbd4d6`
 
 ## 다른 코드 묶음
 
@@ -1083,7 +1083,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 399줄 · SHA-256: `630f478da6182cb0813240a1f6d87a678371c3bba845ddfbc00cef23824c1a55`
+원본: [server/app.mjs](../../server/app.mjs) · 406줄 · SHA-256: `e256b390afc352c1360fa6974e6d39afa4a8c822475011de6aee8f48df2c61c3`
 
 ```javascript
 import { createServer } from 'node:http'
@@ -1207,6 +1207,13 @@ export async function createAccessServer(input) {
         res.once('finish', () =>
           console.info(`IVC auth ${action}: HTTP ${res.statusCode}`),
         )
+      }
+      if (/^\/assets\/[A-Za-z0-9_.-]+$/.test(path) || path === '/solver.wasm') {
+        const asset = path.slice(1)
+        res.once('finish', () => {
+          if (res.statusCode >= 400)
+            console.info(`IVC asset ${asset}: HTTP ${res.statusCode}`)
+        })
       }
       const user = readSession(req)
       if (!['GET', 'HEAD', 'POST'].includes(req.method))
@@ -3796,7 +3803,7 @@ async function handleRequest(work: QueuedRequest) {
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,582줄 · SHA-256: `c5793567f2aac3676b547ad8160c8e48782bb055e4a65ff87f753c5975370870`
+원본: [src/App.tsx](../../src/App.tsx) · 3,582줄 · SHA-256: `c227405c0dbc976d5db93b7f5afd93a7debc2707e6f41b8809fc65ddb4e4c953`
 
 ```tsx
 import { accountStorageKey } from './account-storage'
@@ -4216,7 +4223,7 @@ export default function App() {
   useEffect(() => {
     const w = new Worker(
       new URL('./engine/solver.worker.ts', import.meta.url),
-      { type: 'module' },
+      { type: 'module', credentials: 'include' },
     )
     worker.current = w
     w.onmessage = ({ data }) => {

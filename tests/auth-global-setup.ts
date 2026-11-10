@@ -3,6 +3,7 @@ export default async function setup(config: FullConfig) {
   const baseURL = String(config.projects[0].use.baseURL)
   const api = await request.newContext({
     baseURL,
+    ignoreHTTPSErrors: config.projects[0].use.ignoreHTTPSErrors,
     extraHTTPHeaders: { Origin: baseURL },
   })
   const response = await api.post('/api/login', {

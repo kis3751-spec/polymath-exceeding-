@@ -154,6 +154,7 @@ const books = [
       'src/engine/scientific/optimization.ts',
       'src/engine/scientific/optimization-examples.ts',
       'src/engine/scientific/worker.ts',
+      'vite.config.ts',
       'src/components/ScientificWorkspace.tsx',
       'src/components/ScientificWorkspace.css',
       'src/components/ScientificChart.tsx',

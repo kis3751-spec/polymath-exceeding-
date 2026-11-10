@@ -519,7 +519,10 @@ export async function createSolver(
     const bytes =
       wasmBinary ??
       (await (
-        await fetch(`${import.meta.env?.BASE_URL ?? '/'}solver.wasm`)
+        await fetch(`${import.meta.env?.BASE_URL ?? '/'}solver.wasm`, {
+          credentials: 'include',
+          cache: 'no-store',
+        })
       ).arrayBuffer())
     const instance = await WebAssembly.instantiate(bytes, {})
     wasm = instance.instance.exports as unknown as WasmExports

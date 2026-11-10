@@ -152,7 +152,7 @@ export default function ScientificWorkspace({
     timer.current = setTimeout(() => {
       const w = new Worker(
         new URL('../engine/scientific/worker.ts', import.meta.url),
-        { type: 'module' },
+        { type: 'module', credentials: 'include' },
       )
       worker.current = w
       w.onmessage = ({ data }) => {

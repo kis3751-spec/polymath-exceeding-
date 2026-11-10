@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `61a13b5054d891c0523ff2ac85f6b599cf0c8af334cddb8a05e472e1ff35acf5`
+소스 묶음 SHA-256: `23bd691fe18d7b4d39b7a74fcd9d2b0d0e955dab8b02627a0919c40614fb97f7`
 
 ## 다른 코드 묶음
 
@@ -51,7 +51,7 @@
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 617줄 · SHA-256: `e854fb12bad73838d3bec377b7b9af0f045507e85aca1f87f35961f950a54576`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 620줄 · SHA-256: `e89ccf24b52e632de5ef927b28a8199d9e882aa42d5bcde3507914f33bf5325a`
 
 ```typescript
 import type { VariableBounds, SearchWindow } from './search-analysis'
@@ -575,7 +575,10 @@ export async function createSolver(
     const bytes =
       wasmBinary ??
       (await (
-        await fetch(`${import.meta.env?.BASE_URL ?? '/'}solver.wasm`)
+        await fetch(`${import.meta.env?.BASE_URL ?? '/'}solver.wasm`, {
+          credentials: 'include',
+          cache: 'no-store',
+        })
       ).arrayBuffer())
     const instance = await WebAssembly.instantiate(bytes, {})
     wasm = instance.instance.exports as unknown as WasmExports

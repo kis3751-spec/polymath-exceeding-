@@ -415,7 +415,7 @@ export default function App() {
   useEffect(() => {
     const w = new Worker(
       new URL('./engine/solver.worker.ts', import.meta.url),
-      { type: 'module' },
+      { type: 'module', credentials: 'include' },
     )
     worker.current = w
     w.onmessage = ({ data }) => {

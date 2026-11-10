@@ -120,6 +120,13 @@ export async function createAccessServer(input) {
           console.info(`IVC auth ${action}: HTTP ${res.statusCode}`),
         )
       }
+      if (/^\/assets\/[A-Za-z0-9_.-]+$/.test(path) || path === '/solver.wasm') {
+        const asset = path.slice(1)
+        res.once('finish', () => {
+          if (res.statusCode >= 400)
+            console.info(`IVC asset ${asset}: HTTP ${res.statusCode}`)
+        })
+      }
       const user = readSession(req)
       if (!['GET', 'HEAD', 'POST'].includes(req.method))
         return fail(405, '허용되지 않은 요청입니다.')
