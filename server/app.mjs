@@ -74,8 +74,13 @@ export async function createAccessServer(input) {
     if (cfg.secure)
       res.setHeader('Strict-Transport-Security', 'max-age=31536000')
     function json(code, value) {
-      res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(JSON.stringify(value))
+      const body = Buffer.from(JSON.stringify(value), 'utf8')
+      res.writeHead(code, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': body.length,
+        'X-IVC-Response': 'json',
+      })
+      res.end(body)
     }
     function fail(code, message) {
       json(code, { error: message })
@@ -265,7 +270,11 @@ export async function createAccessServer(input) {
       if (path === '/' || path === '/index.html') {
         root = gateway
         file = 'index.html'
-      } else if (path === '/welcome.css' || path === '/welcome.js') {
+      } else if (
+        path === '/welcome.css' ||
+        path === '/welcome.js' ||
+        path === '/response.js'
+      ) {
         root = gateway
         file = path.slice(1)
       } else {

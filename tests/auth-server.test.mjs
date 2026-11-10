@@ -694,3 +694,45 @@ test('Codespaces loopback exceptions do not accept remote peers or arbitrary for
   )
   assert.equal(cfg.origin, 'https://sample-space-5173.app.github.dev')
 })
+
+test('API errors carry explicit UTF-8 length and IVC marker instead of chunked framing', async () => {
+  const response = await request('/api/session')
+  const bytes = Buffer.from(await response.text(), 'utf8')
+  assert.equal(response.status, 401)
+  assert.equal(Number(response.headers.get('content-length')), bytes.length)
+  assert.equal(response.headers.get('transfer-encoding'), null)
+  assert.equal(response.headers.get('x-ivc-response'), 'json')
+  assert.equal(typeof JSON.parse(bytes.toString()).error, 'string')
+})
+test('empty and HTML intermediary responses cannot produce a false login or JSON syntax error', async () => {
+  const { responseData } = await import('../server/gateway/response.js')
+  await assert.rejects(
+    responseData(
+      new Response('', { status: 401, headers: { 'X-IVC-Response': 'json' } }),
+      '/api/login',
+    ),
+    /이메일 또는 비밀번호/,
+  )
+  await assert.rejects(
+    responseData(new Response('', { status: 403 }), '/api/login'),
+    /HTTP 403/,
+  )
+  await assert.rejects(
+    responseData(
+      new Response('<html>login required</html>', { status: 200 }),
+      '/api/login',
+    ),
+    /HTTP 200/,
+  )
+  await assert.rejects(
+    responseData(new Response('', { status: 502 }), '/api/login'),
+    /HTTP 502/,
+  )
+  assert.deepEqual(
+    await responseData(
+      new Response('{"ok":true}', { status: 200 }),
+      '/api/login',
+    ),
+    { ok: true },
+  )
+})

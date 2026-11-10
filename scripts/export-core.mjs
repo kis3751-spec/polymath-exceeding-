@@ -105,6 +105,7 @@ const books = [
       'src/components/AccountSession.css',
       'server/gateway/index.html',
       'server/gateway/welcome.js',
+      'server/gateway/response.js',
       'server/gateway/welcome.css',
       ...chartHelpers,
       'src/components/EquationReference.tsx',

@@ -1,3 +1,4 @@
+import { responseData } from '/response.js'
 let session = null,
   invitation = null
 const $ = (selector) => document.querySelector(selector)
@@ -9,6 +10,7 @@ function feedback(message, error = false) {
 }
 async function api(path, body) {
   const response = await fetch(path, {
+    redirect: 'error',
     method: body ? 'POST' : 'GET',
     credentials: 'same-origin',
     cache: 'no-store',
@@ -19,10 +21,12 @@ async function api(path, body) {
         }
       : {},
     ...(body ? { body: JSON.stringify(body) } : {}),
+  }).catch(() => {
+    throw Error(
+      '로그인 요청의 연결 또는 리디렉션이 차단되었습니다. Codespaces 포트 주소와 접근 권한을 확인하세요.',
+    )
   })
-  const data = await response.json()
-  if (!response.ok) throw Error(data.error ?? '요청에 실패했습니다.')
-  return data
+  return responseData(response, path)
 }
 function scrollToPanel(id) {
   $(id).hidden = false

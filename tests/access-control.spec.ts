@@ -109,3 +109,45 @@ test('logout destroys session and protected resources remain unavailable on back
   await page.goBack()
   await expect(page.locator('.module-grid')).toHaveCount(0)
 })
+
+test('an empty proxy 404 explains the login failure without exposing the calculator', async ({
+  page,
+}) => {
+  await page.route('**/api/login', (route) =>
+    route.fulfill({ status: 404, body: '' }),
+  )
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Log in to IVC', exact: true }).click()
+  const form = page.locator('#login-form')
+  await form.getByLabel('Email', { exact: true }).fill(owner.email)
+  await form.getByLabel('Password', { exact: true }).fill(owner.password)
+  await form.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(page.locator('#feedback')).toContainText('HTTP 404')
+  await expect(page.locator('#feedback')).not.toContainText('Unexpected end')
+  await expect(page.locator('.module-grid')).toHaveCount(0)
+})
+
+test('login never forwards credentials through an HTTP redirect', async ({
+  page,
+}) => {
+  let forwarded = false
+  await page.route('**/unexpected-login-target', (route) => {
+    forwarded = true
+    return route.fulfill({ status: 200, body: '{}' })
+  })
+  await page.route('**/api/login', (route) =>
+    route.fulfill({
+      status: 307,
+      headers: { Location: '/unexpected-login-target' },
+    }),
+  )
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Log in to IVC', exact: true }).click()
+  const form = page.locator('#login-form')
+  await form.getByLabel('Email', { exact: true }).fill(owner.email)
+  await form.getByLabel('Password', { exact: true }).fill(owner.password)
+  await form.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(page.locator('#feedback')).toContainText('리디렉션')
+  expect(forwarded).toBe(false)
+  await expect(page.locator('.module-grid')).toHaveCount(0)
+})

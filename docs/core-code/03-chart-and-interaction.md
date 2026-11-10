@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `44baa30e1c349782b378f117d70b69830322ba43dfd19752cba3c8600b93ce68`
+소스 묶음 SHA-256: `de3be04d6b5747ec1646a2b9439d945ce7a8d745a8c7e7c1925ccae900dc40ad`
 
 ## 다른 코드 묶음
 
@@ -32,30 +32,31 @@
 - [src/components/AccountSession.css](#source-3) · [저장소 원본](../../src/components/AccountSession.css)
 - [server/gateway/index.html](#source-4) · [저장소 원본](../../server/gateway/index.html)
 - [server/gateway/welcome.js](#source-5) · [저장소 원본](../../server/gateway/welcome.js)
-- [server/gateway/welcome.css](#source-6) · [저장소 원본](../../server/gateway/welcome.css)
-- [src/components/chart-domain.ts](#source-7) · [저장소 원본](../../src/components/chart-domain.ts)
-- [src/components/chart-interaction.ts](#source-8) · [저장소 원본](../../src/components/chart-interaction.ts)
-- [src/components/EquationReference.tsx](#source-9) · [저장소 원본](../../src/components/EquationReference.tsx)
-- [src/components/ExampleWalkthrough.tsx](#source-10) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
-- [src/components/AnalysisSummary.tsx](#source-11) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
-- [src/components/AnalysisSummary.css](#source-12) · [저장소 원본](../../src/components/AnalysisSummary.css)
-- [src/components/CertificationReport.tsx](#source-13) · [저장소 원본](../../src/components/CertificationReport.tsx)
-- [src/components/certification-view.ts](#source-14) · [저장소 원본](../../src/components/certification-view.ts)
-- [src/components/Guide.tsx](#source-15) · [저장소 원본](../../src/components/Guide.tsx)
-- [src/components/Guide.css](#source-16) · [저장소 원본](../../src/components/Guide.css)
-- [src/components/ModuleGuide.tsx](#source-17) · [저장소 원본](../../src/components/ModuleGuide.tsx)
-- [src/components/ModuleGuide.css](#source-18) · [저장소 원본](../../src/components/ModuleGuide.css)
-- [src/components/guide-content.ts](#source-19) · [저장소 원본](../../src/components/guide-content.ts)
-- [src/components/SolutionChart.tsx](#source-20) · [저장소 원본](../../src/components/SolutionChart.tsx)
-- [src/components/SolutionChart.css](#source-21) · [저장소 원본](../../src/components/SolutionChart.css)
-- [src/components/SimulationPanelView.tsx](#source-22) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/MergedSimulationSetView.tsx](#source-23) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
-- [src/components/SimulationPanelView.css](#source-24) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-25) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-26) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-27) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-28) · [저장소 원본](../../src/workspace-screens.css)
-- [src/ivc.css](#source-29) · [저장소 원본](../../src/ivc.css)
+- [server/gateway/response.js](#source-6) · [저장소 원본](../../server/gateway/response.js)
+- [server/gateway/welcome.css](#source-7) · [저장소 원본](../../server/gateway/welcome.css)
+- [src/components/chart-domain.ts](#source-8) · [저장소 원본](../../src/components/chart-domain.ts)
+- [src/components/chart-interaction.ts](#source-9) · [저장소 원본](../../src/components/chart-interaction.ts)
+- [src/components/EquationReference.tsx](#source-10) · [저장소 원본](../../src/components/EquationReference.tsx)
+- [src/components/ExampleWalkthrough.tsx](#source-11) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
+- [src/components/AnalysisSummary.tsx](#source-12) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
+- [src/components/AnalysisSummary.css](#source-13) · [저장소 원본](../../src/components/AnalysisSummary.css)
+- [src/components/CertificationReport.tsx](#source-14) · [저장소 원본](../../src/components/CertificationReport.tsx)
+- [src/components/certification-view.ts](#source-15) · [저장소 원본](../../src/components/certification-view.ts)
+- [src/components/Guide.tsx](#source-16) · [저장소 원본](../../src/components/Guide.tsx)
+- [src/components/Guide.css](#source-17) · [저장소 원본](../../src/components/Guide.css)
+- [src/components/ModuleGuide.tsx](#source-18) · [저장소 원본](../../src/components/ModuleGuide.tsx)
+- [src/components/ModuleGuide.css](#source-19) · [저장소 원본](../../src/components/ModuleGuide.css)
+- [src/components/guide-content.ts](#source-20) · [저장소 원본](../../src/components/guide-content.ts)
+- [src/components/SolutionChart.tsx](#source-21) · [저장소 원본](../../src/components/SolutionChart.tsx)
+- [src/components/SolutionChart.css](#source-22) · [저장소 원본](../../src/components/SolutionChart.css)
+- [src/components/SimulationPanelView.tsx](#source-23) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
+- [src/components/MergedSimulationSetView.tsx](#source-24) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-25) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-26) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-27) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-28) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-29) · [저장소 원본](../../src/workspace-screens.css)
+- [src/ivc.css](#source-30) · [저장소 원본](../../src/ivc.css)
 
 <a id="source-1"></a>
 
@@ -594,9 +595,10 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 208줄 · SHA-256: `d630f76ce7711ef5362c24c92512de91965945c7e8bf4d8c413a04fafe5911ec`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 212줄 · SHA-256: `79bcd73966b3f661aabfb9700063bd9861c328484ed1c11b971e635cb152f630`
 
 ```text
+import { responseData } from '/response.js'
 let session = null,
   invitation = null
 const $ = (selector) => document.querySelector(selector)
@@ -608,6 +610,7 @@ function feedback(message, error = false) {
 }
 async function api(path, body) {
   const response = await fetch(path, {
+    redirect: 'error',
     method: body ? 'POST' : 'GET',
     credentials: 'same-origin',
     cache: 'no-store',
@@ -618,10 +621,12 @@ async function api(path, body) {
         }
       : {},
     ...(body ? { body: JSON.stringify(body) } : {}),
+  }).catch(() => {
+    throw Error(
+      '로그인 요청의 연결 또는 리디렉션이 차단되었습니다. Codespaces 포트 주소와 접근 권한을 확인하세요.',
+    )
   })
-  const data = await response.json()
-  if (!response.ok) throw Error(data.error ?? '요청에 실패했습니다.')
-  return data
+  return responseData(response, path)
 }
 function scrollToPanel(id) {
   $(id).hidden = false
@@ -808,6 +813,46 @@ initialize().catch(() =>
 ```
 
 <a id="source-6"></a>
+
+## server/gateway/response.js
+
+원본: [server/gateway/response.js](../../server/gateway/response.js) · 31줄 · SHA-256: `d932d11ed9d8eb68022d83f6f842bf02e5ce79298ab7915f10fb2f13bdb04dc3`
+
+```text
+/** Never treat an empty/HTML proxy response as successful authentication. */
+export async function responseData(response, path) {
+  const text = await response.text()
+  let data
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      /* The forwarder can return an HTML sign-in or error page. */
+    }
+  }
+  if (!response.ok) {
+    if (data && typeof data.error === 'string') throw Error(data.error)
+    if (
+      response.status === 401 &&
+      path === '/api/login' &&
+      response.headers.get('x-ivc-response') === 'json'
+    )
+      throw Error('이메일 또는 비밀번호를 확인하세요. (HTTP 401)')
+    if (response.status === 429)
+      throw Error('로그인 시도가 많습니다. 잠시 후 다시 시도하세요. (HTTP 429)')
+    throw Error(
+      `로그인 서버의 응답을 확인할 수 없습니다. Codespaces 포트 접근 권한과 서버 실행 상태를 확인하세요. (HTTP ${response.status})`,
+    )
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    throw Error(
+      `서버가 비어 있거나 올바르지 않은 응답을 보냈습니다. 새로고침 후 다시 시도하세요. (HTTP ${response.status})`,
+    )
+  return data
+}
+```
+
+<a id="source-7"></a>
 
 ## server/gateway/welcome.css
 
@@ -1416,7 +1461,7 @@ footer {
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-8"></a>
 
 ## src/components/chart-domain.ts
 
@@ -1510,7 +1555,7 @@ export function fittedDomain(values: readonly number[]): ChartDomain {
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-9"></a>
 
 ## src/components/chart-interaction.ts
 
@@ -1635,7 +1680,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-10"></a>
 
 ## src/components/EquationReference.tsx
 
@@ -1830,7 +1875,7 @@ export default function EquationReference() {
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-11"></a>
 
 ## src/components/ExampleWalkthrough.tsx
 
@@ -1871,7 +1916,7 @@ export default function ExampleWalkthrough({
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-12"></a>
 
 ## src/components/AnalysisSummary.tsx
 
@@ -2303,7 +2348,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-13"></a>
 
 ## src/components/AnalysisSummary.css
 
@@ -2693,7 +2738,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-14"></a>
 
 ## src/components/CertificationReport.tsx
 
@@ -2979,7 +3024,7 @@ export default function CertificationReport({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-15"></a>
 
 ## src/components/certification-view.ts
 
@@ -3097,7 +3142,7 @@ export function certificateSegments(c: RootCertificate): CertificateSegment[] {
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-16"></a>
 
 ## src/components/Guide.tsx
 
@@ -3558,7 +3603,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-17"></a>
 
 ## src/components/Guide.css
 
@@ -3936,7 +3981,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## src/components/ModuleGuide.tsx
 
@@ -4292,7 +4337,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-19"></a>
 
 ## src/components/ModuleGuide.css
 
@@ -4731,7 +4776,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-20"></a>
 
 ## src/components/guide-content.ts
 
@@ -6153,7 +6198,7 @@ export function renderTextbookMarkdown(): string {
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-21"></a>
 
 ## src/components/SolutionChart.tsx
 
@@ -7319,7 +7364,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-22"></a>
 
 ## src/components/SolutionChart.css
 
@@ -7670,7 +7715,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-23"></a>
 
 ## src/components/SimulationPanelView.tsx
 
@@ -8017,7 +8062,7 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-24"></a>
 
 ## src/components/MergedSimulationSetView.tsx
 
@@ -8386,7 +8431,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-25"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -8665,7 +8710,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-26"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
@@ -8910,7 +8955,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-27"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -9285,7 +9330,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-28"></a>
 
 ## src/styles.css
 
@@ -13085,7 +13130,7 @@ h2 {
 }
 ```
 
-<a id="source-28"></a>
+<a id="source-29"></a>
 
 ## src/workspace-screens.css
 
@@ -13504,7 +13549,7 @@ h2 {
 }
 ```
 
-<a id="source-29"></a>
+<a id="source-30"></a>
 
 ## src/ivc.css
 

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `80e366c2e370b4eb18aaca429bcbf846abdf5051c776dca001a2d446f41ae526`
+소스 묶음 SHA-256: `2ec4356c6e08d49c73c00a6d3af8c6aa22c8b4073120608232045ce1778ad93e`
 
 ## 다른 코드 묶음
 
@@ -1083,7 +1083,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 321줄 · SHA-256: `1c58c83fabe13029c29ed22aef89fc2244a412d3f81944fa9f245dae11541494`
+원본: [server/app.mjs](../../server/app.mjs) · 330줄 · SHA-256: `cae2ba512a4dedfe78f5ea4e0981ded0dbbf95a18b4c0ed7e5671bbc50029682`
 
 ```javascript
 import { createServer } from 'node:http'
@@ -1162,8 +1162,13 @@ export async function createAccessServer(input) {
     if (cfg.secure)
       res.setHeader('Strict-Transport-Security', 'max-age=31536000')
     function json(code, value) {
-      res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' })
-      res.end(JSON.stringify(value))
+      const body = Buffer.from(JSON.stringify(value), 'utf8')
+      res.writeHead(code, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': body.length,
+        'X-IVC-Response': 'json',
+      })
+      res.end(body)
     }
     function fail(code, message) {
       json(code, { error: message })
@@ -1353,7 +1358,11 @@ export async function createAccessServer(input) {
       if (path === '/' || path === '/index.html') {
         root = gateway
         file = 'index.html'
-      } else if (path === '/welcome.css' || path === '/welcome.js') {
+      } else if (
+        path === '/welcome.css' ||
+        path === '/welcome.js' ||
+        path === '/response.js'
+      ) {
         root = gateway
         file = path.slice(1)
       } else {
