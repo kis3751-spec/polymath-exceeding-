@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `1a75a4282b037c8a6b032a5cd824697829b17858e548eebe905d8b9280612201`
+소스 묶음 SHA-256: `06097fe1d6945b83707bf440a7f3103470eade935df097a201b6098082cd9dc3`
 
 ## 다른 코드 묶음
 
@@ -38,21 +38,25 @@
 - [src/components/certification-view.ts](#source-9) · [저장소 원본](../../src/components/certification-view.ts)
 - [src/components/Guide.tsx](#source-10) · [저장소 원본](../../src/components/Guide.tsx)
 - [src/components/Guide.css](#source-11) · [저장소 원본](../../src/components/Guide.css)
-- [src/components/SolutionChart.tsx](#source-12) · [저장소 원본](../../src/components/SolutionChart.tsx)
-- [src/components/SolutionChart.css](#source-13) · [저장소 원본](../../src/components/SolutionChart.css)
-- [src/components/SimulationPanelView.tsx](#source-14) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/MergedSimulationSetView.tsx](#source-15) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
-- [src/components/SimulationPanelView.css](#source-16) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-17) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-18) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-19) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-20) · [저장소 원본](../../src/workspace-screens.css)
+- [src/components/ModuleGuide.tsx](#source-12) · [저장소 원본](../../src/components/ModuleGuide.tsx)
+- [src/components/ModuleGuide.css](#source-13) · [저장소 원본](../../src/components/ModuleGuide.css)
+- [src/components/guide-content.ts](#source-14) · [저장소 원본](../../src/components/guide-content.ts)
+- [src/components/SolutionChart.tsx](#source-15) · [저장소 원본](../../src/components/SolutionChart.tsx)
+- [src/components/SolutionChart.css](#source-16) · [저장소 원본](../../src/components/SolutionChart.css)
+- [src/components/SimulationPanelView.tsx](#source-17) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
+- [src/components/MergedSimulationSetView.tsx](#source-18) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-19) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-20) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-21) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-22) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-23) · [저장소 원본](../../src/workspace-screens.css)
+- [src/ivc.css](#source-24) · [저장소 원본](../../src/ivc.css)
 
 <a id="source-1"></a>
 
 ## src/main.tsx
 
-원본: [src/main.tsx](../../src/main.tsx) · 11줄 · SHA-256: `d025631efb7cd1fb984be635174d651d76413dcfe6762dcc8a82ecf3528976fa`
+원본: [src/main.tsx](../../src/main.tsx) · 12줄 · SHA-256: `00d7340a9af12ab44f30f8c3bebd1d4037c774ec3d9bf3566c5b479ea2a75350`
 
 ```tsx
 import React from 'react'
@@ -60,6 +64,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles.css'
 import './workspace-screens.css'
+import './ivc.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -291,7 +296,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 
 ## src/components/EquationReference.tsx
 
-원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 186줄 · SHA-256: `038512cb65f9f4f6e368a6597d6f2c1d5258d8417d2e077151b3b3f8215dc7d1`
+원본: [src/components/EquationReference.tsx](../../src/components/EquationReference.tsx) · 186줄 · SHA-256: `87f0c3b4d66825b838404d622e335ce0f6875bce88093df6d2216991d884447f`
 
 ```tsx
 const functions = [
@@ -342,9 +347,9 @@ export default function EquationReference() {
         <h4>입력 규칙</h4>
         <ul>
           <li>
-            <code>2x + y = 10</code>: 등호 양쪽에 식을 씁니다. 방정식은 한 줄에
-            하나씩 적는 것을 권장합니다. 일반 등식의 이름은 미지수이며 상수를
-            자동 추측하지 않습니다.
+            <code>2x + y = 10</code>: 등호 양쪽에 식을 씁니다. 여러 등식은
+            줄바꿈·쉼표·세미콜론으로 구분할 수 있습니다. 일반 등식의 이름은
+            미지수이며 상수를 자동 추측하지 않습니다.
           </li>
           <li>
             <code>+ - * / ^</code>와 괄호를 사용합니다. <code>-2^2 = -4</code>,{' '}
@@ -527,7 +532,7 @@ export default function ExampleWalkthrough({
 
 ## src/components/AnalysisSummary.tsx
 
-원본: [src/components/AnalysisSummary.tsx](../../src/components/AnalysisSummary.tsx) · 358줄 · SHA-256: `6da541962cdcb8102b75514537ab8cd35c442500e44f9de0d7242948a4c39b40`
+원본: [src/components/AnalysisSummary.tsx](../../src/components/AnalysisSummary.tsx) · 423줄 · SHA-256: `f2ffc9481608ed161d45a5d1575f6cfc60ba4b293360b41bb8519d6154a7d585`
 
 ```tsx
 import { useMemo, useState } from 'react'
@@ -537,12 +542,7 @@ import {
   reportDiagnostics,
   searchConclusion,
 } from '../engine/report-diagnostics'
-import {
-  branchEventLabel,
-  eventLocation,
-  uniqueBranchEvents,
-} from '../engine/branch-events'
-import { rootStructureLabel, tangencyOrderLabel } from '../engine/tangency'
+import { eventLocation, uniqueBranchEvents } from '../engine/branch-events'
 import CertificationReport from './CertificationReport'
 import { currentCertificate, certifiedConclusion } from './certification-view'
 import './AnalysisSummary.css'
@@ -606,6 +606,24 @@ export default function AnalysisSummary({
           : undefined
       : undefined
   const linear = result.kind !== 'nonlinear'
+  const root = result.rootStructure
+  const rootKind = linear
+    ? 'Unique Solution'
+    : result.variables.length > 1
+      ? d.rank === result.variables.length
+        ? `Regular System · Rank ${d.rank}/${result.variables.length}`
+        : d.rank === undefined
+          ? 'System Solution · Rank not evaluated'
+          : `Singular System · Rank ${d.rank}/${result.variables.length}`
+      : root?.kind === 'multiple'
+        ? `Multiple Root · Order ${root.order ?? '?'}`
+        : root?.kind === 'boundary'
+          ? 'Boundary Root'
+          : root?.kind === 'nonsmooth'
+            ? 'Nonsmooth Root'
+            : root?.kind === 'simple'
+              ? 'Simple Root'
+              : 'Root · Order not classified'
   return (
     <section
       className="analysis-summary"
@@ -617,9 +635,7 @@ export default function AnalysisSummary({
           className="analysis-root-kind"
           data-kind={result.rootStructure?.kind ?? 'simple'}
         >
-          {linear
-            ? '● 유일해'
-            : `${result.rootStructure?.kind === 'multiple' ? '◆' : '●'} ${result.variables.length > 1 ? (d.rank === result.variables.length ? `일반 연립해 · 랭크 ${d.rank}/${result.variables.length}` : d.rank === undefined ? '연립해 · 랭크 미산정' : `특이 연립해 · 랭크 ${d.rank}/${result.variables.length}`) : rootStructureLabel(result.rootStructure)}`}
+          {root?.kind === 'multiple' ? '◆' : '●'} {rootKind}
         </span>
         <h3>
           {pending
@@ -638,94 +654,129 @@ export default function AnalysisSummary({
           </p>
         )}
       </div>
-      <div className="quality-grid">
-        <article
-          data-quality={d.errorBound !== undefined ? 'verified' : 'measured'}
-        >
-          <span>
-            {d.errorBound !== undefined
-              ? '해의 절대 오차 상한'
-              : '해 보정량 · 국소 추정'}
-          </span>
-          <strong>
-            {d.errorBound !== undefined ? '≤ ' : '≈ '}
-            {d.errorBound !== undefined
-              ? boundNumber(d.errorBound)
-              : diagnosticNumber(
-                  d.correction ? Math.max(...d.correction) : undefined,
-                )}
-          </strong>
-          <small>
-            {d.errorBound !== undefined
-              ? '구간 연산으로 해를 감싼 범위에서 계산'
-              : d.powerResponse
-                ? '중근: 선형 보정 대신 아래 비선형 반응 확인'
-                : '원래 등식과 역행렬로 계산한 마지막 보정 크기'}
-          </small>
-          <details className="metric-help">
-            <summary>이 수치 읽는 법</summary>
-            <p>
-              {d.errorBound !== undefined
-                ? '표시한 해와 수학적 해 사이의 거리가 이 값 이하라는 뜻입니다. 입력한 식과 파라미터를 고정한 계산 오차이며, 측정값의 오차까지 포함하지는 않습니다. 예를 들어 0.0001 이하라면 해의 마지막 소수 자릿수를 그 수준에서 판단할 수 있습니다.'
-                : '현재 계산값에 남아 있는 등식 오차를 줄이려면 해를 얼마나 더 움직여야 하는지 추정한 값입니다. 작을수록 식을 잘 만족하지만, 엄밀한 오차 상한이나 정확한 소수 자릿수 보장은 아닙니다. 특히 평탄한 중근 근처에서는 아래 민감도와 함께 확인하세요.'}
-            </p>
-          </details>
-        </article>
-        <article>
-          <span>등식 오차 → 해 변화 증폭률</span>
-          <strong>
-            {d.powerResponse
-              ? `δ¹⁄${d.powerResponse.order}`
-              : d.amplification === undefined
-                ? '산정 조건 확인'
-                : `${diagnosticNumber(d.amplification)} ×`}
-          </strong>
-          <small>
-            {d.powerResponse
-              ? `${d.powerResponse.order}중근의 비선형 민감도 · 아래 입력으로 예측`
-              : '각 등식에 같은 절대 오차를 넣었을 때 · 현재 단위 기준'}
-          </small>
-          <details className="metric-help">
-            <summary>이 수치 읽는 법</summary>
-            <p>
-              등식의 우변에 생긴 작은 절대 오차가 해의 절대 변화로 얼마나 커질지
-              나타냅니다. 예를 들어 0.736896×라면 등식 오차 0.0003에 대해 해
-              변화는 약 0.0002211로 예상합니다. 값이 클수록 같은 오차에 더
-              민감하며, 단위를 바꾸면 숫자도 달라집니다. 중근은 작은 오차에도 해
-              개수가 달라질 수 있어 별도의 비선형 크기로 표시합니다.
-            </p>
-          </details>
-        </article>
-        <article
-          data-quality={
-            c?.complete && c.allRootsRepresented ? 'verified' : 'measured'
-          }
-        >
-          <span>{linear ? '방정식 독립성' : '탐색 구간 검증률'}</span>
-          <strong>
-            {linear
-              ? `${d.rank ?? '—'} / ${result.values.length}`
-              : c
-                ? coveragePercent(search)
-                : '미실행'}
-          </strong>
-          <small>
-            {linear
-              ? '수치 랭크 / 미지수 수'
-              : c
-                ? `유일근 구간 ${c.uniqueRootCount}개 · 미결정 구간 ${c.unresolved.length}개`
-                : (search?.certificationUnavailable ??
-                  '단일 변수 자동 탐색에서 구간 검증 지원')}
-          </small>
-          <details className="metric-help">
-            <summary>이 수치 읽는 법</summary>
-            <p>
-              {linear
-                ? '미지수 개수와 랭크가 같으면 독립적인 조건이 충분한 선형계입니다. 랭크가 부족하면 해가 없거나 무한히 많을 수 있어 추가 조건을 확인해야 합니다.'
-                : '현재 파라미터와 표시한 미지수 범위에서, 근의 존재·부재가 판정된 길이의 비율입니다. 100%라도 미결정 구간이 남았는지와 결과 목록의 일치 여부를 함께 확인해야 합니다. 전체 실수 영역이나 파라미터 변화 전체를 검증한 값도, 모든 근을 찾았을 확률도 아닙니다. 맨 위의 전체 근 확인 여부가 최종 판정입니다.'}
-            </p>
-          </details>
-        </article>
+      <div className="quality-grid analysis-table-scroll">
+        <table className="quality-table">
+          <caption className="visually-hidden">
+            Accuracy, Sensitivity and Verification
+          </caption>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Value</th>
+              <th>Interpretation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              data-quality={
+                d.errorBound !== undefined ? 'verified' : 'measured'
+              }
+            >
+              <th scope="row">
+                {d.errorBound !== undefined
+                  ? 'Absolute Error Bound'
+                  : 'Last Correction'}
+              </th>
+              <td className="quality-value">
+                {d.errorBound !== undefined ? '≤ ' : '≈ '}
+                {d.errorBound !== undefined
+                  ? boundNumber(d.errorBound)
+                  : diagnosticNumber(
+                      d.correction ? Math.max(...d.correction) : undefined,
+                    )}
+              </td>
+              <td>
+                <span>
+                  {d.errorBound !== undefined
+                    ? '입력한 모델에서 확인한 위치 오차의 상한'
+                    : d.powerResponse
+                      ? '중근에서는 아래의 비선형 변화 크기를 확인하세요.'
+                      : '현재 해에 남은 수치 보정량의 국소 추정'}
+                </span>
+                <details className="metric-help">
+                  <summary>이 수치 읽는 법</summary>
+                  <p>
+                    {d.errorBound !== undefined
+                      ? '표시한 해와 수학적 해 사이의 거리가 이 값 이하라는 뜻입니다. 예를 들어 ≤ 0.0001이면 해의 위치가 표시한 숫자에서 최대 0.0001만큼 떨어져 있을 수 있습니다. 입력한 식과 파라미터를 고정한 계산 오차이며, 측정값의 오차까지 포함하지는 않습니다. 작은 값일수록 해의 위치를 좁게 확인했다는 뜻입니다.'
+                      : '현재 계산값에 남아 있는 등식 오차를 줄이려면 해를 얼마나 더 움직여야 하는지 추정한 값입니다. 작을수록 식을 잘 만족하지만, 엄밀한 오차 상한이나 정확한 소수 자릿수 보장은 아닙니다. 특히 평탄한 중근 근처에서는 아래 Sensitivity와 함께 확인하세요.'}
+                  </p>
+                </details>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">
+                {d.powerResponse
+                  ? 'Nonlinear Sensitivity'
+                  : 'Absolute Sensitivity'}
+              </th>
+              <td className="quality-value">
+                {d.powerResponse
+                  ? `δ¹⁄${d.powerResponse.order}`
+                  : d.amplification === undefined
+                    ? '—'
+                    : `${diagnosticNumber(d.amplification)} ×`}
+              </td>
+              <td>
+                <span>
+                  {d.powerResponse
+                    ? `${d.powerResponse.order}중근: 입력 오차와 해 변화가 비례하지 않습니다.`
+                    : '등식에 생긴 작은 절대 오차가 해의 변화로 전달되는 크기'}
+                </span>
+                <details className="metric-help">
+                  <summary>이 수치 읽는 법</summary>
+                  <p>
+                    등식의 우변에 생긴 작은 절대 오차가 해의 절대 변화로 얼마나
+                    커질지 나타냅니다. 예를 들어 0.736896×라면 등식 오차
+                    0.0003에 대해 해 변화는 약 0.0002211로 예상합니다. 값이
+                    클수록 같은 오차에 더 민감합니다. 단위를 바꾸면 숫자도
+                    달라지므로 서로 다른 단위의 문제끼리 숫자만 비교하지 마세요.
+                    이 값은 계산 성공률이나 정답일 확률이 아닙니다.
+                  </p>
+                  <p>
+                    Absolute Error Bound는 입력을 고정했을 때의 계산 위치
+                    오차입니다. Sensitivity는 입력 자체가 바뀔 때 해가 얼마나
+                    움직이는지를 예상합니다. Multiple Root에서는 작은 오차에
+                    근이 새로 생기거나 없어질 수 있어 선형 배율 대신 비선형 반응
+                    차수를 표시합니다. 아래 Input Error Scenario에서 실제 변화
+                    크기를 살펴볼 수 있습니다.
+                  </p>
+                </details>
+              </td>
+            </tr>
+            <tr
+              data-quality={
+                c?.complete && c.allRootsRepresented ? 'verified' : 'measured'
+              }
+            >
+              <th scope="row">{linear ? 'Rank' : 'Verified Coverage'}</th>
+              <td className="quality-value">
+                {linear
+                  ? `${d.rank ?? '—'} / ${result.values.length}`
+                  : c
+                    ? coveragePercent(search)
+                    : '—'}
+              </td>
+              <td>
+                <span>
+                  {linear
+                    ? '독립적인 조건 수 / 미지수 수'
+                    : c
+                      ? `${c.uniqueRootCount} Root Interval · ${c.unresolved.length} Unresolved`
+                      : (search?.certificationUnavailable ??
+                        '지원하는 단일 변수 자동 탐색에서 계산합니다.')}
+                </span>
+                <details className="metric-help">
+                  <summary>이 수치 읽는 법</summary>
+                  <p>
+                    {linear
+                      ? '미지수 개수와 Rank가 같으면 독립적인 조건이 충분한 선형계입니다. 예를 들어 Rank 3 / 3이면 세 미지수를 정할 독립적인 조건 세 개가 있습니다. 같은 조건을 반복해 입력하면 Rank는 늘어나지 않습니다. Rank가 부족하면 해가 없거나 무한히 많을 수 있어 추가 조건을 확인해야 합니다.'
+                      : '현재 파라미터와 표시한 미지수 범위에서, 근의 존재·부재가 판정된 길이의 비율입니다. 예를 들어 99.9%이면 나머지 좁은 구간에 추가 근이 있을 가능성을 아직 배제하지 못했다는 뜻입니다. 100%로 반올림되어도 Unresolved가 남았는지와 결과 목록의 일치 여부를 함께 확인해야 합니다. 전체 실수 영역이나 파라미터 변화 전체를 검증한 값도, 모든 근을 찾았을 확률도 아닙니다. 맨 위의 전체 근 확인 여부가 최종 판정입니다.'}
+                  </p>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       {!linear && (
         <CertificationReport
@@ -736,41 +787,44 @@ export default function AnalysisSummary({
           truncated={search?.truncated}
         />
       )}
-      <div className="sensitivity-scenario">
-        <div>
-          <h4>입력 오차가 이만큼이면?</h4>
-          <details className="metric-help">
-            <summary>어떤 오차를 입력하나요?</summary>
-            <p>
-              각 등식의 우변이 흔들릴 수 있는 절대 크기를 입력합니다. 측정
-              오차를 알고 있다면 현재 등식의 단위로 환산해 넣으세요. 아래 결과는
-              해 성분 중 가장 큰 변화 크기의 예측으로, 파라미터 슬라이더의
-              이동량이나 확률이 아닙니다. 큰 오차·접점 근처에서는 선형 근사가
-              맞지 않을 수 있으므로 실제 식을 바꿔 다시 계산해야 합니다.
-            </p>
-          </details>
+      <details className="analysis-details sensitivity-detail">
+        <summary>
+          Input Error Scenario · 입력이 흔들리면 해는 얼마나 달라질까요?
+        </summary>
+        <div className="sensitivity-scenario">
+          <div>
+            <h4>Input Error Scenario</h4>
+            <details className="metric-help">
+              <summary>어떤 오차를 입력하나요?</summary>
+              <p>
+                각 등식의 우변이 흔들릴 수 있는 절대 크기를 입력합니다. 측정
+                오차를 알고 있다면 현재 등식의 단위로 환산해 넣으세요. 아래
+                결과는 해 성분 중 가장 큰 변화 크기의 예측으로, 파라미터
+                슬라이더의 이동량이나 확률이 아닙니다. 큰 오차·접점 근처에서는
+                선형 근사가 맞지 않을 수 있으므로 실제 식을 바꿔 다시 계산해야
+                합니다.
+              </p>
+            </details>
+          </div>
+          <label>
+            Equation Offset δ
+            <input
+              aria-label="가정한 등식 오차"
+              type="number"
+              min="0"
+              step="any"
+              value={perturbation}
+              onChange={(e) => setPerturbation(e.target.value)}
+            />
+          </label>
+          <div className="scenario-result">
+            <span>Estimated Solution Change</span>
+            <strong>{diagnosticNumber(response)}</strong>
+          </div>
         </div>
-        <label>
-          가정한 등식 오차 δ
-          <input
-            aria-label="가정한 등식 오차"
-            type="number"
-            min="0"
-            step="any"
-            value={perturbation}
-            onChange={(e) => setPerturbation(e.target.value)}
-          />
-        </label>
-        <div className="scenario-result">
-          <span>
-            최대 해 변화{' '}
-            {d.powerResponse ? '크기 추정' : linear ? '선형 예측' : '국소 예측'}
-          </span>
-          <strong>{diagnosticNumber(response)}</strong>
-        </div>
-      </div>
+      </details>
       <details className="analysis-details">
-        <summary>정확도·민감도 지표의 의미와 계산 근거</summary>
+        <summary>Accuracy & Sensitivity · 계산 근거</summary>
         {d.enclosure && (
           <p>
             선택한 해의 포함 구간: [{d.enclosure.lo.toPrecision(17)},{' '}
@@ -808,7 +862,7 @@ export default function AnalysisSummary({
       </details>
       {d.parameterSensitivity.length > 0 && (
         <details className="analysis-details">
-          <summary>파라미터별 영향 · dx/dp</summary>
+          <summary>Parameter Sensitivity · dx/dp</summary>
           <p>
             현재 해에서 −J⁻¹∂F/∂p를 계산했습니다. 파라미터 1단위 증가에 대한
             국소 해 변화입니다.
@@ -817,9 +871,9 @@ export default function AnalysisSummary({
             <table>
               <thead>
                 <tr>
-                  <th>파라미터</th>
+                  <th>Parameter</th>
                   {result.variables.map((v) => (
-                    <th key={v}>{v} 변화율</th>
+                    <th key={v}>d{v}/dp</th>
                   ))}
                 </tr>
               </thead>
@@ -840,7 +894,7 @@ export default function AnalysisSummary({
       {critical.length > 0 && (
         <div className="report-critical">
           <h4>
-            곡선에서 확인한 특별한 지점 <span>{critical.length}</span>
+            Branch Events <span>{critical.length}</span>
           </h4>
           <p>
             현재 해의 기준 곡선에 대한 접점·중근·추적 경계입니다. 현재
@@ -860,9 +914,25 @@ export default function AnalysisSummary({
                           : '◆'
                       : '△'}
                   </span>{' '}
-                  {branchEventLabel(ev)}
+                  {ev.tangency?.verified
+                    ? ev.tangency.bifurcationOrder === 'boundary'
+                      ? 'Boundary Contact'
+                      : ev.tangency.geometry === 'degenerate'
+                        ? 'Degenerate Contact'
+                        : ev.tangency.bifurcationOrder % 2
+                          ? 'Inflection Crossing'
+                          : 'Root Merge'
+                    : ev.kind === 'merge'
+                      ? 'Possible Root Merge'
+                      : 'Tracking Boundary'}
                   {ev.tangency?.verified && (
-                    <small>{tangencyOrderLabel(ev.tangency)}</small>
+                    <small>
+                      {ev.tangency.bifurcationOrder === 'boundary'
+                        ? ev.tangency.multiplicity
+                          ? `Order ${ev.tangency.multiplicity}`
+                          : 'Boundary'
+                        : `Order ${ev.tangency.bifurcationOrder}`}
+                    </small>
                   )}{' '}
                   · {sweepName} ≈ {diagnosticNumber(at.parameter)}
                 </summary>
@@ -894,84 +964,114 @@ export default function AnalysisSummary({
 
 ## src/components/AnalysisSummary.css
 
-원본: [src/components/AnalysisSummary.css](../../src/components/AnalysisSummary.css) · 351줄 · SHA-256: `8972de0e66bc3eb8f0cff328cc25e020182a7cad83bab7c6630645fc086b5c48`
+원본: [src/components/AnalysisSummary.css](../../src/components/AnalysisSummary.css) · 381줄 · SHA-256: `cc2e3edcbd8c5363df564acfa3f294da7c817f1f1f96ccd99357b9dbcd1a01a9`
 
 ```css
 .analysis-summary {
-  margin: 24px 0;
-  color: var(--text, #30443b);
+  margin: 16px 0;
+  color: #283344;
 }
 .analysis-verdict {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .analysis-root-kind {
   display: inline-flex;
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: #eef4ef;
-  color: #407769;
-  font-size: 12px;
+  padding: 3px 7px;
+  border: 1px solid #d7dfe8;
+  border-radius: 3px;
+  background: #f2f5f9;
+  color: #385a7e;
+  font-size: 11px;
   font-weight: 600;
 }
 .analysis-root-kind[data-kind='multiple'],
 .analysis-root-kind[data-kind='boundary'] {
-  color: #93531e;
-  background: #fff3e5;
+  color: #82591f;
+  background: #fbf7ef;
+  border-color: #e4d8bc;
 }
 .analysis-verdict h3 {
-  font-size: clamp(18px, 2vw, 25px);
-  margin: 12px 0 7px;
+  font-size: 18px;
+  margin: 8px 0 5px;
+  font-weight: 600;
 }
 .analysis-verdict p,
 .analysis-summary p {
   font-size: 12px;
-  line-height: 1.8;
-  color: #68766e;
+  line-height: 1.85;
+  color: #546173;
 }
-.quality-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+.analysis-summary .quality-grid {
+  display: block;
+  max-height: none;
+  margin: 14px 0 18px;
+  border: 1px solid #d8dfe7;
+  border-radius: 3px;
 }
-.quality-grid article {
-  padding: 22px 18px;
-  border: 1px solid #e0e6dc;
-  border-radius: 10px;
-  background: #fafbf8;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
+.analysis-summary .quality-table {
+  min-width: 580px;
+  table-layout: fixed;
+  margin: 0;
 }
-.quality-grid article[data-quality='verified'] {
-  border-color: #bfd6c9;
-  background: #f3f9f5;
+.quality-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
-.quality-grid article > span {
+.analysis-summary .quality-table thead th {
+  background: #f2f4f7;
+  color: #3c485b;
+  font-weight: 600;
+  padding: 8px 11px;
+}
+.analysis-summary .quality-table th:first-child {
+  width: 24%;
+}
+.analysis-summary .quality-table th:nth-child(2) {
+  width: 22%;
+}
+.analysis-summary .quality-table tbody th {
   font-size: 12px;
-  color: #5b7265;
+  font-weight: 600;
+  color: #334155;
+  background: #fff;
 }
-.quality-grid strong {
+.analysis-summary .quality-table td,
+.analysis-summary .quality-table tbody th {
+  padding: 11px;
+  vertical-align: top;
+  border-bottom: 1px solid #e5e9ee;
+}
+.analysis-summary .quality-table tr:last-child td,
+.analysis-summary .quality-table tr:last-child th {
+  border-bottom: 0;
+}
+.analysis-summary .quality-table .quality-value {
   font:
-    500 clamp(21px, 2.6vw, 32px) / 1.3 'IBM Plex Mono',
+    500 18px/1.4 'IBM Plex Mono',
+    ui-monospace,
     monospace;
+  color: #305c91;
   overflow-wrap: anywhere;
-  color: #356756;
 }
-.quality-grid small {
+.analysis-summary .quality-table td > span {
+  display: block;
   font-size: 11px;
-  line-height: 1.7;
-  color: #6d7a71;
+  line-height: 1.8;
+  color: #596577;
 }
 .sensitivity-scenario {
-  margin: 18px 0;
-  padding: 18px;
-  border: 1px solid #e2e6de;
-  border-radius: 10px;
+  margin: 12px 0 4px;
+  padding: 12px;
+  border: 1px solid #dde3eb;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
+  background: #fafbfc;
 }
 .sensitivity-scenario > div:first-child {
   flex: 1 1 230px;
@@ -979,54 +1079,57 @@ export default function AnalysisSummary({
 .sensitivity-scenario h4,
 .report-critical h4 {
   margin: 0 0 5px;
-  font-size: 14px;
+  font-size: 13px;
 }
 .sensitivity-scenario p {
   margin: 0;
 }
 .sensitivity-scenario label {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   font-size: 11px;
-  color: #68766e;
+  color: #566273;
 }
 .sensitivity-scenario input {
   width: 140px;
   max-width: 100%;
-  padding: 8px;
-  border: 1px solid #cbd6ca;
-  border-radius: 5px;
+  padding: 7px;
+  border: 1px solid #cbd3de;
+  border-radius: 3px;
   background: white;
+  color: #25364b;
 }
 .scenario-result {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   min-width: 130px;
 }
 .scenario-result span {
   font-size: 11px;
-  color: #68766e;
+  color: #596577;
 }
 .scenario-result strong {
-  font: 500 21px monospace;
-  color: #356756;
+  font:
+    500 18px ui-monospace,
+    monospace;
+  color: #305c91;
 }
 .analysis-details {
-  border-top: 1px solid #e5e9e1;
-  padding: 12px 0;
+  border-top: 1px solid #e0e5ec;
+  padding: 10px 0;
 }
 .analysis-details summary {
   cursor: pointer;
   font-size: 12px;
   line-height: 1.8;
-  color: #466759;
+  color: #405671;
 }
 .analysis-details summary small {
   margin-left: 7px;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 3px;
-  background: #f2eee7;
-  color: #93602d;
+  background: #f8f5ef;
+  color: #8a632e;
   font-size: 11px;
 }
 .analysis-details p {
@@ -1044,50 +1147,39 @@ export default function AnalysisSummary({
 }
 .analysis-summary td,
 .analysis-summary th {
-  padding: 9px 12px;
-  border-bottom: 1px solid #e7ece3;
+  padding: 8px 11px;
+  border-bottom: 1px solid #e2e7ed;
 }
 .report-critical {
-  margin: 24px 0;
+  margin: 18px 0;
 }
 .report-critical h4 span {
   margin-left: 7px;
   font-weight: 400;
 }
 .critical-symbol {
-  color: #a3632d;
+  color: #9b6b2c;
 }
-@media (max-width: 700px) {
-  .quality-grid {
-    grid-template-columns: 1fr;
-  }
-  .quality-grid article {
-    padding: 18px;
-  }
-}
-
 .analysis-view > .nonlinear-status {
   display: none;
 }
 .analysis-summary[aria-busy='true'] .quality-grid {
   opacity: 0.5;
 }
-
 .metric-help summary {
   font-size: 11px;
   cursor: pointer;
-  color: #467466;
+  color: #42618a;
   line-height: 1.8;
 }
 .metric-help p {
   margin: 8px 0 0;
 }
-
 .certification-report {
-  margin: 18px 0;
-  padding: 18px;
-  border: 1px solid #dce6dc;
-  border-radius: 10px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid #dbe1e9;
+  border-radius: 3px;
   background: #fff;
   min-width: 0;
 }
@@ -1097,60 +1189,62 @@ export default function AnalysisSummary({
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .certificate-heading h4 {
-  font-size: 13px;
+  font-size: 12px;
   margin: 0;
-  color: #365f50;
+  color: #3d516c;
 }
 .certificate-state {
-  border-radius: 5px;
-  padding: 4px 8px;
-  color: #8b6630;
-  background: #fbf4e6;
+  border-radius: 3px;
+  padding: 3px 7px;
+  color: #86602c;
+  background: #fbf6eb;
   font-size: 11px;
 }
 .certificate-state.is-complete {
-  color: #2e6c56;
-  background: #edf6ee;
+  color: #315b83;
+  background: #edf3fa;
 }
 .certificate-map {
-  height: 24px;
+  height: 18px;
   overflow: hidden;
-  border-radius: 5px;
-  background: #edf0ec;
+  border-radius: 3px;
+  background: #eef1f5;
 }
 .certificate-map svg {
   width: 100%;
-  height: 24px;
+  height: 18px;
   display: block;
 }
 .certificate-segment.is-free {
-  fill: #dcebdc;
+  fill: #dee9f6;
 }
 .certificate-segment.is-root {
-  fill: #3d8a76;
+  fill: #3c6f9c;
 }
 .certificate-segment.is-excluded {
-  fill: #c7c9d0;
+  fill: #c4c9d2;
 }
 .certificate-segment.is-unresolved {
-  fill: #d19a51;
+  fill: #c99548;
 }
 .certificate-map-scale {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin: 5px 0 12px;
-  color: #728176;
-  font: 10px monospace;
+  margin: 5px 0 10px;
+  color: #657286;
+  font:
+    10px ui-monospace,
+    monospace;
 }
 .certificate-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
-  color: #617366;
+  gap: 7px 15px;
+  color: #526174;
   font-size: 11px;
   margin-bottom: 10px;
 }
@@ -1165,88 +1259,94 @@ export default function AnalysisSummary({
   border-radius: 2px;
 }
 .certificate-counts i.is-free {
-  background: #dcebdc;
-  border: 1px solid #bfd2bd;
+  background: #dee9f6;
+  border: 1px solid #b9cde2;
 }
 .certificate-counts i.is-root {
-  background: #3d8a76;
+  background: #3c6f9c;
 }
 .certificate-counts i.is-excluded {
-  background: #c7c9d0;
+  background: #c4c9d2;
 }
 .certificate-counts i.is-unresolved {
-  background: #d19a51;
+  background: #c99548;
 }
 .probability-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(145px, 0.5fr);
   align-items: center;
-  gap: 20px;
-  padding: 18px 0;
-  border-top: 1px solid #e5e9e1;
+  gap: 18px;
+  padding: 12px 0;
 }
 .probability-value {
   display: grid;
-  gap: 9px;
+  gap: 7px;
   min-width: 0;
 }
 .probability-value > span {
-  color: #466a59;
+  color: #405671;
   font-size: 12px;
 }
 .probability-value strong {
   font:
-    500 clamp(18px, 2.5vw, 28px) / 1.4 'IBM Plex Mono',
+    500 20px/1.4 'IBM Plex Mono',
+    ui-monospace,
     monospace;
-  color: #356756;
+  color: #305c91;
   overflow-wrap: anywhere;
 }
 .probability-value small {
-  color: #738276;
+  color: #647286;
   font-size: 10px;
-  line-height: 1.7;
+  line-height: 1.8;
 }
 .probability-sigma {
   display: grid;
-  gap: 8px;
-  color: #617366;
+  gap: 7px;
+  color: #526174;
   font-size: 11px;
 }
 .probability-sigma input {
   width: 100%;
   max-width: 190px;
-  border: 1px solid #cad7ca;
-  border-radius: 5px;
-  padding: 8px;
+  border: 1px solid #cbd3de;
+  border-radius: 3px;
+  padding: 7px;
   background: #fff;
-  color: #355e4e;
-  font-family: monospace;
+  color: #25364b;
+  font-family: ui-monospace, monospace;
 }
 .probability-sigma small[role='alert'] {
-  color: #a15f33;
-  line-height: 1.7;
+  color: #9a5829;
+  line-height: 1.8;
 }
 .certification-report[aria-busy='true'] .certificate-map {
   opacity: 0.5;
 }
+.report-without-root {
+  padding: 8px 20px 22px;
+}
+.certified-empty-state h3 {
+  color: #355c83;
+}
+.certified-empty-state .error-icon {
+  background: #edf3fa;
+  color: #355c83;
+}
 @media (max-width: 600px) {
   .certification-report {
-    padding: 14px;
+    padding: 11px;
   }
   .probability-summary {
     grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
+    gap: 12px;
   }
-}
-.report-without-root {
-  padding: 8px 24px 28px;
-}
-.certified-empty-state h3 {
-  color: #397665;
-}
-.certified-empty-state .error-icon {
-  background: #edf6e9;
-  color: #397665;
+  .analysis-summary .quality-table {
+    min-width: 540px;
+  }
+  .analysis-summary .quality-table .quality-value {
+    font-size: 16px;
+  }
 }
 ```
 
@@ -1254,7 +1354,7 @@ export default function AnalysisSummary({
 
 ## src/components/CertificationReport.tsx
 
-원본: [src/components/CertificationReport.tsx](../../src/components/CertificationReport.tsx) · 261줄 · SHA-256: `2d9d314a2e5969ed3884fc5e96ce65353fcc15a89e40a8bd9db91ed957236328`
+원본: [src/components/CertificationReport.tsx](../../src/components/CertificationReport.tsx) · 277줄 · SHA-256: `7da18ab9d3ebb2cfa1e0f1e90729408a4a8951e21e04da91411b47e87e383480`
 
 ```tsx
 import { useEffect, useState } from 'react'
@@ -1321,14 +1421,14 @@ export default function CertificationReport({
   const segments = certificateSegments(c)
   const span = c.domain.max - c.domain.min
   const counts = [
-    ['root', '근 격리', c.rootIntervals.length],
-    ['free', '해 부재', c.rootFreeIntervals?.length ?? 0],
+    ['root', 'Root Interval', c.rootIntervals.length],
+    ['free', 'Root-free', c.rootFreeIntervals?.length ?? 0],
     [
       'excluded',
-      '정의역 제외',
+      'Excluded',
       c.excludedIntervals?.length ?? c.excludedDomainCount,
     ],
-    ['unresolved', '미결정', c.unresolved.length],
+    ['unresolved', 'Unresolved', c.unresolved.length],
   ] as const
 
   return (
@@ -1338,7 +1438,7 @@ export default function CertificationReport({
       aria-busy={pending}
     >
       <div className="certificate-heading">
-        <h4>현재 탐색 구간</h4>
+        <h4>Search Domain Verification</h4>
         <span
           className={`certificate-state${state.complete ? ' is-complete' : ''}`}
         >
@@ -1383,13 +1483,13 @@ export default function CertificationReport({
         ))}
       </div>
       <details className="analysis-details certificate-reading">
-        <summary>검증 지도 읽는 법</summary>
+        <summary>Verification Map · 검증 지도 읽는 법</summary>
         <p>
-          색은 구간 연산으로 기록한 판정입니다. ‘근 격리’는 그 상자 안에 확인된
-          근이 있다는 뜻으로, 상자 전체가 해라는 뜻은 아닙니다. 작은 근 상자는
-          위치를 식별할 수 있도록 최소 너비로 표시합니다. ‘해 부재’는 추가 근이
-          없다고 검증한 구간이고 ‘정의역 제외’는 실수 수식이 정의되지 않는
-          구간입니다.
+          색은 구간 연산으로 기록한 판정입니다. Root Interval은 그 상자 안에
+          확인된 근이 있다는 뜻으로, 상자 전체가 해라는 뜻은 아닙니다. 작은 근
+          상자는 위치를 식별할 수 있도록 최소 너비로 표시합니다. Root-free는
+          추가 근이 없다고 검증한 구간이고 Excluded는 실수 수식이 정의되지 않는
+          구간입니다. Unresolved는 아직 판정이 끝나지 않은 구간입니다.
         </p>
         {truncated && (
           <p>
@@ -1405,89 +1505,105 @@ export default function CertificationReport({
         </p>
       </details>
 
-      <div className="probability-summary">
-        <div className="probability-value">
-          <span>입력 오차에 따른 근 개수 유지 확률</span>
-          <strong>
-            {pending ? '계산 중…' : (probability ?? '산정 조건 확인')}
-          </strong>
-          <small>
-            {probability
-              ? '현재 탐색 구간 · 검증된 확률 범위'
-              : '검증된 임계점과 확률 범위가 있는 경우 표시'}
-          </small>
+      <details className="analysis-details gaussian-model">
+        <summary>Gaussian Noise Model · 입력 오차와 근 개수</summary>
+        <p>
+          입력 오차에 따른 근 개수 유지 확률을 따로 살펴보는 선택 항목입니다.
+          측정 오차 모형을 알고 있을 때 사용하세요.
+        </p>
+        <div className="probability-summary">
+          <div className="probability-value">
+            <span>Root Count Stability</span>
+            <strong>
+              {pending ? '계산 중…' : (probability ?? '산정 조건 확인')}
+            </strong>
+            <small>
+              {probability
+                ? '현재 탐색 구간 · 검증된 확률 범위'
+                : '검증된 임계점과 확률 범위가 있는 경우 표시'}
+            </small>
+          </div>
+          <label className="probability-sigma">
+            Noise Standard Deviation σ
+            <input
+              aria-label="입력 오차 표준편차"
+              type="number"
+              min="0"
+              step="any"
+              value={sigmaText}
+              readOnly={!onInputNoiseSigmaChange}
+              onChange={(e) => setSigmaText(e.target.value)}
+              onBlur={applySigma}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  applySigma()
+                }
+                if (e.key === 'Escape') {
+                  setSigmaText(String(sigma))
+                  setSigmaError('')
+                }
+              }}
+            />
+            {sigmaError && <small role="alert">{sigmaError}</small>}
+          </label>
         </div>
-        <label className="probability-sigma">
-          입력 오차 표준편차 σ
-          <input
-            aria-label="입력 오차 표준편차"
-            type="number"
-            min="0"
-            step="any"
-            value={sigmaText}
-            readOnly={!onInputNoiseSigmaChange}
-            onChange={(e) => setSigmaText(e.target.value)}
-            onBlur={applySigma}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                applySigma()
-              }
-              if (e.key === 'Escape') {
-                setSigmaText(String(sigma))
-                setSigmaError('')
-              }
-            }}
-          />
-          {sigmaError && <small role="alert">{sigmaError}</small>}
-        </label>
-      </div>
-      <details className="analysis-details probability-assumptions">
-        <summary>이 확률은 무엇을 뜻하나요?</summary>
-        <p>
-          현재 스칼라 방정식의 좌변·우변 차이 F 전체에 하나의 일정한 오차 ε가
-          더해진다고 가정합니다. ε는 평균 0, 표준편차 σ의 정규분포를 따릅니다.
-          표시한 값은 F+ε=0의 근 개수가 현재 탐색 구간에서 유지될 확률의
-          상하한입니다. 미발견 근을 모두 찾았을 확률, 개별 해가 맞을 확률, 각
-          측정값에 독립 오차가 생기는 일반 모형과는 다릅니다.
-        </p>
-        <p>
-          σ는 등식의 단위로 환산한 입력 오차 크기입니다. 실제 측정 오차를 알고
-          있으면 그 값을 사용하세요. 같은 σ라도 등식의 단위나 스케일을 바꾸면
-          다른 오차 모형이 됩니다. 근 개수가 유지되더라도 위치가 크게 움직일 수
-          있으므로 위의 해 변화 증폭률과 함께 해석하세요.
-        </p>
-        {c.completeness?.perturbationUnavailableReason && !pending && (
-          <p>{c.completeness.perturbationUnavailableReason}</p>
-        )}
-        {!gp && !pending && !c.completeness?.perturbationUnavailableReason && (
+        <details className="analysis-details probability-assumptions">
+          <summary>Assumptions · 이 확률을 해석하는 방법</summary>
           <p>
-            현재 식·정의역·검증 예산에서는 확률을 검증하지 못했습니다. 이를 0%나
-            100%로 대신 표시하지 않습니다.
+            현재 스칼라 방정식의 좌변·우변 차이 F 전체에 하나의 일정한 오차 ε가
+            더해진다고 가정합니다. ε는 평균 0, 표준편차 σ의 정규분포를 따릅니다.
+            표시한 값은 F+ε=0의 근 개수가 현재 탐색 구간에서 유지될 확률의
+            상하한입니다. 미발견 근을 모두 찾았을 확률, 개별 해가 맞을 확률, 각
+            측정값에 독립 오차가 생기는 일반 모형과는 다릅니다.
           </p>
-        )}
-        {freshGp && !freshGp.criticalPointsCertified && (
           <p>
-            원래 함수의 모든 임계점과 경계 높이를 검증해야 이 확률을 산정할 수
-            있습니다.
+            Regression의 95% Confidence Interval과도 구별하세요. Confidence
+            Interval은 여러 관측값으로 추정한 계수의 불확실성을 나타내고,
+            여기서는 한 방정식 전체에 같은 오차가 더해질 때 근의 개수가
+            유지되는지를 다룹니다. 두 숫자를 서로의 정확도 점수처럼 비교할 수
+            없습니다.
           </p>
-        )}
-        {freshGp?.twoSidedSafetyMarginBounds && (
           <p>
-            근 개수를 바꾸지 않는 양방향 등식 오차 여유: [
-            {number(freshGp.twoSidedSafetyMarginBounds.lo)},{' '}
-            {number(freshGp.twoSidedSafetyMarginBounds.hi)}]. 이 값이 0인
-            접점에서는 작은 오차로도 근이 생성·소멸할 수 있습니다.
+            σ는 등식의 단위로 환산한 입력 오차 크기입니다. 실제 측정 오차를 알고
+            있으면 그 값을 사용하세요. 같은 σ라도 등식의 단위나 스케일을 바꾸면
+            다른 오차 모형이 됩니다. 근 개수가 유지되더라도 위치가 크게 움직일
+            수 있으므로 위의 해 변화 증폭률과 함께 해석하세요.
           </p>
-        )}
-        {freshGp?.twoSidedSafetyProbabilityBounds && (
-          <p>
-            위 안전 여유 안에 오차가 머무를 확률:{' '}
-            {probabilityBoundsText(freshGp.twoSidedSafetyProbabilityBounds)}.
-            안전 여유 밖에서도 근 개수가 같아질 수 있으므로 주 지표와 서로 다를
-            수 있습니다.
-          </p>
-        )}
+          {c.completeness?.perturbationUnavailableReason && !pending && (
+            <p>{c.completeness.perturbationUnavailableReason}</p>
+          )}
+          {!gp &&
+            !pending &&
+            !c.completeness?.perturbationUnavailableReason && (
+              <p>
+                현재 식·정의역·검증 예산에서는 확률을 검증하지 못했습니다. 이를
+                0%나 100%로 대신 표시하지 않습니다.
+              </p>
+            )}
+          {freshGp && !freshGp.criticalPointsCertified && (
+            <p>
+              원래 함수의 모든 임계점과 경계 높이를 검증해야 이 확률을 산정할 수
+              있습니다.
+            </p>
+          )}
+          {freshGp?.twoSidedSafetyMarginBounds && (
+            <p>
+              근 개수를 바꾸지 않는 양방향 등식 오차 여유: [
+              {number(freshGp.twoSidedSafetyMarginBounds.lo)},{' '}
+              {number(freshGp.twoSidedSafetyMarginBounds.hi)}]. 이 값이 0인
+              접점에서는 작은 오차로도 근이 생성·소멸할 수 있습니다.
+            </p>
+          )}
+          {freshGp?.twoSidedSafetyProbabilityBounds && (
+            <p>
+              위 안전 여유 안에 오차가 머무를 확률:{' '}
+              {probabilityBoundsText(freshGp.twoSidedSafetyProbabilityBounds)}.
+              안전 여유 밖에서도 근 개수가 같아질 수 있으므로 주 지표와 서로
+              다를 수 있습니다.
+            </p>
+          )}
+        </details>
       </details>
 
       {c.unresolved.length > 0 && (
@@ -1497,9 +1613,9 @@ export default function CertificationReport({
             <table>
               <thead>
                 <tr>
-                  <th>시작</th>
-                  <th>끝</th>
-                  <th>남은 검증</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody>
@@ -1642,7 +1758,7 @@ export function certificateSegments(c: RootCertificate): CertificateSegment[] {
 
 ## src/components/Guide.tsx
 
-원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 454줄 · SHA-256: `a66a126a1182acb52811cec547ecba2cfeef9c9894e18957c5f43dc5d4829ba0`
+원본: [src/components/Guide.tsx](../../src/components/Guide.tsx) · 452줄 · SHA-256: `04e0e7363bd79f0e52ae7bedd7443b6a83723948aaed5409ead57468f0fef049`
 
 ```tsx
 import EquationReference from './EquationReference'
@@ -1786,9 +1902,7 @@ export default function Guide({
                 <span className="guide-step">02</span>
                 <div>
                   <h3>
-                    {nonlinear
-                      ? '방정식을 그대로 입력하세요'
-                      : '한 줄에 방정식 하나'}
+                    {nonlinear ? '방정식을 그대로 입력하세요' : 'Equations'}
                   </h3>
                   {nonlinear ? (
                     <>
@@ -1841,7 +1955,7 @@ export default function Guide({
                     <>
                       <h3>여러 해를 목록에서 선택하세요</h3>
                       <p>
-                        연립식은 한 줄씩 적거나 쉼표·세미콜론으로 나눕니다.
+                        연립식은 줄바꿈, 쉼표, 세미콜론으로 구분할 수 있습니다.
                         미지수 수와 독립적인 식 수를 맞추면 여러 시작점을
                         자동으로 시도합니다. 시뮬레이션 화면의 발견한 해
                         목록에서 해를 선택하고, 시뮬레이션 추가로 여러 창을 열어
@@ -2480,6 +2594,2223 @@ export default function Guide({
 ```
 
 <a id="source-12"></a>
+
+## src/components/ModuleGuide.tsx
+
+원본: [src/components/ModuleGuide.tsx](../../src/components/ModuleGuide.tsx) · 347줄 · SHA-256: `02093389c640397ffdc0420ae8825de04dc1ba2be94b73882e79e8af99357581`
+
+```tsx
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { BookOpen, Check, Copy, Search, X } from 'lucide-react'
+import {
+  getModuleGuide,
+  moduleGuides,
+  sectionSearchText,
+  type GuideBlock,
+  type GuideTopic,
+} from './guide-content'
+import './ModuleGuide.css'
+
+export type { GuideTopic } from './guide-content'
+
+function CodeExample({ text, caption }: { text: string; caption?: string }) {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  return (
+    <figure className="ivc-guide-example">
+      <div className="ivc-guide-example-heading">
+        <figcaption>{caption ?? 'Example Input'}</figcaption>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(text)
+              setCopied(true)
+              clearTimeout(timer.current)
+              timer.current = setTimeout(() => setCopied(false), 1600)
+            } catch {
+              // The selectable source remains available when clipboard access is denied.
+            }
+          }}
+          aria-label="Copy example input"
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      <pre tabIndex={0}>
+        <code>{text}</code>
+      </pre>
+    </figure>
+  )
+}
+
+function ContentBlock({ block }: { block: GuideBlock }) {
+  if (block.kind === 'paragraph') return <p>{block.text}</p>
+  if (block.kind === 'code')
+    return <CodeExample text={block.text} caption={block.caption} />
+  if (block.kind === 'list')
+    return (
+      <ul>
+        {block.items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    )
+  if (block.kind === 'note')
+    return (
+      <aside className="ivc-guide-note">
+        <strong>{block.title}</strong>
+        <p>{block.text}</p>
+      </aside>
+    )
+  return (
+    <div
+      className="ivc-guide-table-wrap"
+      tabIndex={0}
+      role="region"
+      aria-label={`${block.headers[0]} reference table`}
+    >
+      <table>
+        <thead>
+          <tr>
+            {block.headers.map((header) => (
+              <th scope="col" key={header}>
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row, index) => (
+            <tr key={index}>
+              {row.map((cell, column) =>
+                column === 0 ? (
+                  <th scope="row" key={column}>
+                    {cell}
+                  </th>
+                ) : (
+                  <td key={column}>{cell}</td>
+                ),
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export default function ModuleGuide({
+  initialTopic = 'linear',
+  onClose,
+}: {
+  initialTopic?: GuideTopic
+  onClose: () => void
+}) {
+  const [topic, setTopic] = useState<GuideTopic>(initialTopic)
+  const [query, setQuery] = useState('')
+  const dialog = useRef<HTMLDivElement>(null)
+  const readingPane = useRef<HTMLElement>(null)
+  const closeCallback = useRef(onClose)
+  closeCallback.current = onClose
+  const uid = useId()
+  const guide = getModuleGuide(topic)
+  const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean)
+  const sections = useMemo(
+    () =>
+      guide.sections.filter((item) => {
+        const searchText = sectionSearchText(item)
+        return terms.every((term) => searchText.includes(term))
+      }),
+    [guide, query],
+  ) // The search is confined to the active module.
+
+  useEffect(() => {
+    setTopic(initialTopic)
+    setQuery('')
+  }, [initialTopic])
+
+  useEffect(() => {
+    readingPane.current?.scrollTo({ top: 0 })
+  }, [topic, query])
+
+  useEffect(() => {
+    const previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    dialog.current?.focus({ preventScroll: true })
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        event.stopPropagation()
+        closeCallback.current()
+        return
+      }
+      if (event.key !== 'Tab' || !dialog.current) return
+      const focusable = [
+        ...dialog.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
+        ),
+      ].filter(
+        (element) =>
+          element.tabIndex >= 0 && element.getClientRects().length > 0,
+      )
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      const active = document.activeElement
+      const outside =
+        !dialog.current.contains(active) || active === dialog.current
+      if (event.shiftKey && (active === first || outside)) {
+        event.preventDefault()
+        last?.focus({ preventScroll: true })
+      } else if (!event.shiftKey && (active === last || outside)) {
+        event.preventDefault()
+        first?.focus({ preventScroll: true })
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+      document.body.style.overflow = previousOverflow
+      if (previousFocus?.isConnected)
+        previousFocus.focus({ preventScroll: true })
+    }
+  }, [])
+
+  const chooseTopic = (next: GuideTopic) => {
+    setTopic(next)
+    setQuery('')
+  }
+  const tabId = (id: GuideTopic) => `${uid}-tab-${id}`
+  const panelId = `${uid}-panel`
+  const jumpTo = (id: string) => {
+    const pane = readingPane.current
+    const target = document.getElementById(`${uid}-${topic}-${id}`)
+    if (!pane || !target) return
+    pane.scrollTo({
+      top:
+        pane.scrollTop +
+        target.getBoundingClientRect().top -
+        pane.getBoundingClientRect().top -
+        20,
+    })
+    target.focus({ preventScroll: true })
+  }
+
+  return (
+    <div
+      className="ivc-guide-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div
+        className="ivc-guide-dialog"
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${uid}-title`}
+        tabIndex={-1}
+      >
+        <header className="ivc-guide-header">
+          <h2 id={`${uid}-title`}>
+            <BookOpen size={20} aria-hidden="true" />
+            User Guide
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ivc-guide-close"
+            aria-label="Close User Guide"
+          >
+            <X size={20} />
+          </button>
+        </header>
+        <div className="ivc-guide-layout">
+          <aside className="ivc-guide-sidebar">
+            <div
+              className="ivc-guide-tabs"
+              role="tablist"
+              aria-label="Module guides"
+              aria-orientation="vertical"
+            >
+              {moduleGuides.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  id={tabId(item.id)}
+                  aria-selected={item.id === topic}
+                  aria-controls={item.id === topic ? panelId : undefined}
+                  tabIndex={item.id === topic ? 0 : -1}
+                  onClick={() => chooseTopic(item.id)}
+                  onKeyDown={(event) => {
+                    let nextIndex: number
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowRight')
+                      nextIndex = (index + 1) % moduleGuides.length
+                    else if (
+                      event.key === 'ArrowUp' ||
+                      event.key === 'ArrowLeft'
+                    )
+                      nextIndex =
+                        (index + moduleGuides.length - 1) % moduleGuides.length
+                    else if (event.key === 'Home') nextIndex = 0
+                    else if (event.key === 'End')
+                      nextIndex = moduleGuides.length - 1
+                    else return
+                    event.preventDefault()
+                    chooseTopic(moduleGuides[nextIndex].id)
+                    document
+                      .getElementById(tabId(moduleGuides[nextIndex].id))
+                      ?.focus({ preventScroll: true })
+                  }}
+                >
+                  {item.title}
+                </button>
+              ))}
+            </div>
+            <nav
+              className="ivc-guide-toc"
+              aria-label={`${guide.title} contents`}
+            >
+              <h3>Contents</h3>
+              {sections.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => jumpTo(item.id)}
+                >
+                  {item.title.replace(/^\d+\.\s*/, '')}
+                </button>
+              ))}
+            </nav>
+          </aside>
+          <div
+            className="ivc-guide-reading-layout"
+            role="tabpanel"
+            id={panelId}
+            aria-labelledby={tabId(topic)}
+          >
+            <div className="ivc-guide-search">
+              <label htmlFor={`${uid}-search`}>
+                <Search size={16} aria-hidden="true" />
+                <span className="ivc-guide-sr-only">Search current guide</span>
+              </label>
+              <input
+                id={`${uid}-search`}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search this guide · 용어 검색"
+              />
+              {query && (
+                <span className="ivc-guide-search-count" aria-live="polite">
+                  {sections.length} sections
+                </span>
+              )}
+            </div>
+            <main className="ivc-guide-reading" ref={readingPane} key={topic}>
+              <header className="ivc-guide-chapter-heading">
+                <h3>{guide.title}</h3>
+                <p>{guide.summary}</p>
+              </header>
+              {sections.length === 0 ? (
+                <p className="ivc-guide-no-results" role="status">
+                  이 가이드에서 찾을 수 없습니다. 다른 용어로 검색하거나
+                  검색어를 지워 전체 목차를 보세요.
+                </p>
+              ) : (
+                sections.map((item) => (
+                  <section
+                    className="ivc-guide-section"
+                    key={item.id}
+                    aria-labelledby={`${uid}-${topic}-${item.id}`}
+                  >
+                    <h4 id={`${uid}-${topic}-${item.id}`} tabIndex={-1}>
+                      {item.title}
+                    </h4>
+                    {item.blocks.map((block, index) => (
+                      <ContentBlock block={block} key={index} />
+                    ))}
+                  </section>
+                ))
+              )}
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+<a id="source-13"></a>
+
+## src/components/ModuleGuide.css
+
+원본: [src/components/ModuleGuide.css](../../src/components/ModuleGuide.css) · 430줄 · SHA-256: `5b406b67931cae3d27ade0e80ea419f6f73bd9f31634c6e43a59b94c8bc21c31`
+
+```css
+.ivc-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(22 30 42 / 45%);
+}
+
+.ivc-guide-dialog {
+  width: min(1200px, 100%);
+  height: min(940px, 94dvh);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #253044;
+  background: #fff;
+  border: 1px solid #cdd3dd;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgb(0 0 0 / 20%);
+  font-size: 15px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.ivc-guide-dialog *,
+.ivc-guide-dialog *::before,
+.ivc-guide-dialog *::after {
+  box-sizing: border-box;
+}
+.ivc-guide-dialog :is(h2, h3, h4, p, figure, ul) {
+  margin: 0;
+}
+.ivc-guide-dialog button {
+  font: inherit;
+  cursor: pointer;
+}
+.ivc-guide-dialog button:focus-visible,
+.ivc-guide-dialog input:focus-visible,
+.ivc-guide-dialog [tabindex]:focus-visible {
+  outline: 2px solid #245ec1;
+  outline-offset: 3px;
+}
+
+.ivc-guide-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #dce0e6;
+  background: #f7f8fa;
+}
+.ivc-guide-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 650;
+  color: #24324b;
+}
+.ivc-guide-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #d4dae3;
+  border-radius: 4px;
+  background: #fff;
+  color: #4c5667;
+}
+.ivc-guide-close:hover {
+  background: #eaf0f8;
+}
+.ivc-guide-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+}
+.ivc-guide-sidebar {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 10px 24px;
+  background: #f6f7f9;
+  border-right: 1px solid #dce0e6;
+  overscroll-behavior: contain;
+}
+.ivc-guide-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ivc-guide-tabs button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  color: #424c5e;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.ivc-guide-tabs button:hover {
+  background: #e8edf5;
+}
+.ivc-guide-tabs button[aria-selected='true'] {
+  color: #174c9a;
+  border-color: #bed0eb;
+  background: #e8f0fc;
+  font-weight: 650;
+}
+.ivc-guide-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 22px;
+  padding: 0 10px;
+}
+.ivc-guide-toc h3 {
+  color: #596476;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.ivc-guide-toc button {
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: #535d6d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ivc-guide-toc button:hover {
+  color: #174c9a;
+  text-decoration: underline;
+}
+.ivc-guide-reading-layout {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.ivc-guide-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-bottom: 1px solid #e2e5eb;
+  background: #fff;
+  flex: 0 0 auto;
+}
+.ivc-guide-search label {
+  display: flex;
+  color: #647087;
+}
+.ivc-guide-search input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #d4dae3;
+  border-radius: 4px;
+  background: #fff;
+  color: #253044;
+  font: inherit;
+  font-size: 13px;
+}
+.ivc-guide-search-count {
+  white-space: nowrap;
+  color: #667080;
+  font-size: 12px;
+}
+.ivc-guide-reading {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 32px 50px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.ivc-guide-chapter-heading {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #dce2eb;
+}
+.ivc-guide-chapter-heading h3 {
+  color: #1e3558;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.ivc-guide-chapter-heading p {
+  color: #556176;
+  line-height: 1.8;
+}
+.ivc-guide-section {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding-top: 28px;
+}
+.ivc-guide-section + .ivc-guide-section {
+  margin-top: 26px;
+  border-top: 1px solid #e5e8ed;
+}
+.ivc-guide-section h4 {
+  display: block;
+  width: 100%;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.6;
+  color: #283d5d;
+  margin-bottom: 15px;
+}
+.ivc-guide-section p {
+  display: block;
+  width: 100%;
+  color: #354052;
+  margin: 12px 0;
+  line-height: 1.9;
+}
+.ivc-guide-section ul {
+  padding-left: 22px;
+  margin: 14px 0;
+}
+.ivc-guide-section li {
+  margin: 9px 0;
+  padding-left: 2px;
+  line-height: 1.9;
+  color: #354052;
+}
+.ivc-guide-example {
+  margin: 18px 0 !important;
+  min-width: 0;
+  border: 1px solid #d4dce7;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #f7f9fc;
+}
+.ivc-guide-example-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #dfe5ee;
+  background: #edf1f7;
+}
+.ivc-guide-example figcaption {
+  color: #4c5970;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ivc-guide-example-heading button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  color: #27569a;
+  border: 1px solid #c2cee0;
+  border-radius: 3px;
+  font-size: 12px;
+  background: #fff;
+}
+.ivc-guide-example pre {
+  margin: 0;
+  padding: 15px 16px;
+  overflow-x: auto;
+  white-space: pre;
+  color: #233b61;
+  background: transparent;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.85;
+  tab-size: 2;
+}
+.ivc-guide-example code {
+  font: inherit;
+  white-space: inherit;
+}
+.ivc-guide-table-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid #d8dfe9;
+  border-radius: 4px;
+}
+.ivc-guide-table-wrap table {
+  width: 100%;
+  min-width: 360px;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 13px;
+  color: #354052;
+}
+.ivc-guide-table-wrap :is(th, td) {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e6ed;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.8;
+}
+.ivc-guide-table-wrap thead th {
+  color: #344d70;
+  font-weight: 650;
+  background: #f0f3f8;
+}
+.ivc-guide-table-wrap tbody th {
+  width: 29%;
+  min-width: 145px;
+  color: #2b4264;
+  font-weight: 600;
+  background: #fafbfd;
+}
+.ivc-guide-table-wrap tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.ivc-guide-note {
+  display: block;
+  margin: 18px 0;
+  padding: 12px 15px;
+  border-left: 3px solid #6b91c5;
+  background: #f0f4fa;
+  border-radius: 0 4px 4px 0;
+}
+.ivc-guide-note strong {
+  font-size: 13px;
+  color: #30517d;
+  font-weight: 650;
+}
+.ivc-guide-note p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #405472;
+  line-height: 1.85;
+}
+.ivc-guide-no-results {
+  padding: 24px 0;
+  color: #5c6677;
+}
+.ivc-guide-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .ivc-guide-backdrop {
+    padding: 8px;
+  }
+  .ivc-guide-dialog {
+    height: 97dvh;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+  .ivc-guide-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .ivc-guide-sidebar {
+    padding: 7px 10px;
+    border-right: 0;
+    border-bottom: 1px solid #dce0e6;
+    overflow: visible;
+  }
+  .ivc-guide-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 5px;
+    padding: 3px;
+    overscroll-behavior-x: contain;
+  }
+  .ivc-guide-tabs button {
+    width: auto;
+    flex: 0 0 auto;
+    padding: 7px 9px;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .ivc-guide-toc {
+    display: none;
+  }
+  .ivc-guide-search {
+    padding: 9px 14px;
+  }
+  .ivc-guide-reading {
+    padding: 22px 18px 36px;
+  }
+  .ivc-guide-chapter-heading h3 {
+    font-size: 21px;
+  }
+  .ivc-guide-section h4 {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ivc-guide-dialog * {
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+<a id="source-14"></a>
+
+## src/components/guide-content.ts
+
+원본: [src/components/guide-content.ts](../../src/components/guide-content.ts) · 1,413줄 · SHA-256: `cc7d0ba6187cce455e4842e66837aa1a75686d90f393f07f991cd72f85210cce`
+
+```typescript
+export type GuideTopic =
+  | 'linear'
+  | 'nonlinear'
+  | 'ode'
+  | 'curve-fit'
+  | 'multilinear'
+  | 'nonlinear-fit'
+  | 'integration'
+  | 'optimization'
+  | 'lsq'
+
+export type GuideBlock =
+  | { kind: 'paragraph'; text: string }
+  | { kind: 'code'; text: string; caption?: string }
+  | { kind: 'list'; items: string[] }
+  | { kind: 'table'; headers: string[]; rows: string[][] }
+  | { kind: 'note'; title: string; text: string }
+
+export type GuideSection = { id: string; title: string; blocks: GuideBlock[] }
+export type ModuleGuideContent = {
+  id: GuideTopic
+  title: string
+  summary: string
+  sections: GuideSection[]
+}
+
+const p = (text: string): GuideBlock => ({ kind: 'paragraph', text })
+const code = (text: string, caption?: string): GuideBlock => ({
+  kind: 'code',
+  text,
+  caption,
+})
+const list = (...items: string[]): GuideBlock => ({ kind: 'list', items })
+const table = (headers: string[], rows: string[][]): GuideBlock => ({
+  kind: 'table',
+  headers,
+  rows,
+})
+const note = (title: string, text: string): GuideBlock => ({
+  kind: 'note',
+  title,
+  text,
+})
+const section = (
+  id: string,
+  title: string,
+  ...blocks: GuideBlock[]
+): GuideSection => ({ id, title, blocks })
+
+export const guideExamples = {
+  linear: '2x+y=10\nx-y=2',
+  nonlinear: 'x^3-x=p',
+  ode: 'd(A)/d(t)=-k*A\nk=0.25\nA(0)=1\nt|0:10',
+  'curve-fit': '[\nx y\n0 1\n1 3\n2 5\n3 7\n4 9\n]\npolyfit x y 1',
+  multilinear:
+    '[\nx1 x2 y\n0 0 2\n1 0 5\n0 1 -2\n1 1 1\n2 1 4\n1 2 -3\n]\nmlinfit x1 x2 y',
+  'nonlinear-fit':
+    '[\nS v\n0.1 0.3333333333333333\n0.25 0.6666666666666666\n0.5 1\n1 1.3333333333333333\n2 1.6\n4 1.7777777777777777\n]\nnlinfit v=Vmax*S/(Km+S)\nm(Vmax)=1.5\nm(Km)=0.8\nVmax(min)=0\nKm(min)=0.001',
+  integration: '[\nt Q\n0 0\n1 1\n2 2\n]\nintegrate Q(t) 0 2 100 lin',
+  optimization: 'min: (x-1)^2+(y-1)^2\nx+y=1\nx|0.2 0 2\ny|0.2 0 2',
+  lsq: '[\nx y\n0 1\n1 3\n2 5\n3 7\n4 9\n]\nfit: y=a*x+b\na|1 0 4\nb|0 -1 2\na+b=3',
+} satisfies Record<GuideTopic, string>
+
+const expressionBasics = (): GuideBlock[] => [
+  p(
+    '수식은 일반 텍스트로 입력합니다. 더하기 +, 빼기 -, 곱하기 *, 나누기 /, 거듭제곱 ^를 사용하고 괄호로 계산 순서를 정합니다. 1e-6은 0.000001입니다. 변수 x와 X는 서로 다르며, # 뒤는 주석입니다. 긴 변수 이름의 곱은 a*b처럼 *를 쓰면 뜻이 분명합니다.',
+  ),
+  table(
+    ['Input', 'Meaning'],
+    [
+      [
+        '2*x, 2x, 2(x+1)',
+        '숫자와 변수·괄호의 곱. 복잡한 식에는 *를 명시하면 읽기 쉽습니다.',
+      ],
+      ['-2^2 / (-2)^2', '각각 -4 / 4. 음수 밑을 제곱하려면 괄호를 씁니다.'],
+      ['2^-2 / 2^3^2', '각각 0.25 / 512. 거듭제곱은 오른쪽부터 결합합니다.'],
+      ['f1(x)=x^2+1', '번호 있는 함수 정의. 정의한 다음 f1(x)로 재사용합니다.'],
+      [
+        'f1=x^2+y^2',
+        '여러 변수를 쓰는 번호 있는 식 정의. 목표 등식·모델에서 f1을 참조합니다.',
+      ],
+    ],
+  ),
+  p(
+    '숫자 뒤의 단위 주석을 인식하더라도 단위를 자동 환산하지는 않습니다. cm와 m, bar와 Pa를 섞지 말고 먼저 한 체계로 맞추세요. 계산값의 단위는 입력한 식에서 직접 이어집니다.',
+  ),
+]
+
+const functionReference = (): GuideBlock[] => [
+  table(
+    ['Function', 'Use / Domain'],
+    [
+      [
+        'sin(x), cos(x), tan(x)',
+        '각도는 Radian입니다. 90°는 pi/2로 바꿉니다. tan은 pi/2+k*pi 근처에서 정의되지 않습니다.',
+      ],
+      [
+        'asin(x), acos(x), atan(x)',
+        '역삼각함수 결과도 Radian. asin·acos의 실수 입력 범위는 [-1,1]입니다.',
+      ],
+      [
+        'sinh(x), cosh(x), tanh(x)',
+        '쌍곡함수. 큰 입력의 sinh·cosh는 Float64 범위를 넘을 수 있습니다.',
+      ],
+      [
+        'exp(x), ln(x)',
+        'exp는 e^x, ln은 자연로그. ln의 실수 입력은 0보다 커야 합니다.',
+      ],
+      ['log(x), log10(x)', '모두 밑이 10인 로그. 자연로그는 ln을 사용합니다.'],
+      [
+        'sqrt(x), pow(x,n)',
+        '제곱근은 x≥0. 음수의 비정수 거듭제곱은 일반적으로 실수 범위를 벗어납니다.',
+      ],
+      [
+        'abs(x), min(a,b), max(a,b)',
+        '절댓값·두 값의 최소·최대. 꺾이는 지점에서는 매끄러운 미분을 가정할 수 없습니다.',
+      ],
+      [
+        'floor(x), ceil(x), sign(x)',
+        '내림·올림·부호. 점프나 평탄 구간이 있어 미분 기반 풀이가 제한됩니다.',
+      ],
+      [
+        'pi, e',
+        '비선형·과학 계산의 내장 상수. Linear Equations의 기존 e·pi 식별자 규칙과 구별합니다.',
+      ],
+    ],
+  ),
+  note(
+    'Domain',
+    '분모가 0인 점, ln(0), 음수의 sqrt를 유효한 해로 받아들이지 않습니다. 그래프가 끊겼다면 정의역·추적 상태를 먼저 확인하세요. 끊어진 선을 임의로 이어서 해가 존재한다고 해석하지 않습니다.',
+  ),
+]
+
+const workflow = (noun: string): GuideBlock[] => [
+  p(
+    `Model / Data에서 ${noun}을 작성하고 계산합니다. Simulation에서는 그래프·표를 살펴보고, Report에서는 중요한 결과와 계산 상태를 읽습니다. Guide는 현재 모듈의 설명을 엽니다. 모듈을 바꿔도 이 가이드 안에는 선택한 모듈의 내용만 표시됩니다.`,
+  ),
+  p(
+    '프로젝트 저장은 입력·설정을 다시 열기 위한 JSON 파일입니다. 결과 CSV는 표 데이터를 다른 프로그램에서 분석할 때, Markdown Report는 결과와 설정을 함께 보관할 때 씁니다. 입력을 바꾸면 새 계산이 끝난 결과를 사용하세요. 이전 결과를 새 조건의 답으로 해석하면 안 됩니다.',
+  ),
+]
+
+const dataSyntax = (): GuideBlock[] => [
+  p(
+    '[ 와 ] 사이에 열 이름과 숫자 데이터를 넣습니다. 각 데이터 행의 숫자 개수는 열 이름 개수와 같아야 합니다. 이름은 x, concentration처럼 문자로 시작하고, 숫자는 1.25 또는 1e-3처럼 적습니다. 결측값·NaN·Infinity는 계산할 수 없으므로 입력 전에 정리하세요. 소수점은 마침표를 사용합니다.',
+  ),
+  p(
+    '표 밖에서 u=2*x처럼 계산 열을 정의하거나 f1(x)=...를 재사용할 수 있습니다. 보조식은 의존 관계에 맞춰 평가하며 순환 참조는 거부합니다. 관측된 목표값 y를 모델의 입력으로 다시 넣으면 답을 미리 알려주는 셈이므로 허용하지 않습니다. 단위 표시는 열 이름에 넣기보다 주석으로 기록하세요.',
+  ),
+]
+
+const regressionMetrics = (): GuideBlock[] => [
+  table(
+    ['Metric', 'How to read it'],
+    [
+      [
+        'RMSE',
+        '관측값과 예측값 차이의 제곱 평균에 제곱근을 취한 크기. y가 mg/L이면 RMSE도 mg/L입니다. 0.2라면 이 데이터에서 차이의 대표 크기가 약 0.2입니다. 새 데이터의 오차 상한은 아닙니다.',
+      ],
+      [
+        'R²',
+        '데이터 평균만 예측하는 기준과 비교한 오차 감소 정도. 0.9는 이 기준의 제곱 오차 합을 90% 줄였다는 뜻입니다. “모델이 90% 확률로 맞다”는 뜻이 아닙니다. 음수도 가능하고 y가 모두 같으면 정의되지 않습니다.',
+      ],
+      [
+        'SSE / DOF',
+        'SSE는 차이 제곱의 합. DOF는 데이터 개수−추정 계수 개수입니다. 관측 수가 늘면 SSE 크기 자체도 달라집니다. DOF≤0이면 데이터로 오차 분산을 추정할 여유가 없습니다.',
+      ],
+      [
+        'Adjusted R² / AIC',
+        '계수 수 증가의 대가를 반영해 같은 데이터의 후보 모델을 비교합니다. 목적변수·단위·사용 행이 다른 모델의 점수는 직접 비교하지 않습니다.',
+      ],
+    ],
+  ),
+  p(
+    'R²가 높아도 데이터 오차가 한쪽에서만 양수이고 다른 쪽에서 음수이면 곡선 모양이 맞지 않을 수 있습니다. Data Error를 x 또는 예측값에 대해 살펴보고, 남겨 둔 검증 데이터를 예측해 보세요. 모델을 복잡하게 만드는 것만으로 측정 정보가 늘어나지는 않습니다.',
+  ),
+]
+
+const confidenceIntervals = (): GuideBlock[] => [
+  p(
+    'Coefficient는 데이터에서 추정한 계수이고, Standard Error (SE)는 데이터의 잡음 때문에 그 계수 추정이 얼마나 흔들릴지 나타내는 통계적 크기입니다. SE는 계수와 같은 단위입니다. 소수점 계산 오차나 “정답과의 절대 거리”는 아닙니다.',
+  ),
+  p(
+    '95% Confidence Interval은 estimate ± t(0.975, DOF)×SE로 구합니다. 예를 들어 계수 2.00, SE=0.10, DOF=8이면 Student-t 임계값은 약 2.306이므로 약 [1.769, 2.231]입니다. 표에 ±0.231처럼 보이면 구간의 반폭이지 SE 자체가 아닙니다.',
+  ),
+  p(
+    '같은 실험을 같은 방식으로 반복해 구간을 만들면 그 구간들이 참 계수를 포함하는 비율이 약 95%라는 해석입니다. 이번에 얻은 고정된 구간에 참 계수가 95% 확률로 들어 있다는 말이나, 측정값의 95%가 그 안에 든다는 말과 구별하세요.',
+  ),
+  list(
+    '이 해석은 선택한 모델이 적절하고, 설명변수 값을 고정해 다루며, 오차가 독립이고 대체로 동일한 분산을 갖는다는 가정에 의존합니다. 작은 표본의 정확한 Student-t 해석에는 Gaussian 오차 가정도 필요합니다.',
+    '비선형 모델은 최적점 주변의 Local Linearization을 사용하므로 근사 구간입니다. 강한 비선형성·계수 상관·부족한 데이터에서는 대칭 구간이 부적절할 수 있습니다.',
+    'Rank 부족, DOF 부족, 계수의 Active Bound 또는 미수렴 때문에 제공할 수 없으면 해당 사유를 확인합니다. origin으로 0에 고정한 Intercept는 추정한 계수가 아니므로 CI가 없습니다. “미산정”은 오차 0이라는 뜻이 아닙니다.',
+    'Coefficient CI는 계수 하나의 불확실성입니다. 평균 응답의 Confidence Band와 새 측정값의 Prediction Interval은 다른 계산이며 이 표가 대신하지 않습니다. 새 관측값에는 모델 계수 불확실성과 새 관측 잡음이 모두 있습니다.',
+  ),
+]
+
+export const moduleGuides: ModuleGuideContent[] = [
+  {
+    id: 'linear',
+    title: 'Linear Equations',
+    summary:
+      '여러 조건을 동시에 만족하는 수를 찾고, 답의 정확도와 민감도를 읽는 방법입니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. What is a Linear Equation?',
+        p(
+          '미지수는 아직 모르는 수입니다. 방정식은 그 수가 만족해야 하는 조건입니다. 2x+y=10은 “x 두 개와 y 한 개를 합하면 10”이라는 뜻입니다. Linear는 미지수를 제곱하거나 서로 곱하지 않는다는 뜻입니다. 3x−2y=4는 선형이고 x*y=4, x^2=4는 비선형입니다.',
+        ),
+        p(
+          '조건을 여러 개 함께 적용하는 것이 System입니다. 평면에서 두 직선이 한 점에서 만나면 유일한 해, 평행하면 해 없음, 같은 직선이면 해가 무한히 많습니다. 계산기는 독립적인 조건으로 유일하게 정해지는 문제를 풉니다.',
+        ),
+        ...workflow('조건과 조절할 Parameters'),
+      ),
+      section(
+        'first-model',
+        '2. First Model · 두 조건으로 두 수 찾기',
+        code(guideExamples.linear, '복사해서 Linear에 입력'),
+        list(
+          'Linear를 선택하고 위 식을 입력합니다. 이 예제에는 Parameter를 추가할 필요가 없습니다.',
+          '계산하면 x=4, y=2입니다. 첫 조건은 2×4+2=10, 두 번째는 4−2=2로 직접 확인할 수 있습니다.',
+          'Simulation에 Parameter가 없으면 결과값을 확인합니다. 해가 변하는 그래프를 보려면 오른쪽 10을 P로 바꾸고 P를 Parameter로 등록합니다.',
+        ),
+        p(
+          'P=10에서 시작해 P를 12로 바꾸면 해는 x=14/3≈4.666667, y=8/3≈2.666667입니다. 두 조건을 동시에 유지하면서 답이 바뀝니다. 이 변화 곡선은 서로 다른 시간의 움직임이 아니라 설정값별 해입니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. Input & Parameters',
+        ...expressionBasics(),
+        p(
+          'Linear에서는 2x, 2(x+y), (x+y)*3 같은 선형 조합을 쓸 수 있습니다. x*y, sin(x), 1/x처럼 미지수에 대해 비선형인 식은 Nonlinear로 전환하세요. 함수값이 고정된 Parameter에만 의존해 숫자가 되는 경우와 미지수에 의존하는 경우는 다릅니다.',
+        ),
+        p(
+          '일반 등식 k=4를 적으면 k도 조건에 의해 정해지는 미지수입니다. 조절할 상수로 쓰려면 k를 UI의 Parameters에 등록하세요. Linear의 e, pi는 기존 모델에서 변수 이름으로 쓸 수 있으므로 내장 상수라고 가정하지 않습니다. 필요하면 Parameter로 명확히 지정합니다.',
+        ),
+        note(
+          'Unknown vs Parameter',
+          'Unknown은 계산기가 찾아야 할 값, Parameter는 사용자가 정하는 값입니다. Parameter를 Unknown처럼 중복 지정하면 조건 수나 독립성이 달라질 수 있습니다.',
+        ),
+      ),
+      section(
+        'simulation',
+        '4. Parameter Exploration',
+        p(
+          'Parameter의 Min / Max는 그래프에서 탐색할 설정 범위입니다. Sample Spacing은 계산된 점을 저장·표시하는 간격이며, 슬라이더 현재값을 그 간격에 고정하지 않습니다. 그래프의 빈 점은 실제 샘플, 선은 그 사이를 시각적으로 연결한 것입니다.',
+        ),
+        p(
+          '슬라이더를 움직이거나 그래프를 클릭하면 해당 설정을 다시 계산합니다. Hover는 값을 살펴보는 Preview입니다. 클릭은 값을 적용하는 동작입니다. 선택한 파라미터의 현재값을 바꿀 때에는 기준 곡선을 유지하고 현재 위치 표시점이 움직입니다. 다른 고정 Parameter나 모델 자체가 바뀌면 새 곡선이 필요합니다.',
+        ),
+        p(
+          '그래프를 선택한 뒤 Wheel로 확대·축소할 수 있습니다. 축 선택으로 X / Y / Both를 고릅니다. 확대는 데이터의 표시 범위만 바꾸며 입력한 수나 계산 정밀도를 바꾸지 않습니다. Reset Axes로 전체 범위를 다시 봅니다.',
+        ),
+      ),
+      section(
+        'report',
+        '5. Report · 먼저 볼 세 가지',
+        table(
+          ['Item', 'Interpretation'],
+          [
+            [
+              'Solution',
+              '모든 조건을 동시에 만족하는 미지수 값. 표시 자릿수와 실제 내부 정밀도는 다릅니다.',
+            ],
+            [
+              'Equation Error',
+              '계산한 값을 원래 좌변·우변에 대입했을 때의 차이. 10^-12처럼 작으면 조건을 잘 맞춘 것이지만 해 위치의 오차 상한과 같지는 않습니다.',
+            ],
+            [
+              'Absolute Sensitivity',
+              '조건의 우변이 조금 달라질 때 해의 변화가 얼마나 커질 수 있는지. 20×라면 같은 단위에서 조건 오차 0.001이 해 변화 약 0.02로 증폭될 수 있다는 국소 예측입니다.',
+            ],
+          ],
+        ),
+        p(
+          'Sensitivity는 데이터 단위에 의존합니다. 서로 다른 방정식의 단위가 다르면 같은 절대 오차를 넣는 가정이 적절한지 먼저 확인하세요. 계산기의 Float64 반올림 오차와 측정 장비의 오차도 다른 문제입니다.',
+        ),
+      ),
+      section(
+        'conditioning',
+        '6. Condition Number & Rank',
+        p(
+          'Rank는 조건이 서로 얼마나 독립적인지 나타냅니다. x+y=2와 2x+2y=4는 두 줄이지만 같은 정보라서 x와 y를 각각 정하지 못합니다. 두 번째 우변을 5로 바꾸면 조건끼리 충돌합니다. 이때 임의의 유일한 해를 만들어 내지 않습니다.',
+        ),
+        p(
+          'Condition Number는 입력의 상대적인 작은 변화가 해의 상대적인 변화로 증폭될 가능성입니다. 거의 평행한 두 직선은 교점이 멀리 이동하기 쉬워 조건수가 큽니다. 절대 민감도는 현재 단위로 “0.001의 조건 오차가 답을 얼마나 움직이는가”, 조건수는 상대적인 문제의 불안정성을 봅니다.',
+        ),
+        p(
+          '예를 들어 0.000001*x=1은 x=1000000입니다. 1×1 비영 행렬의 Condition Number는 1이지만 우변이 0.001 바뀌면 x는 1000 바뀝니다. 조건수 1만 보고 절대 오차가 작다고 결론 내릴 수 없습니다. ∞-Norm은 가장 큰 행 합에 따른 최악 성분 기준, 2-Norm은 SVD의 방향별 확대 비율 기준입니다. 선택은 진단 관점을 바꾸며 답을 더 정확한 산술로 다시 만드는 기능은 아닙니다.',
+        ),
+      ),
+      section(
+        'algorithm',
+        '7. How the Calculation Works',
+        p(
+          '수식에서 미지수별 계수와 우변을 모아 Ax=b라는 표로 바꿉니다. 행렬 A는 조건의 계수, 벡터 x는 미지수, b는 목표값입니다. 엔진은 크기 차이와 피벗을 고려해 선형계를 풀고, 원래 조건에 다시 대입해 결과를 점검합니다. 선형 계산에 비선형 접점 분류를 적용하지 않습니다.',
+        ),
+        p(
+          '입력은 제한된 수학 구문으로 해석하며 실행 가능한 프로그램 코드로 실행하지 않습니다. 최대 64개 미지수의 유일한 해 문제를 지원합니다. 무한히 많은 해의 전체 매개변수 표현, 일반 부등식 풀이, 복소수 선형계는 이 화면의 기능이 아닙니다.',
+        ),
+      ),
+      section(
+        'troubleshooting',
+        '8. Troubleshooting',
+        table(
+          ['Problem', 'What to check'],
+          [
+            [
+              '조건 수가 맞지 않음',
+              '조절 상수를 Parameter로 등록했는지, 미지수 이름을 잘못 썼는지 확인합니다.',
+            ],
+            [
+              '독립적인 해가 없음',
+              '같은 조건의 배수·서로 충돌하는 조건을 찾아 수정합니다.',
+            ],
+            [
+              'Parameter를 바꿀 때 급격히 커짐',
+              '조건이 거의 종속되는지, 분모가 되는 계수가 0에 가까워지는지 봅니다. 이는 모델의 실제 민감성일 수 있습니다.',
+            ],
+            [
+              '소수점 마지막 자리가 달라짐',
+              '표시 반올림과 수치 오차를 구별합니다. 유효 자릿수는 식의 조건성과 입력 측정 정밀도를 함께 고려합니다.',
+            ],
+          ],
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'nonlinear',
+    title: 'Nonlinear Equations',
+    summary:
+      '실수 해를 발견하고, 여러 해의 생성·병합과 검증 결과를 그래프로 해석합니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. What is a Nonlinear Equation?',
+        p(
+          'x^2=4의 답은 2와 −2 두 개입니다. x=2 하나만으로 끝내면 조건을 만족하는 다른 수를 놓칩니다. Nonlinear는 제곱·변수끼리의 곱·삼각함수·로그처럼 직선보다 복잡한 관계를 뜻합니다. 해가 없거나 여러 개 또는 무한히 많을 수 있습니다.',
+        ),
+        ...workflow('등식과 Parameters'),
+        p(
+          '기본 Automatic Search는 초기 추정값 없이 유한한 범위의 실수 해를 탐색합니다. 별도의 Complex Roots 계산기는 포함하지 않습니다. “모든 해” 표시는 결과에서 실제로 검증한 범위에 대한 말이며 실수축 전체를 뜻하지 않습니다.',
+        ),
+      ),
+      section(
+        'first-model',
+        '2. First Model · 세 해와 근 병합',
+        code(
+          guideExamples.nonlinear,
+          'p를 Parameter로 등록하고 현재값 0, 범위 -1…1, Sample Spacing 0.05로 설정',
+        ),
+        list(
+          'p=0이면 x=−1, 0, 1 세 실근입니다. Merged Simulation에서 각 해를 서로 다른 색으로 함께 표시합니다.',
+          'p를 약 0.384900으로 움직이면 x≈−0.577350 부근에서 두 해가 만나며, 이를 넘으면 그 두 실근이 사라지고 나머지 실근만 남습니다.',
+          '반대쪽 p≈−0.384900에서는 x≈0.577350 부근에서 두 해가 만납니다. 병합 표시를 클릭해 좌표와 판정 근거를 봅니다.',
+          '현재값에서 실근이 하나여도 전체 Parameter 범위를 탐색하면 다른 조건에서 생기는 해가 보일 수 있습니다. 현재 Solution 목록과 범위 전체의 곡선 수는 다른 정보입니다.',
+        ),
+        note(
+          'Expected values',
+          '임계값은 ±2/(3√3)입니다. Sample Spacing 격자가 정확히 임계값을 밟지 않을 수 있으므로 마지막 샘플 좌표와 접점 보정 좌표가 같을 필요는 없습니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. Equations, Definitions & Functions',
+        ...expressionBasics(),
+        code(
+          'f1(x)=cos((3/pi)*x)\nf2(x)=(1/3)*sinh(x)+tr\nf1(x)=f2(x)',
+          'tr을 Parameter로 등록하면 두 곡선의 교점을 탐색합니다.',
+        ),
+        p(
+          'f1(x)=...는 식을 정의하는 동작입니다. 목표 등식 f1(x)=f2(x) 또는 f1(x)=0을 별도로 적어야 풀이 조건이 됩니다. f1+f2, f1-f2처럼 정의한 식의 합·차도 쓸 수 있습니다. 번호 없는 k=4는 일반 등식이므로 k를 조절 상수로 쓰려면 Parameters에 등록하세요.',
+        ),
+        ...functionReference(),
+      ),
+      section(
+        'search',
+        '4. Search Range, Initial Guess & Limits',
+        p(
+          '기본 탐색 범위는 미지수마다 −100…100입니다. 물리적으로 부피가 양수라면 그에 맞는 Min / Max를 지정하세요. 범위 밖의 해를 발견했다고 해석하지 않습니다. 유리식은 분자 다항식 후보를 원래 식에서 다시 검증하고 분모 0을 해로 채택하지 않습니다.',
+        ),
+        p(
+          '근이 매우 많은 주기식에서는 표시·계산 예산 안에서 자세히 볼 수 있는 Search Window로 줄일 수 있습니다. 결과에 실제 범위와 창 제한을 표시합니다. 창의 위치를 옮겨 다른 구간을 살펴보세요. 무한한 근 목록이나 임의 고주파 함수의 모든 근을 유한한 시간에 표시하는 기능은 아닙니다.',
+        ),
+        code(
+          'x^2=4\nx(0)=1',
+          'Initial Guess 모드: 처음에 양의 근을 선택하는 예',
+        ),
+        p(
+          'Initial Guess는 첫 해를 선택하는 출발점입니다. Parameter를 움직이면 매번 그 숫자에서 새로 출발해 아무 근이나 고르는 대신, 선택한 해를 연속 추적합니다. x(min)=0, x(max)=3처럼 미지수 범위를 명시할 수도 있습니다. Initial Guess는 정답을 강제로 지정하는 값이 아닙니다.',
+        ),
+      ),
+      section(
+        'simulation',
+        '5. Curves, Samples & Merged Simulation',
+        p(
+          'X축은 선택한 Parameter, Y축은 해의 값입니다. 서로 다른 해를 다른 색으로 표시하고, Merged Set을 여러 개 만들어 필요한 해끼리 비교할 수 있습니다. 한 해를 숨기거나 선택해도 원래 모델의 해를 지우는 것은 아닙니다.',
+        ),
+        p(
+          'Sample Spacing은 저장할 실제 계산점 사이의 간격입니다. 곡선은 추적 계산점들을 연결해 그리며 샘플 마커도 그 계산점에 놓입니다. 곡선의 정확한 곡률을 보기 위해 내부에 더 촘촘한 점이 쓰일 수 있습니다. 샘플 간격이 크면 급격한 변화를 성기게 보게 됩니다. 현재 Parameter는 샘플 간격과 무관하게 연속 조절됩니다.',
+        ),
+        p(
+          'Hover는 곡선의 값을 미리 살펴보며 Click은 그 Parameter를 적용해 직접 계산합니다. 클릭 후 Wheel 확대는 표시 축만 바꿉니다. 가까이 확대했다고 근의 수치 정밀도가 증가하지 않습니다. 탐색 Parameter를 바꾸면 X축의 의미와 추적 곡선도 다시 계산합니다.',
+        ),
+        note(
+          'A gap in a curve',
+          '끊어진 선은 이 추적이 해당 구간을 연결하지 못했다는 뜻입니다. 실제 근 소멸, 분모 극점, 정의역 이탈, 수치 보정 실패가 원인일 수 있습니다. 상태·이벤트 좌표를 확인하고 그 Parameter에서 Automatic Search를 별도로 실행해 구별하세요. 끊김만으로 “근 없음”을 증명하지 않습니다.',
+        ),
+      ),
+      section(
+        'events',
+        '6. Root Events · 다른 모양의 표식',
+        table(
+          ['Event', 'Data interpretation'],
+          [
+            [
+              'Root Merge · Even-order Tangency',
+              '짝수차 접점에서 둘 이상의 실근이 만나고 한쪽 설정에서 사라질 수 있습니다. x^2=p의 p=0처럼 해 개수가 바뀌는 경계입니다.',
+            ],
+            [
+              'Inflection Passage · Third-order Contact',
+              'x^3=p는 p=0에서 평평해져도 유일한 실근이 관통합니다. 세제곱 접점이라는 이유만으로 세 가지가 생성되었다거나 일반적인 Cusp 분기가 증명되었다고 말하지 않습니다.',
+            ],
+            [
+              'Higher-order Contact',
+              '(x−1)^4=p처럼 더 평평한 접점은 2차 가정 대신 고차 도함수 모델로 국소 검증합니다. 고차일수록 위치와 차수 판정이 민감할 수 있습니다.',
+            ],
+            [
+              'Boundary Reached',
+              'sqrt, ln, 분모 등의 유효 영역 끝에 도달한 상태입니다. 열린 정의역의 극한값을 실제 해로 바꾸지 않습니다.',
+            ],
+            [
+              'Non-smooth / Flat solution set',
+              'abs의 꺾임이나 min·floor의 평탄 구간은 매끄러운 접점과 다릅니다. 구간 전체가 해이면 몇 개의 고립근으로 세지 않습니다.',
+            ],
+          ],
+        ),
+        p(
+          '특별 표식은 일반 샘플과 구별되는 이벤트입니다. “검증”은 원래 등식과 국소 도함수 조건을 수치적으로 확인했다는 뜻입니다. 모든 다변수 분기 구조의 수학적 증명은 아닙니다. 좌표가 같은 이벤트는 중복 메시지로 반복하지 않습니다.',
+        ),
+      ),
+      section(
+        'accuracy',
+        '7. Accuracy, Sensitivity & Condition Number',
+        p(
+          'Equation Error는 해를 원래 등식에 대입한 좌변−우변의 크기입니다. 작은 값은 조건을 잘 맞췄다는 뜻이지만 평탄한 식에서는 위치 오차가 클 수 있습니다. (x−2)^6은 x가 2에서 조금 떨어져도 값이 매우 작기 때문입니다.',
+        ),
+        p(
+          'Certified Error Bound는 구간 검증으로 참 해를 포함하는 상자가 있을 때 보고한 값 주변의 최대 거리를 계산한 상한입니다. 단순 Newton Correction은 다음 보정량의 국소 추정이며 같은 보장이 아닙니다. 리포트가 어느 종류를 표시하는지 확인하세요.',
+        ),
+        p(
+          'Absolute Sensitivity는 등식에 절대 오차 δ가 생겼을 때 해가 얼마나 움직일지 보는 국소 지표입니다. 한 변수의 단순근에서는 약 1/|F′|입니다. 값이 0.737×, δ=0.0003이면 최대 변화의 국소 예측은 약 0.000221입니다. 중근에서는 기울기가 0이 되어 선형 예측이 깨지므로 접점 차수에 따른 비선형 반응을 따로 봅니다.',
+        ),
+        p(
+          'Condition Number는 Jacobian의 상대적인 방향 불균형입니다. 다변수에서 조건이 거의 종속되는지 진단합니다. 한 변수의 비영 1×1 Jacobian은 조건수가 항상 1이므로 민감하지 않다는 뜻이 아닙니다. ∞-Norm은 최악 성분, 2-Norm은 SVD의 방향별 확대를 사용합니다. 둘 다 현재 해 근방의 진단이고 전역 보장이 아닙니다.',
+        ),
+      ),
+      section(
+        'certification',
+        '8. Verification Map & Probability',
+        p(
+          'Verification Map은 탐색 범위를 Root Isolated, Root-free, Domain Excluded, Unresolved로 나눕니다. Root Isolated는 해를 격리한 상자, Root-free는 해가 없음을 구간 계산으로 확인한 구간, Domain Excluded는 실수 정의역 밖, Unresolved는 예산·지원 연산·접점 때문에 판정을 끝내지 못한 구간입니다.',
+        ),
+        p(
+          'Verified Coverage는 판정된 구간 길이의 비율입니다. 99.99%여도 남은 작은 틈에 근이 있을 수 있으므로 “해를 전부 찾을 확률 99.99%”가 아닙니다. 전체 근 확인은 지원되는 단일 변수 모델·명시한 유한 범위에서 구간 판정이 완료되고 실제 결과 목록과 일대일 대조된 경우에만 표시합니다.',
+        ),
+        p(
+          'Root Count Stability는 다른 질문입니다. 계산 대상 등식을 F(x)=0이라고 할 때, 전체 범위에서 같은 크기로 더해지는 하나의 오차 ε를 가정해 F(x)+ε=0으로 바꿉니다. ε가 평균 0, Standard Deviation σ인 Gaussian 변수라고 명시했을 때, 범위 안 근의 개수가 유지될 확률의 상하한을 검증합니다.',
+        ),
+        p(
+          '예를 들어 x^2+0.000001=0은 현재 실근이 없지만 음의 오프셋이 충분히 크면 두 실근이 생길 수 있습니다. σ가 크면 개수의 안정성이 떨어질 수 있습니다. 여기의 확률은 발견한 해가 맞을 확률·미발견 근이 없을 확률·각 측정값의 독립 잡음 모델이 아닙니다.',
+        ),
+        note(
+          'Choose σ in the equation unit',
+          'σ는 좌변−우변의 단위입니다. 식 전체를 100배 하면 같은 측정 가정을 유지하려면 σ도 100배 해야 합니다. 검증할 수 없는 모델에는 임의의 0%나 100%를 주지 않으며 사유를 표시합니다.',
+        ),
+      ),
+      section(
+        'algorithm',
+        '9. How Search Works & Troubleshooting',
+        p(
+          '단일 변수의 다항식·유리식은 구조에서 후보 근을 분리하고 원래 식에 다시 대입합니다. 일반 함수는 격자·부호 변화·국소 보정 등 여러 경로를 사용합니다. 지원하는 식에는 Interval Arithmetic으로 작은 점 사이 전체 구간을 평가해 숨은 근 가능성을 판정합니다. 다변수는 여러 출발점의 국소 풀이를 모으므로 일반적인 전체 해 보장은 없습니다.',
+        ),
+        table(
+          ['Symptom', 'Action'],
+          [
+            [
+              '예상한 해가 없음',
+              '변수별 탐색 범위·현재 Parameters·실수 정의역부터 확인합니다. 동일 식의 물리 상수·단위를 다시 확인하세요.',
+            ],
+            [
+              '근이 매우 많이 나옴',
+              '표시 한도·Search Window를 확인하고 필요한 위치로 범위를 옮깁니다.',
+            ],
+            [
+              '원점이나 접점 근처에 값이 흔들림',
+              '평탄함·중근에서는 작은 등식 오차가 충분하지 않습니다. Error Bound와 접점 검증 상태를 함께 봅니다.',
+            ],
+            [
+              '그래프가 다른 해로 점프한 듯함',
+              '직접 계산값과 Preview를 구별하고 추적 실패 사유·병합 이벤트를 확인합니다. 실패 구간을 잇는 선이 정답은 아닙니다.',
+            ],
+          ],
+        ),
+        p(
+          'Float64, 유한 탐색 범위, 시간·근 개수 한도가 있습니다. 기본 표시 실근 수 상한은 32개입니다. 고주파 진동, 매우 가까운 고차 중근, 비매끄러운 함수, 고차원 계에서는 미결정 상태를 남길 수 있습니다. 이 상태를 정답이나 해 부재로 조용히 바꾸지 않습니다.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'ode',
+    title: 'Differential Equations',
+    summary:
+      '현재 상태에서 변화율을 계산하고 작은 시간 이동을 쌓아 미래 궤적을 구합니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. What is an Initial Value Problem?',
+        p(
+          '방정식 A=2는 어떤 순간의 값을 말합니다. d(A)/d(t)=−k*A는 시간이 흐를 때 A가 얼마나 빠르게 변하는지 말합니다. d(A)/d(t)는 Change Rate입니다. 음수면 감소, 양수면 증가합니다. 현재 남아 있는 양에 비례해서 감소하는 약물·반응물·방사성 물질에 쓰는 기본 모델입니다.',
+        ),
+        p(
+          '미분식만으로는 출발량을 알 수 없습니다. Initial Value A(0)=1과 계산 시간 범위가 필요합니다. 이 모듈은 이런 초기값 Ordinary Differential Equation (ODE)을 풉니다. 서로 영향을 주는 여러 상태도 함께 계산할 수 있습니다.',
+        ),
+        ...workflow('변화율·Initial Values·계산 범위'),
+      ),
+      section(
+        'first-model',
+        '2. First Model · 지수 감소',
+        code(
+          guideExamples.ode,
+          'A의 단위를 mol/L, t의 단위를 s로 생각해 봅니다.',
+        ),
+        list(
+          '계산 설정에서 Auto 또는 RK45, Output Samples 101, Tolerance 1e-7을 사용합니다.',
+          '시작값은 A=1입니다. t=4에서는 A≈0.367879, t=10에서는 A≈0.082085가 나옵니다.',
+          '이는 A(t)=exp(−0.25*t)라는 해석해와 비교할 수 있습니다. k의 단위는 1/s여야 우변이 농도/시간 단위가 됩니다.',
+          'k를 0.5로 바꾸면 더 빨리 감소합니다. 최종값만 보지 말고 같은 시각의 곡선을 비교하세요.',
+        ),
+        note(
+          'Initial Value is a state',
+          'A(0)=1은 출발 상태를 정확히 주는 모델 설정입니다. Equation Solver의 Newton Initial Guess와 달리 단순한 계산 출발 추정이 아닙니다. 시작량을 바꾸면 다른 물리 문제입니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. Derivatives, Helpers & Syntax',
+        code(
+          'd(A)/d(t)=-r\nr=k*A\nk=0.25\nA(0)=1\nt(0)=0\nt(f)=10',
+          '같은 문제의 풀어 쓴 형태',
+        ),
+        p(
+          "d(A)/d(t), dA/dt, A' 세 미분 표기를 지원합니다. A(0)=1 또는 A|1로 초기값을 지정하고, t|0:10은 시작·끝을 합친 표기입니다. 독립변수는 한 문제에서 하나이며 끝은 시작보다 커야 합니다. 초기값·범위에는 유한한 숫자를 사용합니다.",
+        ),
+        p(
+          'r=k*A 같은 Helper는 현재 A로 매번 다시 계산합니다. 입력 순서에 관계없이 의존성을 정리하며 순환 참조는 거부합니다. 숫자로 정의한 k는 Parameter로 조절할 수 있지만 동적 Helper r나 상태 A를 상수로 덮어쓸 수는 없습니다. f1(A)=−k*A를 정의해 변화율에 재사용할 수도 있습니다.',
+        ),
+        ...expressionBasics(),
+      ),
+      section(
+        'methods',
+        '4. Integration Method · 어떤 방법을 고르나요?',
+        table(
+          ['Method', 'Practical interpretation'],
+          [
+            [
+              'RK45',
+              '여러 중간 기울기를 사용한 5차/4차 예측의 차이로 국소 오차를 추정합니다. 변화가 느리면 큰 시간 간격, 빠르면 작은 시간 간격으로 적응합니다. 일반적으로 매끄럽고 강성이 심하지 않은 초기값 문제에 적합합니다.',
+            ],
+            [
+              'Implicit Euler',
+              '다음 시각의 상태 자체를 식에 넣은 연립식을 Newton 보정으로 풉니다. 빠르게 감쇠하는 성분 때문에 RK45가 너무 작게 나아가는 강성 문제에 유용합니다. 전체 스텝과 두 반 스텝의 차이로 오차를 추정하는 1차 계열입니다. 같은 설정에서 RK45보다 누적 오차가 클 수 있습니다.',
+            ],
+            [
+              'Auto',
+              'RK45로 시작하고 반복 거부·과도한 스텝 부담을 관찰하면 Implicit 방법으로 전환합니다. 실제 사용 경로를 결과에 표시합니다. 강성의 수학적 증명이나 항상 가장 빠른 선택을 뜻하지 않습니다.',
+            ],
+          ],
+        ),
+        p(
+          'Stiffness는 눈에 보이는 궤적이 느리게 변해도 내부에 아주 빠르게 가라앉는 변화가 함께 있어 계산이 작은 스텝을 요구하는 현상입니다. 화학 반응에서 1초 규모 반응과 백만분의 1초 반응이 섞인 경우를 떠올리면 됩니다. 곡선이 예쁘게 매끄럽다는 이유로 강성이 없다고 판단할 수 없습니다.',
+        ),
+        p(
+          '처음에는 Auto를 선택하세요. RK45의 스텝 수가 과도하거나 진행이 멈추면 Implicit을 비교합니다. 중요한 결론은 Tolerance를 줄였을 때 값이 안정되는지, 해석해·보존량과 맞는지 함께 확인합니다. 이 구현은 Radau나 BDF와 동일하지 않습니다.',
+        ),
+      ),
+      section(
+        'settings',
+        '5. Tolerance, Output Samples & Internal Steps',
+        p(
+          'Output Samples는 결과 표와 그래프에 저장하는 시각 개수입니다. 0~10을 101개로 출력하면 0, 0.1, …, 10의 101개 시각을 얻습니다. 이 0.1은 내부 적분 스텝을 0.1로 고정한다는 뜻이 아닙니다. 각 출력 시각에 도달하기 위해 더 작은 여러 적응 스텝을 사용할 수 있습니다.',
+        ),
+        p(
+          'Tolerance는 한 스텝의 오차를 승인할 때 쓰는 척도입니다. 성분마다 tol×(0.01+max(|이전값|,|다음값|))를 사용합니다. tol=1e-7이고 상태가 약 1이면 기준은 약 1.01e-7, 상태가 매우 작으면 약 1e-9입니다. 모든 시각의 실제 오차가 반드시 이 수 이하라는 뜻은 아닙니다.',
+        ),
+        p(
+          'Output Samples를 늘리면 급한 봉우리를 더 잘 볼 수 있지만 새 측정 정보가 생기거나 전역 정확도가 자동 보장되지는 않습니다. Tolerance를 줄이면 내부 계산량이 늘 수 있습니다. Float64 반올림 때문에 무조건 작게 설정하는 것이 좋지는 않습니다.',
+        ),
+        note(
+          'Partial result',
+          'Status가 Stopped면 마지막 도달 시각까지만 계산한 부분 궤적입니다. 정의역 이탈·허용 오차 미달·발산·시간 예산 초과 사유를 확인하세요. 마지막 행을 요청한 최종시각의 답이라고 읽으면 안 됩니다.',
+        ),
+      ),
+      section(
+        'plots',
+        '6. Time Series & Phase Plot',
+        p(
+          'Time Series의 X축은 독립변수 t, Y축은 선택한 상태입니다. A와 B의 단위가 다르면 크기만 직접 비교하지 마세요. Phase Plot은 X와 Y에 두 상태를 직접 지정합니다. X=A, Y=B라면 가로 좌표가 A, 세로 좌표가 B이며 시간은 어느 축도 아닙니다.',
+        ),
+        code(
+          "x'=v\nv'=-x\nx|1\nv|0\nt|0:6.283185307179586",
+          'Phase Plot에서 X=x, Y=v를 선택',
+        ),
+        p(
+          '감쇠 없는 진동자에서는 x=cos(t), v=−sin(t)라서 Phase Plot이 원을 그립니다. 같은 점을 다시 지나는 것은 시간이 뒤로 갔다는 뜻이 아니라 상태가 반복된다는 뜻입니다. 시간 방향은 현재 시각 표시·재생 순서로 확인합니다. 위치와 속도의 단위가 다르면 원·타원의 화면 모양만으로 에너지 크기를 판단하지 않습니다.',
+        ),
+        p(
+          '표의 Init / Min / Max / Final Value는 계산에 저장된 출력 시각에 대한 요약입니다. 출력 사이의 진짜 연속 극값까지 전부 분리한 결과가 아닙니다. 아주 짧은 봉우리가 중요하면 출력 간격·시간 범위를 세밀하게 조정하세요.',
+        ),
+      ),
+      section(
+        'report',
+        '7. Report · 결과를 믿기 전에',
+        table(
+          ['Item', 'Interpretation'],
+          [
+            [
+              'Status / Reached Time',
+              '요청한 끝까지 실제 도달했는지 먼저 봅니다. Stopped는 실패 사유와 도달 범위를 함께 읽습니다.',
+            ],
+            [
+              'Final Value',
+              '도달한 마지막 시각의 상태. 농도·온도처럼 입력의 상태 단위를 그대로 갖습니다.',
+            ],
+            [
+              'Estimated Local Error',
+              '승인한 스텝에서 두 방법의 차이에 근거한 오차 추정. 누적 전역 오차 상한·측정 신뢰도·확률이 아닙니다.',
+            ],
+            [
+              'Steps / Evaluations',
+              '계산 노력의 크기. 많으면 급변·강성·엄격한 설정 등이 원인일 수 있습니다. 큰 수 자체가 더 정확한 결과를 증명하지는 않습니다.',
+            ],
+          ],
+        ),
+        p(
+          'A→B→C처럼 닫힌 반응계라면 Total=A+B+C가 일정한지 확인합니다. 이런 Conservation Check는 식을 잘못 쓰거나 큰 오차를 발견하는 데 유용합니다. 보존량 하나가 맞아도 모든 성분이 정확하다는 충분조건은 아니므로 설정을 줄여 재계산한 결과도 비교하세요.',
+        ),
+      ),
+      section(
+        'functions',
+        '8. Functions, Domain & Units',
+        ...functionReference(),
+        p(
+          '시간이 s라면 모든 변화율의 단위는 상태 단위/s가 되어야 합니다. 온도 의존 반응식은 K와 °C를 구별하세요. ln(A)처럼 차원이 있는 물리량을 직접 로그에 넣기보다 기준량과의 비 ln(A/Aref)를 모델에 맞게 사용합니다. 이는 계산 문법의 제한과 별개인 물리 모델의 문제입니다.',
+        ),
+      ),
+      section(
+        'troubleshooting',
+        '9. Troubleshooting & Supported Problems',
+        table(
+          ['Problem', 'Action'],
+          [
+            [
+              'Initial Value가 없다는 오류',
+              '모든 미분 상태에 출발값이 있는지, 대소문자가 같은지 확인합니다.',
+            ],
+            [
+              '계산이 아주 느림',
+              'Auto / Implicit 비교, 시간 범위 축소, 단위·강성·폭발적 계수 확인 순서로 검토합니다.',
+            ],
+            [
+              '농도가 약간 음수 / 로그 오류',
+              '수치 오차·모델의 경계 조건을 확인합니다. 자동 양수 강제 기능은 아니며 음수를 몰래 0으로 만들지 않습니다.',
+            ],
+            [
+              '결과가 매끈하지만 틀려 보임',
+              '변화율의 부호·단위·초기값을 확인하고 해석해나 보존량으로 독립 검증합니다.',
+            ],
+          ],
+        ),
+        p(
+          '초기값 ODE, 최대 32개 상태와 256개 Helper를 지원합니다. PDE, 일반 DAE, 양 끝에서 조건을 주는 Boundary Value Problem, 이벤트 위치의 엄밀한 분리는 포함하지 않습니다. 시간·스텝·함수 평가 예산을 넘으면 부분 결과와 중단 사유를 반환합니다.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'curve-fit',
+    title: 'Linear / Polynomial Regression',
+    summary:
+      '측정점을 모두 지나는 대신, 데이터의 전체 경향을 설명하는 직선·다항식의 계수를 추정합니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. What is Regression?',
+        p(
+          '측정에는 흔들림이 있으므로 모든 점을 지나는 식이 좋은 모델인 것은 아닙니다. Regression은 관측값과 모델값 차이의 제곱합이 작도록 계수를 고릅니다. x는 설명변수, y는 측정한 목표값입니다. 센서 검량선의 농도→신호, 거리→에너지 관계 등이 예입니다.',
+        ),
+        p(
+          'Linear Regression은 y=a0+a1*x, Polynomial Regression은 y=a0+a1*x+a2*x^2+…입니다. x의 제곱을 쓰더라도 추정 계수 a0,a1,…에는 선형이므로 안정적인 선형 최소제곱으로 풀 수 있습니다.',
+        ),
+        ...workflow('관측 데이터와 polyfit 명령'),
+      ),
+      section(
+        'first-model',
+        '2. First Fit · 알려진 직선 복원',
+        code(guideExamples['curve-fit']),
+        list(
+          'Curve Fitting에서 데이터를 넣고 Linear 또는 명령 차수 1을 사용합니다.',
+          '이 자료는 정확히 y=1+2*x에 놓여 있으므로 a0≈1, a1≈2, RMSE≈0, R²≈1입니다.',
+          '예측 x=2.5에서 모델값은 6입니다. 입력 측정점 사이의 모델 예측이지 실제로 새 측정을 한 값은 아닙니다.',
+          '데이터 한 점을 조금 바꾸어 계수와 RMSE가 어떻게 달라지는지 관찰하세요. 실제 측정에서는 완벽한 0 오차를 기대하지 않습니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. polyfit · Degree & Origin',
+        ...dataSyntax(),
+        table(
+          ['Command', 'Model'],
+          [
+            ['polyfit x y 1', 'y=a0+a1*x: 절편이 있는 직선'],
+            ['polyfit x y 2', 'y=a0+a1*x+a2*x^2: 2차 다항식'],
+            [
+              'polyfit x y 2 origin',
+              'y=a1*x+a2*x^2: 원점을 반드시 지나는 2차 다항식',
+            ],
+          ],
+        ),
+        p(
+          'Degree는 1~12의 정수입니다. origin은 좌표를 편리하게 이동한다는 뜻이 아니라 Intercept를 정확히 0으로 고정한다는 물리적 제약입니다. 원점 근처 측정이 0이 아니라면 억지로 origin을 넣을 때 전체 모델이 왜곡될 수 있습니다. UI의 모델 선택을 바꾸면 실제 polyfit 명령의 차수도 확인하세요.',
+        ),
+        code(
+          '[\nx y\n-2 5\n-1 2\n0 1\n1 2\n2 5\n3 10\n]\npolyfit x y 2',
+          'Expected: a0≈1, a1≈0, a2≈1',
+        ),
+      ),
+      section(
+        'plots',
+        '4. Fit Plot & Data Error',
+        p(
+          '점은 관측 데이터, 곡선은 추정한 모델입니다. Data Error는 관측값−예측값입니다. +0.2이면 모델이 그 관측을 0.2 낮게 예측한 것입니다. 오차 점들이 0 주위로 섞이는지, 곡선 모양이나 부채꼴 패턴이 남는지 확인합니다.',
+        ),
+        p(
+          '한 점의 큰 오차는 이상 측정일 수도 있고 중요한 실제 현상일 수도 있습니다. 잘 맞는 결과를 만들기 위해 근거 없이 지우지 마세요. 자료 범위 바깥 Extrapolation은 높은 R²라도 불안정합니다. 고차 다항식은 특히 양 끝 밖에서 급격히 커질 수 있습니다.',
+        ),
+      ),
+      section('metrics', '5. Report · Fit Quality', ...regressionMetrics()),
+      section(
+        'confidence',
+        '6. Standard Error & 95% Confidence Interval',
+        ...confidenceIntervals(),
+      ),
+      section(
+        'algorithm',
+        '7. SVD, Rank & Polynomial Scaling',
+        p(
+          '엔진은 데이터 행마다 1,x,x^2,…의 계수 표를 만들고 SVD로 최소제곱을 풉니다. SVD는 서로 구별할 수 있는 정보 방향과 거의 겹치는 방향을 나누어 보는 계산입니다. 직접 정규방정식 XᵀX를 만들지 않아 그 과정의 조건성 악화를 줄입니다.',
+        ),
+        p(
+          'x=1000000000 부근처럼 좌표가 큰 경우 중심과 크기를 정규화한 모델에서 예측을 계산합니다. Report의 a0,a1,…는 원래 x의 전개 계수이므로 큰 수끼리 상쇄할 수 있습니다. 예측·곡선에는 안정적인 정규화 표현을 사용하며, 전개 계수만 손으로 대입한 값과 마지막 자리가 다를 수 있습니다.',
+        ),
+        p(
+          '독립 데이터가 부족하거나 설명 열들이 같은 정보를 주면 Rank가 부족합니다. 같은 x만 여러 번 측정해서는 기울기를 정할 수 없습니다. Degree를 올릴 때는 서로 다른 x의 수와 DOF를 확보해야 합니다. 랭크가 부족하면 임의의 유일 계수를 반환하지 않습니다.',
+        ),
+      ),
+      section(
+        'troubleshooting',
+        '8. Model Choice & Troubleshooting',
+        list(
+          '먼저 작은 Degree로 시작하고 Data Error에 남는 곡률을 봅니다. 차수를 높여 학습 오차만 줄이는 Overfitting을 피하세요.',
+          '같은 자료의 Linear / Polynomial을 비교하고 별도 검증 데이터가 있다면 그 예측 오차를 우선합니다.',
+          '입력 y 단위가 바뀌면 계수·RMSE·SE도 바뀝니다. CI가 좁아도 잘못된 단위나 모델식은 고쳐 주지 못합니다.',
+          '강한 이분산·상관 오차·Outlier가 있으면 기본 동일 가중 최소제곱의 CI 가정이 맞지 않을 수 있습니다. 현재 일반 Weighted / GLS 회귀를 자동으로 제공하지 않습니다.',
+        ),
+        p(
+          '정확히 맞는 작은 교과서 데이터의 거의 0인 SE는 그 데이터와 오차 모델 안의 결과입니다. 실제 센서 정밀도가 무한히 좋다는 뜻은 아닙니다.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'multilinear',
+    title: 'Multilinear Regression',
+    summary:
+      '여러 설명변수가 함께 변하는 데이터에서 각 변수의 계수를 구분해 추정합니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. Several Predictors, One Response',
+        p(
+          '온도와 유량이 모두 수율에 영향을 줄 때 y=a0+b1*T+b2*flow처럼 여러 설명변수를 사용합니다. Multilinear는 각 계수가 선형으로 들어간다는 뜻입니다. 변수 이름이 여러 개라고 모든 복잡한 상호작용을 자동으로 찾아 주지는 않습니다.',
+        ),
+        p(
+          'b1은 “다른 모델 변수를 고정했을 때 T 한 단위 증가에 따른 예측 변화”입니다. 관찰 데이터의 상관관계만으로 원인·결과를 증명하는 값이 아닙니다. 포함하지 않은 변수의 영향이 계수에 섞일 수도 있습니다.',
+        ),
+        ...workflow('여러 열의 데이터와 mlinfit 명령'),
+      ),
+      section(
+        'first-model',
+        '2. First Fit · 두 입력의 효과 구분',
+        code(guideExamples.multilinear),
+        list(
+          '명령의 마지막 열 이름 y가 목표값입니다. 그 앞 x1, x2는 설명변수입니다.',
+          '예상 모델은 y≈2+3*x1−4*x2입니다. Intercept≈2, b_x1≈3, b_x2≈−4입니다.',
+          'x1=2, x2=1이면 예측값은 2+6−4=4입니다.',
+          'x2를 고정하면 x1이 1 증가할 때 y가 3 증가합니다. 반대로 x1을 고정하면 x2가 1 증가할 때 4 감소합니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. mlinfit & Derived Predictors',
+        ...dataSyntax(),
+        code(
+          'interaction=x1*x2\nmlinfit x1 x2 interaction y',
+          '표의 x1, x2로 상호작용 열을 만들어 넣는 명령 예',
+        ),
+        p(
+          '명령은 mlinfit x1 x2 ... y [origin]입니다. origin은 Intercept=0을 강제합니다. Helper로 x1*x2 같은 설명 열을 직접 만들 수 있지만, 각 계수가 충분히 구별되도록 데이터가 있어야 합니다. 설명변수는 최대 24개이며 추정 계수보다 충분히 많은 독립 자료를 권장합니다.',
+        ),
+        p(
+          '모델을 정한 뒤 y를 가공해 그 값을 설명변수로 다시 쓰면 답을 이미 모델 입력에 넣는 Data Leakage가 됩니다. 엔진은 이런 종속변수 유출을 거부합니다. x 열의 변환은 관측 전에 알 수 있는 정보로만 정의하세요.',
+        ),
+      ),
+      section(
+        'plots',
+        '4. Observed vs Predicted',
+        p(
+          '설명변수가 여러 개이면 단일 x축 곡선 하나로 모델 전체를 표현할 수 없습니다. Predicted vs Observed에서는 한 점이 한 데이터 행입니다. 가로가 관측 y, 세로가 예측 y이면 y=x 대각선 가까울수록 잘 맞습니다. 이 대각선은 회귀식 자체가 아니라 비교 기준입니다.',
+        ),
+        p(
+          'Row Plot의 X축은 자료 행 번호일 수 있습니다. 행 번호를 시간이나 온도라고 해석하면 안 됩니다. 오차를 각 설명변수에 대해 비교해 누락한 곡률·상호작용 패턴이 있는지 봅니다.',
+        ),
+      ),
+      section(
+        'coefficients',
+        '5. Coefficients, Units & Collinearity',
+        p(
+          'T가 K, flow가 L/min, y가 kg라면 b_T는 kg/K, b_flow는 kg/(L/min)입니다. 숫자 크기만 보고 영향력이 더 크다고 비교하면 단위 차이를 혼동합니다. 실제 운영 범위에서 각 변수를 얼마나 바꿀 수 있는지도 함께 봅니다.',
+        ),
+        p(
+          '두 열이 거의 같이 변하면 각 효과를 나누기 어렵습니다. 예를 들어 x2=2*x1이면 3*x1−4*x2와 다른 계수 조합이 같은 예측을 만들 수 있습니다. 이것이 Collinearity입니다. 완전히 종속되면 Rank 오류, 거의 종속되면 계수 SE와 Condition Number 증가로 나타납니다.',
+        ),
+        p(
+          '데이터를 추가할 때 같은 비율의 행만 늘리는 것보다 설명변수들을 독립적으로 바꾼 실험이 계수 구분에 도움이 됩니다. 예측은 안정돼 보여도 개별 계수의 해석은 매우 불안정할 수 있습니다.',
+        ),
+      ),
+      section('metrics', '6. Report · Model Quality', ...regressionMetrics()),
+      section(
+        'confidence',
+        '7. Coefficient Confidence',
+        ...confidenceIntervals(),
+        p(
+          '각 계수의 95% CI가 넓으면 다른 변수의 영향과 분리하기 어렵다는 신호일 수 있습니다. CI에 0이 들어간다고 그 변수가 현실에서 절대 영향이 없다는 뜻은 아닙니다. 여러 계수를 동시에 해석할 때 개별 95% 구간들을 합친 전체 동시 신뢰수준도 95%라고 가정하면 안 됩니다.',
+        ),
+      ),
+      section(
+        'algorithm',
+        '8. Algorithm & Troubleshooting',
+        p(
+          '설명 열을 정규화한 뒤 직접 SVD 최소제곱으로 계산합니다. 선형 계수 문제이므로 초기 추정값은 필요하지 않습니다. SVD는 독립 정보와 겹치는 정보를 구별하고 랭크가 부족하면 유일한 계수를 반환하지 않습니다.',
+        ),
+        list(
+          '열 순서를 확인하세요. mlinfit의 마지막 이름이 예측 대상입니다.',
+          '계수가 예상과 반대 부호이면 단위·입력 오류 외에도 변수 상관·누락 변수·작은 표본을 검토합니다.',
+          '설명변수의 범위를 벗어나는 조합은 위험합니다. 각 열 값이 개별 범위 안이어도 실제로 관측하지 않은 조합일 수 있습니다.',
+          'R²가 높아도 인과관계를 증명하지 않습니다. 물리 지식·실험 설계와 함께 해석하세요.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'nonlinear-fit',
+    title: 'Nonlinear Regression',
+    summary:
+      '포화·지수 변화처럼 계수에 비선형인 과학 모델을 데이터에 맞춥니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. A Model with Unknown Parameters',
+        p(
+          '반응속도 v=Vmax*S/(Km+S)는 농도 S가 커지면 Vmax에 가까워지는 포화 모델입니다. 여기서는 각 S의 방정식 해를 찾는 것이 아니라 여러 측정 S,v를 동시에 설명하는 Vmax와 Km을 추정합니다. Equation Solver의 Unknown과 Regression의 추정 Coefficient는 역할이 다릅니다.',
+        ),
+        p(
+          'Nonlinear Regression은 계수에 대해 직선적인 표로 바로 풀리지 않으므로 초기 추정값을 주고 반복 개선합니다. 서로 다른 초기값에서 다른 국소 최솟값에 도달할 수 있습니다.',
+        ),
+        ...workflow('관측 데이터·모델·계수 Initial Guesses'),
+      ),
+      section(
+        'first-model',
+        '2. First Fit · Michaelis–Menten',
+        code(guideExamples['nonlinear-fit']),
+        list(
+          'S는 농도, v는 측정한 속도입니다. Vmax와 Km에만 m(...) 초기 추정값을 줍니다.',
+          '이 자료는 Vmax=2, Km=0.5에서 생성했습니다. 계산하면 두 계수가 각각 약 2와 0.5로 복원됩니다.',
+          'Vmax는 속도의 단위, Km은 S와 같은 농도 단위입니다. S=Km이면 속도는 Vmax의 절반입니다.',
+          '실제 데이터는 잡음이 있으므로 이 예제처럼 완벽하게 일치하지 않습니다. Initial Guess를 바꾸고 수렴 상태·모델 곡선·Data Error를 함께 비교하세요.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. nlinfit, Guesses & Bounds',
+        ...dataSyntax(),
+        p(
+          'nlinfit y=모델식에 목표 열과 모델을 적습니다. m(a)=1 또는 a(0)=1은 계수 초기값입니다. a(min)=0, a(max)=10은 선택적인 계수 범위이며 한쪽만 지정할 수도 있습니다. 초기값은 범위 안의 유효한 수여야 합니다.',
+        ),
+        code(
+          'Ta=25\nnlinfit T=Ta+A*exp(-k*t)\nm(A)=50\nm(k)=0.2\nA(min)=0\nk(min)=0',
+          't,T 표가 있을 때의 냉각 모델 명령 예',
+        ),
+        p(
+          'Ta=25 같은 숫자 Helper는 고정 상수이고 외부 Parameter로 조절할 수 있습니다. m(A)는 데이터로 추정할 계수입니다. 물리적으로 양수여야 하는 계수에는 적절한 양수 경계를 사용하되, 경계에 걸리면 자유로운 계수의 대칭 CI 해석이 성립하지 않을 수 있습니다.',
+        ),
+        ...expressionBasics(),
+      ),
+      section(
+        'algorithm',
+        '4. Levenberg–Marquardt · 반복의 의미',
+        p(
+          '현재 계수에서 각 측정 행을 예측하고 관측−예측 차이를 계산합니다. 계수를 조금 바꿀 때 이 차이가 어떻게 변하는지 Jacobian으로 구한 뒤, 차이 제곱합이 줄어드는 방향을 찾습니다. 불안정한 큰 이동을 감쇠하는 것이 Levenberg–Marquardt의 역할입니다.',
+        ),
+        p(
+          '엔진은 가능한 수식에 Automatic Differentiation을 쓰고 감쇠를 추가한 선형 스텝을 SVD로 풉니다. 일부 경계·비매끄러운 방향에서는 정의역 안 수치 미분을 사용하며 그 상태를 알립니다. 최대 반복·시간 예산을 넘기면 마지막 유효 결과를 Stopped로 표시합니다.',
+        ),
+        p(
+          'Converged는 현재 초기값에서 국소 개선 조건을 만족했다는 뜻입니다. 전역 최적·유일한 물리 계수·정확한 모델이 증명되었다는 뜻이 아닙니다. 여러 초기값과 물리적으로 타당한 경계에서 같은 값으로 가는지 확인하면 유용합니다.',
+        ),
+      ),
+      section(
+        'plots',
+        '5. Fit Plot & Identifiability',
+        p(
+          '한 설명변수 모델은 측정점과 적합 곡선을 직접 비교할 수 있습니다. 여러 설명변수 모델은 행별 예측을 봅니다. 곡선이 맞아도 개별 계수가 확실히 정해졌다고 단정하지 않습니다.',
+        ),
+        p(
+          'Michaelis–Menten에서 S가 모두 Km보다 훨씬 작으면 v≈(Vmax/Km)*S입니다. 이 자료는 주로 비율만 알려주므로 Vmax와 Km을 따로 구분하기 어렵습니다. 포화 영역과 반응이 변하는 중간 영역을 포함한 자료가 개별 계수를 식별하는 데 도움이 됩니다. 이를 Identifiability라고 합니다.',
+        ),
+        p(
+          '계수를 크게 바꿔도 곡선이 거의 같다면 불확실성이 큰 것입니다. 단순히 반복 수나 표시 자릿수를 늘려 해결할 수 없고, 모델을 단순화하거나 다른 영역의 측정이 필요할 수 있습니다.',
+        ),
+      ),
+      section(
+        'metrics',
+        '6. Report · Fit & Convergence',
+        ...regressionMetrics(),
+        p(
+          '먼저 Convergence Status와 마지막 유효 반복을 보고 RMSE·계수를 해석합니다. Stopped 결과의 작은 RMSE를 완성된 추정으로 오해하지 마세요. 작은 스텝도 민감도가 너무 작아 움직이지 못한 상태일 수 있어, 기울기·랭크 진단과 함께 봅니다.',
+        ),
+      ),
+      section(
+        'confidence',
+        '7. Local Confidence Intervals',
+        ...confidenceIntervals(),
+        p(
+          'Active Bound는 추정 계수가 허용 범위 끝에 닿았다는 뜻입니다. 예를 들어 k≥0에서 k=0이면 대칭 구간이 음수까지 확장되는 방식은 적절하지 않을 수 있습니다. 제공하지 않는 SE·CI를 0으로 읽지 마세요.',
+        ),
+      ),
+      section(
+        'functions',
+        '8. Functions & Domain',
+        ...functionReference(),
+        p(
+          'ln(a*x) 모델이라면 모든 관측 행과 시도할 계수에서 a*x>0이어야 합니다. 분모·지수 폭발도 확인합니다. 오차가 큰 데이터 한 점에서조차 모델이 정의되지 않으면 반복 계산이 실패할 수 있습니다.',
+        ),
+      ),
+      section(
+        'troubleshooting',
+        '9. Troubleshooting',
+        list(
+          '초기 추정값은 그래프의 크기·포화값·반감 시간 같은 물리 정보로 정합니다. 0을 모든 계수의 만능 출발값으로 쓰지 마세요.',
+          '수렴이 느리면 단위와 계수 스케일을 맞추고, 과도한 계수 수·상관·정의역 경계를 확인합니다.',
+          '계수 범위 끝에서 멈추면 범위가 물리적으로 맞는지와 모델이 자료를 설명할 수 있는지 함께 검토합니다.',
+          '가중치·상관 오차·강한 Outlier에 대한 특별 모델은 현재 기본 최소제곱에 자동 포함되지 않습니다. 자료의 오차 구조와 CI 가정을 확인하세요.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'integration',
+    title: 'Discrete Integration',
+    summary:
+      '측정점 사이를 어떤 곡선으로 연결할지 정하고, 그 곡선 아래의 부호 있는 면적을 계산합니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. From a Rate to a Total',
+        p(
+          '유량이 일정하게 3 L/s로 4초 동안 흐르면 총량은 12 L입니다. 유량이 변하면 작은 시간 구간의 유량×시간을 모아야 합니다. 이것이 Integration입니다. 이 모듈은 알려진 함수의 기호 적분 대신 측정된 x,y 표를 적분합니다.',
+        ),
+        p(
+          '자료 사이의 진짜 곡선은 측정만으로 알 수 없습니다. 먼저 Interpolation으로 연결 모양을 정하고, 그 선택한 곡선을 적분합니다. 결과를 해석할 때 보간 선택과 실제 측정 오차를 구별해야 합니다.',
+        ),
+        ...workflow('데이터·적분 범위·Interpolation Method'),
+      ),
+      section(
+        'first-model',
+        '2. First Integral · 삼각형 면적',
+        code(guideExamples.integration),
+        list(
+          '시각 t와 유량 Q가 (0,0), (1,1), (2,2)입니다. lin은 점을 직선으로 잇습니다.',
+          '적분은 ∫₀² Q(t) dt=2입니다. 밑변 2×높이 2÷2로 직접 확인할 수 있습니다.',
+          't가 s, Q가 L/s라면 결과 2의 단위는 L입니다.',
+          'Cumulative Integral은 시작부터 각 시각까지의 누적량입니다. t=1에서 0.5, t=2에서 2입니다. 원래 유량 그래프와 누적량 그래프는 Y 단위가 다릅니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. integrate Command & Data Rules',
+        ...dataSyntax(),
+        code(
+          'integrate Q(t) 0 2 100 lin',
+          'integrate y(x) start end [sections] [method]',
+        ),
+        p(
+          'start와 end는 데이터 x 범위 안에 있어야 하며 일부 범위만 적분할 수 있습니다. 끝을 작게 주면 역방향 적분으로 부호가 반대입니다. 정렬되지 않은 x는 안내 후 정렬하지만 같은 x가 중복되면 거부합니다. 표 범위 밖 값을 가정하는 Extrapolation은 지원하지 않습니다.',
+        ),
+        p(
+          'sections는 그래프·누적 표를 나눌 표시 구간 수입니다. 원래 측정점 사이에 새 측정값을 만드는 옵션이 아닙니다. UI에서 Method를 선택하면 실제 계산에는 그 선택을 우선 적용하며 결과의 사용 Method를 확인할 수 있습니다.',
+        ),
+      ),
+      section(
+        'methods',
+        '4. Interpolation Method',
+        table(
+          ['Method', 'How to choose'],
+          [
+            [
+              'lin · Piecewise Linear',
+              '이웃 측정점을 직선으로 연결합니다. 가장 직접적인 사다리꼴 해석이며 두 점 이상이 필요합니다. 자료가 성기거나 연결 모양의 근거가 부족할 때 좋은 비교 기준입니다.',
+            ],
+            [
+              'ccs · Natural Cubic Spline',
+              '점들을 부드러운 3차 다항식 조각으로 잇고 양 끝의 2차 도함수를 0으로 둡니다. 두 점 이상이 필요합니다. 매끈하지만 큰 간격·급변 영역에서 측정점 사이를 과도하게 굽힐 수 있습니다.',
+            ],
+            [
+              'akm · Akima',
+              '주변 구간의 기울기를 가중해 3차 조각을 만듭니다. 서로 다른 x가 최소 5개 필요합니다. 급격한 기울기 변화의 불필요한 진동을 줄이는 데 유용하지만 항상 실제 곡선을 맞힌다는 보장은 아닙니다.',
+            ],
+          ],
+        ),
+        p(
+          '여기서는 각 보간 다항식 조각을 직접 적분합니다. sections를 100에서 1000으로 늘려도 같은 Method·데이터의 면적 계산이 정밀한 새 근사로 바뀌는 것이 아닙니다. 중요한 차이는 실제 데이터의 촘촘함과 보간 모델의 타당성입니다.',
+        ),
+      ),
+      section(
+        'plots',
+        '5. Shaded Area & Signed Integral',
+        p(
+          '음영은 지정한 적분 범위 안에서 0선과 곡선 사이를 표시합니다. 0선 위의 면적은 더하고 아래 면적은 뺍니다. ∫y(x)dx는 Signed Integral이며 항상 양수인 기하학적 면적 ∫|y(x)|dx와 다릅니다.',
+        ),
+        code(
+          '[\nx y\n0 -1\n1 0\n2 1\n]\nintegrate y(x) 0 2 100 lin',
+          'Expected: signed integral=0, absolute geometric area=1',
+        ),
+        p(
+          '왼쪽 음의 삼각형 −0.5와 오른쪽 양의 삼각형 +0.5가 상쇄됩니다. 적분 0은 곡선이 모두 0이거나 변화가 전혀 없다는 뜻이 아닙니다. 총 이동거리와 변위의 차이처럼 목적에 맞는 양을 구별하세요.',
+        ),
+        p(
+          '원래 자료 전체를 표시하더라도 적분 범위 밖의 점은 이 적분 합에 포함되지 않습니다. Curve와 Cumulative를 전환할 때 X는 같아도 Y의 의미·단위는 달라집니다.',
+        ),
+      ),
+      section(
+        'report',
+        '6. Report · 무엇이 정확한가요?',
+        table(
+          ['Item', 'Interpretation'],
+          [
+            [
+              'Integral',
+              '선택한 보간 곡선의 부호 있는 면적. 단위는 y단위×x단위입니다.',
+            ],
+            [
+              'Bounds / Method',
+              '어느 범위를 어떤 연결 모양으로 적분했는지. 결과 숫자를 비교할 때 반드시 같아야 하는 조건입니다.',
+            ],
+            [
+              'Difference from Trapezoid',
+              '직선 보간 결과와의 차이. 보간 선택에 얼마나 민감한지 보는 참고값입니다. 실제 정답과의 오차 상한이 아닙니다.',
+            ],
+            [
+              'Data / Cumulative Table',
+              '입력점과 누적값을 점검하고 CSV로 보관할 수 있습니다. 표시 점은 독립 관측을 추가한 값이 아닙니다.',
+            ],
+          ],
+        ),
+        p(
+          '두 Method가 비슷해도 그 사이 진짜 곡선이 같다는 증명은 아닙니다. 급격한 변화가 중요하면 추가 측정이 필요합니다. 수치 적분 오차를 작게 계산했다고 측정 장비의 오차가 사라지지는 않습니다.',
+        ),
+      ),
+      section(
+        'units',
+        '7. Units & Uncertainty',
+        p(
+          '시간을 min으로 입력하고 유량을 L/s로 쓰면 결과는 L·min/s처럼 단위가 섞입니다. 먼저 시간을 s로 바꾸거나 유량을 L/min으로 바꾸세요. 면적이 m²가 되는 것은 x,y가 모두 길이일 때이며 모든 적분의 단위가 면적인 것은 아닙니다.',
+        ),
+        p(
+          '자료마다 측정 오차가 있다면 반복 실험·오차 모델을 별도로 검토해야 합니다. 현재 보고하는 적분은 주어진 숫자와 보간 선택의 결과이며 측정 오차를 포함한 95% CI를 자동으로 제공하지 않습니다.',
+        ),
+      ),
+      section(
+        'troubleshooting',
+        '8. Troubleshooting',
+        list(
+          '범위를 벗어났다는 오류는 start/end와 데이터 x의 최소·최대부터 확인합니다.',
+          '중복 x는 하나의 x에 서로 다른 y가 생겨 함수 보간을 정의하지 못하는 문제입니다. 반복 측정이면 과학적 근거로 집계한 후 입력하세요.',
+          '곡선이 원래 점 사이에서 과하게 흔들리면 lin과 akm을 비교하고 부족한 영역에 실제 측정을 추가합니다.',
+          '한 번의 큰 적분보다 구간별 누적값을 보면 어느 영역이 전체 결과에 가장 크게 기여하는지 알 수 있습니다.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'optimization',
+    title: 'Constrained Optimization',
+    summary:
+      '허용 조건을 지키면서 비용·면적·손실 같은 목적값을 줄이는 설계값을 찾습니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. Objective, Variables & Constraints',
+        p(
+          'Equation Solver는 조건을 만족하는 값을 찾고 Optimization은 만족하는 값들 중 목적이 더 좋은 값을 찾습니다. Objective는 줄이려는 비용·손실, Decision Variable은 조절할 설계값, Constraint는 지켜야 하는 조건입니다.',
+        ),
+        p(
+          '예산·용량·최소 농도처럼 현실에는 조건이 많습니다. 목적값이 작아도 예산을 넘으면 쓸 수 없는 해이므로 목적과 제약을 같이 봅니다. 이 모듈은 범위·등식·부등식 제약 아래 국소 최적점을 탐색합니다.',
+        ),
+        ...workflow('목적식·변수 Initial Guess·허용 조건'),
+      ),
+      section(
+        'first-model',
+        '2. First Design · 합이 고정된 두 변수',
+        code(guideExamples.optimization),
+        list(
+          'min: 뒤가 목적식입니다. x+y=1은 반드시 지켜야 하는 합 조건입니다.',
+          'x|0.2 0 2는 시작 추정 0.2, 하한 0, 상한 2입니다. y도 같은 방식입니다.',
+          '예상 결과는 x≈0.5, y≈0.5, Objective≈0.5입니다. 합이 1이어야 하므로 둘 다 1인 목적값 0의 점은 허용되지 않습니다.',
+          'Report에서 Constraint Violation이 작고 Converged인지 확인한 뒤 변수값을 사용합니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. min, Bounds & Inequalities',
+        code(
+          'min: (x-2)^2+(y-3)^2\nx+y<=2\nx|0.2 0 1\ny|0.2 0 4',
+          'Expected: x≈0.5, y≈1.5',
+        ),
+        p(
+          '일반 등식 =, 부등식 <= 또는 >=를 사용합니다. <와 >도 수치 계산에서는 경계를 포함하는 조건으로 취급하므로 엄격한 열린 영역의 달성 여부를 별도로 주의해야 합니다. 허용 범위는 x|초기값 하한 상한 또는 x(0), x(min), x(max)로 지정할 수 있습니다.',
+        ),
+        p(
+          '직접 최대화하는 명령 대신 원하는 이득의 음수를 min:에 넣으면 됩니다. 예를 들어 이득 G를 크게 하려면 −G를 줄입니다. 결과 Objective는 입력한 음수식의 값이므로 실제 이득의 부호를 되돌려 읽으세요.',
+        ),
+        ...expressionBasics(),
+      ),
+      section(
+        'algorithm',
+        '4. How a Constrained Search Works',
+        p(
+          '현재 지점에서 목적값을 줄이는 방향을 찾고, 허용 박스 경계에 맞게 이동을 투영합니다. 등식·부등식 위반에는 승수와 벌점을 조절하는 Augmented Lagrangian을 사용하고 BFGS로 국소 곡률 정보를 갱신합니다. 가능한 수식에서는 Automatic Differentiation으로 기울기를 계산합니다.',
+        ),
+        p(
+          '초기값은 물리적 상태 자체가 아니라 반복 탐색의 출발점입니다. 비볼록 문제는 계곡이 여러 개일 수 있어 출발점에 따라 결과가 달라집니다. 여러 시작점에서 비교하되 같은 답을 여러 번 얻었다는 사실만으로 전역 최적 증명이라고 말할 수는 없습니다.',
+        ),
+        p(
+          'Converged는 현재 스케일에서 국소 정상성과 제약 허용 오차를 만족했다는 뜻입니다. 모든 가능한 방향의 전역 최소를 인증하는 기능이 아닙니다. 반복·시간 한도에 도달하면 마지막 유효 후보와 Stopped 사유를 제공합니다.',
+        ),
+      ),
+      section(
+        'report',
+        '5. Report · 세 가지를 같이 봅니다',
+        table(
+          ['Metric', 'Interpretation'],
+          [
+            [
+              'Objective',
+              '입력한 목적식의 최종값입니다. 작을수록 목적에 유리하지만 단위·식 자체가 달라진 두 문제의 숫자는 직접 비교할 수 없습니다.',
+            ],
+            [
+              'Constraint Violation',
+              '가장 크게 남은 등식 차이 또는 부등식 경계 밖의 크기입니다. 0.001이라면 실제 제약 단위에서 그만큼 벗어난 것입니다. 허용할 수 있는지는 물리 기준과 비교합니다.',
+            ],
+            [
+              'Projected Gradient / Stationarity',
+              '경계·제약을 고려했을 때 목적을 더 줄일 국소 방향이 얼마나 남았는지 보는 지표입니다. 작으면 근방에서 개선이 어려운 상태이지만 전역 최적·작은 측정 오차를 뜻하지 않습니다.',
+            ],
+            [
+              'Status / Iterations',
+              '수렴했는지 또는 왜 중단됐는지. 반복 수는 작업량이며 품질 점수나 정답 확률이 아닙니다.',
+            ],
+          ],
+        ),
+        p(
+          '변수 x를 0~2로 제한하고 (x−5)^2를 줄이면 최선은 x=2입니다. 일반 기울기는 0이 아니어도 더 나아갈 수 있는 방향이 범위 밖이므로 경계 최적일 수 있습니다. 이 때문에 단순 Gradient와 Projected Gradient를 구별합니다.',
+        ),
+        note(
+          'Feasible vs Optimal',
+          'Feasible은 조건을 지켰다는 뜻, Optimal은 그 조건 안에서 목적이 더 개선되지 않는다는 뜻입니다. 둘 중 하나만으로 완성된 결과가 아닙니다.',
+        ),
+      ),
+      section(
+        'plots',
+        '6. Objective History & Variable Trajectory',
+        p(
+          'Convergence History의 X축은 시간·변수값이 아니라 승인한 Iteration 번호입니다. Objective와 Constraint Violation은 서로 다른 의미·단위이므로 모드를 나눠 확인합니다. 변수 궤적은 탐색 과정이지 물체의 실제 운동이 아닙니다.',
+        ),
+        p(
+          '제약을 맞추는 동안 목적값이 일시적으로 커질 수 있습니다. 제약 없는 낮은 목적값보다 제약을 지키는 약간 높은 값이 실제로 쓸 수 있는 답입니다. 마지막 유효값과 최종 상태를 함께 확인하세요.',
+        ),
+      ),
+      section(
+        'science',
+        '7. Engineering Example · 최소 면적 용기',
+        code(
+          'volume=100\nmin: 2*pi*r^2+2*pi*r*h\npi*r^2*h=volume\nr|2 0.1 10\nh|5 0.1 30',
+          '닫힌 원기둥: 고정 부피에서 표면적 최소화',
+        ),
+        p(
+          '이 문제의 알려진 관계는 h=2r, r=(100/(2*pi))^(1/3)≈2.515398, h≈5.030796입니다. 실제 계산 결과와 이 관계를 비교해 독립 검증할 수 있습니다. 길이를 cm로 넣었다면 부피 100은 cm³, 목적 면적은 cm²입니다.',
+        ),
+        p(
+          '1000배 다른 크기의 목적과 제약을 섞으면 검색이 어려울 수 있습니다. 대표 크기로 나눈 무차원 식을 쓰되, Report에 보이는 원래 제약 위반의 단위와 허용 의미를 유지하세요.',
+        ),
+      ),
+      section(
+        'functions',
+        '8. Functions, Domain & Limits',
+        ...functionReference(),
+        p(
+          '로그를 포함한 변수는 유효한 양수 하한과 Initial Guess를 지정하세요. abs·min 같은 비매끄러운 목적은 기울기 기반 탐색이 어려울 수 있습니다. 정수·조합 최적화나 전역 최적 인증은 포함하지 않습니다.',
+        ),
+      ),
+      section(
+        'troubleshooting',
+        '9. Troubleshooting',
+        list(
+          '제약끼리 모순인지 확인합니다. x=2와 0≤x≤1은 동시에 만족할 수 없습니다.',
+          '목적이 계속 감소하며 범위 끝으로 가면 유한한 최소가 없는지, 필요한 물리 범위를 빠뜨렸는지 봅니다.',
+          'Stopped일 때 반복 수를 늘리기 전에 단위·스케일·정의역·초기값·제약 가능성을 확인합니다.',
+          '전문적 설계 결정에는 다른 시작점·독립 해석해·외부 검증을 함께 사용합니다. 작은 Gradient 하나를 정확성 확률로 읽지 않습니다.',
+        ),
+      ),
+    ],
+  },
+  {
+    id: 'lsq',
+    title: 'LSQ Optimization',
+    summary:
+      '데이터 적합과 계수의 물리적 제약을 동시에 적용하는 Least Squares 설계입니다.',
+    sections: [
+      section(
+        'purpose',
+        '1. Least Squares with Constraints',
+        p(
+          'LSQ는 Least Squares의 약자로, 측정값과 모델 예측 차이의 제곱합을 줄인다는 뜻입니다. 일반 Regression에 더해 a+b=3 같은 계수 관계나 부등식·범위를 함께 지키고 싶을 때 사용합니다.',
+        ),
+        p(
+          '관측값 y는 데이터이고 a,b는 찾아야 할 계수입니다. 각 데이터 행의 y 자체를 바꾸어 오차를 줄이는 계산이 아닙니다. 목표는 측정점 모두를 정확히 통과시키는 것이 아니라, 제약 안에서 전체 차이를 작게 하는 것입니다.',
+        ),
+        ...workflow('데이터·fit 모델·계수 Initial Guess·제약'),
+      ),
+      section(
+        'first-model',
+        '2. First LSQ · 합이 고정된 보정 계수',
+        code(guideExamples.lsq),
+        list(
+          '모델 y=a*x+b와 물리 조건 a+b=3을 함께 적습니다.',
+          'a,b의 | 뒤 숫자는 Initial Guess / Min / Max입니다. 이 예제의 유효 결과는 a≈2, b≈1입니다.',
+          'SSE≈0이고 각 예측값이 측정값과 일치합니다. 실제 데이터에서는 근소한 불일치가 자연스럽습니다.',
+          '데이터를 y=2*x+1에서 조금 흔들면 합 조건을 지키면서 최선의 절충값을 찾습니다. 제약을 제거한 회귀와 계수가 달라도 오류라고 단정할 수 없습니다.',
+        ),
+      ),
+      section(
+        'syntax',
+        '3. fit, Parameters & Constraints',
+        ...dataSyntax(),
+        p(
+          'fit: 목표열=모델식으로 입력합니다. 추정할 계수마다 Initial Guess를 지정합니다. 계수끼리의 일반 등식·부등식을 추가할 수 있습니다. 표의 설명 열은 모델 계산에 쓰지만 제약은 계수·고정 상수에 대한 전역 조건입니다. 데이터 행마다 달라지는 개별 제약은 현재 지원하지 않습니다.',
+        ),
+        code(
+          'fit: rate=vmax*S/(Km+S)\nvmax|0.8 0.01 3\nKm|0.4 0.001 5',
+          'S,rate 표가 있을 때의 포화 반응 모델 예',
+        ),
+        p(
+          '단순한 직선·다항식 적합만 필요하면 Linear / Polynomial Regression이 더 직접적입니다. 자유로운 비선형 적합에는 Nonlinear Regression을 사용할 수 있습니다. LSQ는 별도의 등식·부등식 조건을 결합해야 할 때 특히 유용합니다.',
+        ),
+      ),
+      section(
+        'algorithm',
+        '4. Objective & Search Algorithm',
+        p(
+          '각 행 i에서 eᵢ=관측값−예측값을 계산하고 SSE=Σeᵢ²를 Objective로 사용합니다. 큰 차이가 제곱되어 더 크게 작용하므로 Outlier의 영향이 클 수 있습니다. 모든 행은 기본적으로 같은 가중치를 갖습니다.',
+        ),
+        p(
+          '계수는 투영 BFGS와 Augmented Lagrangian으로 국소 탐색합니다. Box Bounds는 허용 범위에 직접 적용하고 등식·부등식 제약은 위반을 줄이는 승수·벌점을 함께 갱신합니다. 초기값·스케일에 영향을 받고 전역 최적을 인증하지 않습니다.',
+        ),
+        p(
+          'Converged는 수치적 제약·정상성 조건을 만족한 상태입니다. 데이터가 충분한지·모델이 과학적으로 타당한지는 별도로 검토해야 합니다. Stopped 결과는 마지막 유효 후보이며 완성된 추정으로 표시하지 않습니다.',
+        ),
+      ),
+      section(
+        'report',
+        '5. Report · Fit Quality & Feasibility',
+        ...regressionMetrics(),
+        table(
+          ['Additional metric', 'Interpretation'],
+          [
+            [
+              'Constraint Violation',
+              '계수 사이 조건이 얼마나 남아 있는지. 좋은 RMSE와 별도로 작아야 합니다.',
+            ],
+            [
+              'Projected Gradient / Stationarity',
+              '허용 방향으로 더 줄일 국소 개선이 남았는지 봅니다. 제약된 계수의 일반 기울기가 0이 아니어도 정상일 수 있습니다.',
+            ],
+            [
+              'Coefficient Bounds',
+              '계수가 끝값에 닿았는지 확인합니다. 최적값이 범위 밖에 있을 수도 있고 실제 물리 경계일 수도 있습니다.',
+            ],
+          ],
+        ),
+        p(
+          '기본 회귀의 자유로운 계수 SE·95% CI를 제약된 LSQ 결과에 그대로 붙일 수는 없습니다. 활성 제약은 계수의 가능한 변동 방향을 바꿉니다. 이 모듈에서 제공하지 않는 통계적 구간을 RMSE나 작은 Gradient로 대신 해석하지 마세요.',
+        ),
+      ),
+      section(
+        'plots',
+        '6. Fit Plot vs Convergence History',
+        p(
+          'Fit Plot은 설명변수 또는 관측값에 대한 예측을 비교합니다. 점은 원래 관측이고 곡선·예측점은 현재 계수 모델입니다. Data Error는 각 관측에서 얼마나 높거나 낮게 예측했는지 보여줍니다.',
+        ),
+        p(
+          'History의 X축은 Iteration입니다. SSE 감소가 정체했더라도 Constraint Violation이 줄고 있는지 확인합니다. Projected Gradient를 Log Scale로 보면 여러 자릿수의 변화가 보이지만 10^-8이라는 값 자체가 실제 측정 정확도 10^-8을 보장하지는 않습니다.',
+        ),
+      ),
+      section(
+        'units',
+        '7. Units, Scaling & Data Interpretation',
+        p(
+          'y가 mg/L이면 RMSE는 mg/L, SSE는 (mg/L)²입니다. SSE는 자료 수에도 의존하므로 다른 개수의 자료에서 숫자만 비교하지 마세요. 계수 제약도 같은 단위의 양끼리 세웠는지 확인합니다. 기울기 a와 절편 b의 단위가 다르면 a+b=3은 일반적으로 물리적 관계가 아닙니다. 교과서 예제에서는 무차원 수로 사용했습니다.',
+        ),
+        p(
+          '자료가 알려주는 것보다 계수가 많으면 여러 조합이 비슷한 예측을 만들 수 있습니다. 범위를 좁혔다고 실제 정보가 생기는 것은 아니며 가정이 추가된 것입니다. 결과를 전달할 때 모델식·데이터 범위·물리 제약·수렴 상태를 함께 남기세요.',
+        ),
+      ),
+      section(
+        'functions',
+        '8. Functions & Troubleshooting',
+        ...functionReference(),
+        list(
+          'Model 우변에 관측 목표열을 다시 넣지 않습니다. 간접 Helper를 통한 Data Leakage도 허용하지 않습니다.',
+          '제약이 불가능하면 SSE가 줄어도 유효한 해가 아닙니다. 변수 범위와 제약을 직접 대입해 확인하세요.',
+          '비선형 모델에서는 여러 Initial Guess를 비교하고, 모든 관측 행에서 분모·로그·제곱근이 유효한지 봅니다.',
+          '허용할 수 있는 오차는 실험 단위와 활용 목적에 따라 정합니다. 작은 RMSE만으로 물리적 모델을 증명하지 않습니다.',
+        ),
+      ),
+    ],
+  },
+]
+
+export function getModuleGuide(topic: GuideTopic): ModuleGuideContent {
+  return moduleGuides.find((guide) => guide.id === topic)!
+}
+
+export function sectionSearchText(section: GuideSection): string {
+  return [
+    section.title,
+    ...section.blocks.flatMap((block) => {
+      if (block.kind === 'table')
+        return [...block.headers, ...block.rows.flat()]
+      if (block.kind === 'list') return block.items
+      if (block.kind === 'note') return [block.title, block.text]
+      return [block.text]
+    }),
+  ]
+    .join(' ')
+    .toLocaleLowerCase()
+}
+
+export function renderTextbookMarkdown(): string {
+  const chapters = moduleGuides
+    .map((guide) => {
+      const sections = guide.sections
+        .map((item) => {
+          const blocks = item.blocks
+            .map((block) => {
+              if (block.kind === 'paragraph') return block.text
+              if (block.kind === 'code')
+                return `${block.caption ? `${block.caption}\n\n` : ''}\`\`\`text\n${block.text}\n\`\`\``
+              if (block.kind === 'list')
+                return block.items.map((text) => `- ${text}`).join('\n')
+              if (block.kind === 'note')
+                return `> **${block.title}**\n>\n> ${block.text}`
+              const escape = (cell: string) => cell.replaceAll('|', '\\|')
+              return [
+                `| ${block.headers.map(escape).join(' | ')} |`,
+                `| ${block.headers.map(() => '---').join(' | ')} |`,
+                ...block.rows.map(
+                  (row) => `| ${row.map(escape).join(' | ')} |`,
+                ),
+              ].join('\n')
+            })
+            .join('\n\n')
+          return `### ${item.title}\n\n${blocks}`
+        })
+        .join('\n\n')
+      return `## ${guide.title}\n\n${guide.summary}\n\n${sections}`
+    })
+    .join('\n\n')
+  return `# Interaction Visual Calculator · User Textbook\n\n사이트의 Guide와 같은 모듈별 학습 자료입니다. 전문 용어는 영어로, 설명은 한국어로 제공합니다. 원하는 모듈의 장부터 읽으세요.\n\n이 문서는 src/components/guide-content.ts의 renderTextbookMarkdown()으로 생성한 읽기용 사본입니다. 내용을 바꾸면 원본과 이 사본을 함께 갱신합니다.\n\n${chapters}\n`
+}
+```
+
+<a id="source-15"></a>
 
 ## src/components/SolutionChart.tsx
 
@@ -3645,7 +5976,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-16"></a>
 
 ## src/components/SolutionChart.css
 
@@ -3996,11 +6327,11 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-17"></a>
 
 ## src/components/SimulationPanelView.tsx
 
-원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 338줄 · SHA-256: `8badbc96f138b76bdf66ad13e3ec89887bb391733c51a74e775c8723bd2f66e2`
+원본: [src/components/SimulationPanelView.tsx](../../src/components/SimulationPanelView.tsx) · 338줄 · SHA-256: `e807b139b2dae28c72ee3a66eb44ef6952aadc66509860ddf8df9f83b302e0bf`
 
 ```tsx
 import { rootStructureLabel } from '../engine/tangency'
@@ -4104,7 +6435,7 @@ export default function SimulationPanelView({
     )
     const link = document.createElement('a')
     link.href = url
-    link.download = `polymath-simulation-${panel.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-data.csv`
+    link.download = `ivc-simulation-${panel.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-data.csv`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
@@ -4343,11 +6674,11 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-18"></a>
 
 ## src/components/MergedSimulationSetView.tsx
 
-원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 360줄 · SHA-256: `58a83505bbb8e4c0390f3bc31c4e619703ea8f00eeb81fcee4b6038b7ee9e7fc`
+원본: [src/components/MergedSimulationSetView.tsx](../../src/components/MergedSimulationSetView.tsx) · 360줄 · SHA-256: `d91b6ed2bc1fa21afb84da23d82422de66b9bc8f2c14b940942446e3ad40841c`
 
 ```tsx
 import { useEffect, useState, type ReactNode } from 'react'
@@ -4492,7 +6823,7 @@ export default function MergedSimulationSetView({
     )
     const link = document.createElement('a')
     link.href = url
-    link.download = `polymath-${mergedSet.name.replace(/\s+/g, '-')}-data.csv`
+    link.download = `ivc-${mergedSet.name.replace(/\s+/g, '-')}-data.csv`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
@@ -4712,7 +7043,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-19"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -4991,15 +7322,15 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-20"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
-원본: [src/components/WorkspaceNavigation.tsx](../../src/components/WorkspaceNavigation.tsx) · 246줄 · SHA-256: `ac90e20bc0e0ae3c45b11c611d4d1d2e5874717a86eefd5ef6f5374370c44908`
+원본: [src/components/WorkspaceNavigation.tsx](../../src/components/WorkspaceNavigation.tsx) · 236줄 · SHA-256: `ca3fe4e8de6b1d7cf114fc527e30d2ef3907df86335f2d548f6dfbb2062b984b`
 
 ```tsx
 import type { ScientificModule } from '../engine/scientific/types'
-import { ArrowRight, Code2, FileText, Home, Activity } from 'lucide-react'
+import { ArrowRight, Code2, FileText, Activity } from 'lucide-react'
 import './WorkspaceNavigation.css'
 
 export type WorkspaceScreen = 'home' | 'model' | 'simulation' | 'report'
@@ -5200,9 +7531,9 @@ export function LandingModules({
 }
 
 const screens = [
-  { screen: 'model', name: '수식·파라미터', icon: Code2 },
-  { screen: 'simulation', name: '시뮬레이션', icon: Activity },
-  { screen: 'report', name: '해석 리포트', icon: FileText },
+  { screen: 'model', name: 'Model & Data', icon: Code2 },
+  { screen: 'simulation', name: 'Simulation', icon: Activity },
+  { screen: 'report', name: 'Report', icon: FileText },
 ] as const
 
 export function WorkspaceNavigation({
@@ -5214,16 +7545,6 @@ export function WorkspaceNavigation({
 }) {
   return (
     <nav className="workspace-navigation" aria-label="Equation Solver 화면">
-      <button
-        type="button"
-        className="workspace-home-button"
-        aria-label="모듈 홈"
-        onClick={() => onNavigate('home')}
-      >
-        <Home size={16} aria-hidden="true" />
-        <span>모듈 홈</span>
-      </button>
-      <span className="workspace-nav-divider" aria-hidden="true" />
       <div className="workspace-screen-links">
         {screens.map(({ screen: target, name, icon: Icon }, index) => (
           <button
@@ -5246,7 +7567,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-21"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -5621,7 +7942,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-22"></a>
 
 ## src/styles.css
 
@@ -9421,7 +11742,7 @@ h2 {
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-23"></a>
 
 ## src/workspace-screens.css
 
@@ -9837,5 +12158,897 @@ h2 {
 .default-overview .merged-current-card[data-selected='true'] {
   border-color: #3d8371;
   background: #e8f3ee;
+}
+```
+
+<a id="source-24"></a>
+
+## src/ivc.css
+
+원본: [src/ivc.css](../../src/ivc.css) · 883줄 · SHA-256: `2dda0e3d92729572ef866d49a1bc5c7da93a6794ff660063af559d04694cce82`
+
+```css
+/* IVC: one quiet, readable workspace across every numerical module. */
+:root {
+  color: #293442;
+  background: #f4f5f7;
+  --teal: #365f8d;
+  --muted: #5f6b79;
+  --line: #dce1e7;
+  --panel: #fff;
+  font-size: 14px;
+}
+body {
+  background: #f4f5f7;
+  color: #293442;
+}
+button,
+input,
+select,
+textarea {
+  accent-color: #416c9b;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #416c9b;
+  outline-offset: 3px;
+}
+.workspace {
+  margin-left: 0;
+  width: 100%;
+}
+.workspace .ivc-toolbar,
+.scientific-workspace .ivc-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 62px;
+  padding: 10px 0;
+  border-bottom: 1px solid #d6dce4;
+  color: #293442;
+  background: transparent;
+  font-size: 13px;
+}
+.workspace .ivc-toolbar {
+  margin: 0 24px;
+}
+.ivc-toolbar .ivc-brand {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 19px;
+  font-weight: 650;
+}
+.ivc-brand > span {
+  font-size: 13px;
+  color: #5f6b79;
+  font-weight: 400;
+}
+.ivc-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.ivc-toolbar button,
+.ivc-toolbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: #43536a;
+  border-radius: 4px;
+}
+.ivc-toolbar button:hover,
+.ivc-toolbar a:hover {
+  background: #e8edf3;
+}
+.ivc-back-arrow {
+  transform: rotate(180deg);
+}
+.ivc-toolbar .local-status {
+  color: #697482;
+  font-size: 11px;
+  margin-inline: 8px;
+}
+.ivc-toolbar .local-status i {
+  background: #62836d;
+}
+.workspace-nav-container {
+  max-width: none;
+  padding: 14px 24px 0;
+}
+.workspace .workspace-content {
+  max-width: none;
+  padding: 0 24px 28px;
+}
+.workspace-navigation {
+  border: 0;
+  padding: 0;
+}
+.workspace-screen-links {
+  gap: 6px;
+}
+.workspace-navigation .workspace-screen-button,
+.scientific-workspace .scientific-navigation > button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #596677;
+  padding: 10px 14px;
+  min-height: 41px;
+  font-size: 13px;
+  gap: 9px;
+}
+.workspace-navigation .workspace-screen-button.is-current,
+.scientific-workspace .scientific-navigation > button[aria-current='page'] {
+  background: #e7edf5;
+  border-color: #cbd7e6;
+  color: #294d76;
+  font-weight: 600;
+}
+.workspace-screen-button svg {
+  display: none;
+}
+.workspace-screen-number {
+  color: inherit;
+  opacity: 0.65;
+}
+.workspace-content .problem-tabs {
+  margin: 12px 0 16px;
+  padding: 0;
+  border-color: #d6dce4;
+  min-height: auto;
+  gap: 24px;
+}
+.workspace-content .problem-tab {
+  min-height: auto;
+  padding: 10px 0;
+  color: #596677;
+  font-size: 13px;
+}
+.workspace-content .problem-tab.selected {
+  color: #294d76;
+}
+.workspace-content .sectioned-workspace .model-column {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 18px;
+}
+.workspace .panel,
+.scientific-workspace .science-panel {
+  background: #fff;
+  border: 1px solid #d6dce4;
+  border-radius: 5px;
+  box-shadow: none;
+}
+.workspace .panel-heading {
+  padding: 16px 18px 12px;
+  border: 0;
+}
+.workspace .panel-heading h2,
+.workspace .parameters-panel h2,
+.scientific-workspace .science-section-title h1,
+.scientific-workspace .science-section-title h2,
+.scientific-workspace .science-panel > h2 {
+  font-size: 16px;
+  color: #2e3a4b;
+}
+.workspace .step-number,
+.workspace .model-tag,
+.workspace .editor-toolbar > span:nth-child(2) {
+  display: none;
+}
+.workspace .model-title {
+  margin: 0 18px 8px;
+  padding: 0;
+}
+.workspace .model-title input {
+  color: #2e3a4b;
+  font-size: 16px;
+}
+.workspace .model-description {
+  margin: 0 18px 14px;
+  color: #596677;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.workspace .editor-toolbar {
+  margin: 0 18px 8px;
+  padding: 0;
+  color: #596677;
+}
+.workspace .equation-editor {
+  background: #fafbfc;
+  border: 1px solid #d9dfe7;
+  border-radius: 4px;
+  margin: 0 18px 16px;
+}
+.workspace .equation-editor textarea {
+  font-size: 13px;
+  color: #344e70;
+  background: transparent;
+}
+.workspace .line-numbers {
+  background: #f1f3f6;
+  color: #7a8592;
+  border-right: 1px solid #e1e5eb;
+}
+.workspace .editor-meta {
+  color: #596677;
+  margin-inline: 18px;
+}
+.workspace .model-action-bar,
+.workspace .model-footer {
+  background: #fff;
+  border-color: #dce1e7;
+}
+.workspace .solve-button,
+.workspace .primary-button,
+.scientific-workspace .science-primary {
+  background: #365f8d;
+  border-color: #365f8d;
+  color: #fff;
+  box-shadow: none;
+  border-radius: 4px;
+}
+.workspace .solve-button:hover,
+.workspace .primary-button:hover,
+.scientific-workspace .science-primary:hover {
+  background: #294d76;
+}
+.workspace .secondary-button,
+.scientific-workspace .science-secondary {
+  background: #f6f8fa;
+  border: 1px solid #cfd7e2;
+  color: #3c5472;
+  box-shadow: none;
+  border-radius: 4px;
+}
+.workspace .parameters-panel > p,
+.workspace .parameters-description,
+.workspace .parameter-type,
+.workspace .parameter-value,
+.workspace .range-labels {
+  color: #596677;
+}
+.workspace .live-note {
+  display: none;
+}
+.workspace .add-parameter {
+  border: 1px solid #ccd6e2;
+  color: #365f8d;
+  border-radius: 4px;
+  background: #fafbfd;
+}
+.workspace .range-editor,
+.workspace .search-settings {
+  background: #f6f8fa;
+  color: #526175;
+  border-color: #dce1e7;
+}
+.workspace .model-next-step {
+  background: #fff;
+  border-color: #d6dce4;
+  border-radius: 5px;
+  padding: 14px;
+}
+.workspace .model-next-step p {
+  display: none;
+}
+.workspace .results-column {
+  min-width: 0;
+}
+.workspace .results-panel {
+  overflow: hidden;
+}
+.workspace .result-mode-tabs {
+  margin-inline: 18px;
+}
+.workspace .result-mode-tabs > button {
+  color: #53647a;
+}
+.workspace .summary-label {
+  color: #526175;
+}
+.workspace .found-badge {
+  color: #365b86;
+  background: #edf2f8;
+}
+.workspace .solution-summary {
+  padding: 14px 18px;
+}
+.workspace .solution-cards,
+.workspace .solution-cards.single-value,
+.workspace .solution-cards.many-values {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 12px;
+  border: 1px solid #d9dfe7;
+  border-radius: 3px;
+}
+.workspace .solution-value,
+.workspace .solution-value:nth-child(n) {
+  display: grid;
+  grid-template-columns: minmax(50px, 0.4fr) minmax(100px, 1fr) minmax(
+      90px,
+      0.6fr
+    );
+  gap: 15px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #e1e5eb;
+  border-radius: 0;
+}
+.workspace .solution-value:last-child {
+  border: 0;
+}
+.workspace .solution-value > div,
+.workspace .solution-value:nth-child(n) > div {
+  font-size: 13px;
+  color: #344357;
+}
+.workspace .solution-value > strong,
+.workspace .solution-value:nth-child(n) > strong {
+  margin: 0;
+  font:
+    500 15px/1.6 ui-monospace,
+    Consolas,
+    monospace;
+  letter-spacing: 0;
+  color: #315f98;
+}
+.workspace .value-caption,
+.workspace .solution-value:nth-child(n) .value-caption {
+  color: #5f6b79;
+  font-size: 12px;
+}
+.workspace .report-content {
+  padding: 16px 18px;
+}
+.workspace .report-title {
+  margin-bottom: 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #dce1e7;
+  gap: 10px;
+}
+.workspace .report-title .report-document-icon,
+.workspace .report-title > div > span {
+  display: none;
+}
+.workspace .report-title h3 {
+  font-size: 17px;
+  color: #2f4057;
+}
+.workspace .report-metrics {
+  gap: 10px;
+}
+.workspace .report-metrics strong {
+  font-size: 20px;
+}
+.workspace .condition-norm-controls {
+  background: #f8f9fb;
+  padding: 12px;
+}
+.workspace .page-footer {
+  display: none;
+}
+.workspace .selected-simulation-workspace,
+.workspace .merged-sets-grid {
+  background: #f5f7fa;
+  padding: 12px;
+}
+.workspace .merged-current-card {
+  background: #fff;
+  border-color: #d6dce4;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.workspace .merged-current-card strong,
+.workspace .merged-card-label {
+  color: #43546b;
+}
+.workspace .simulation-parameters {
+  background: #f6f8fa;
+  border-color: #d6dce4;
+}
+.workspace .chart-heading,
+.workspace .chart-description,
+.workspace .data-section-title {
+  color: #526175;
+}
+.workspace .module-home-page {
+  min-height: calc(100dvh - 64px);
+}
+.workspace .module-home {
+  max-width: 1220px;
+  padding: 35px 0;
+}
+.workspace .module-grid {
+  gap: 16px;
+}
+.workspace .module-card {
+  min-height: 210px;
+  border-radius: 5px;
+  border-color: #cfd7e2;
+  background: #fff;
+  color: #2e3d51;
+  padding: 20px;
+}
+.workspace .module-card::before {
+  height: 2px;
+  background: #91a8c2;
+}
+.workspace .module-card:hover {
+  transform: none;
+  box-shadow: 0 3px 12px #24384f10;
+  border-color: #6e8eb4;
+  background: #fafcfe;
+}
+.workspace .module-letter {
+  background: #e9eff7;
+  color: #365f8d;
+  border-radius: 4px;
+}
+.workspace .module-illustration {
+  opacity: 0.85;
+}
+body .scientific-workspace {
+  background: #f4f5f7;
+  color: #293442;
+  padding: 0 24px 28px;
+  font-family: inherit;
+}
+.scientific-workspace .scientific-navigation {
+  padding: 14px 0 18px;
+  gap: 6px;
+}
+.scientific-workspace .scientific-navigation > label {
+  color: #596677;
+}
+.scientific-workspace .scientific-model {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  max-width: none;
+  gap: 18px;
+}
+.scientific-workspace .science-panel {
+  padding: 18px;
+}
+.scientific-workspace .science-description,
+.scientific-workspace .science-editor-label,
+.scientific-workspace .science-panel > label,
+.scientific-workspace .science-status {
+  color: #596677;
+}
+.scientific-workspace .science-description {
+  margin-bottom: 14px;
+}
+.scientific-workspace .scientific-model textarea {
+  min-height: 340px;
+  max-height: 66vh;
+  background: #fafbfc;
+  color: #344e70;
+  border-color: #d9dfe7;
+  border-radius: 4px;
+  padding: 14px;
+  font-size: 13px;
+}
+body .scientific-workspace select,
+body .scientific-workspace input[type='number'] {
+  background: #fff;
+  color: #34465f;
+  border-color: #cbd4e0;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.scientific-workspace .science-help {
+  margin-top: 12px;
+  color: #56677d;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.scientific-workspace .science-help summary {
+  cursor: pointer;
+  color: #3e5f84;
+}
+.scientific-workspace .science-help p {
+  margin: 9px 0;
+  max-width: 90ch;
+}
+.scientific-workspace .science-help b {
+  color: #334c69;
+}
+.scientific-workspace .science-parameters {
+  background: #f8f9fb;
+  border-color: #d6dce4;
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+.scientific-workspace .science-parameters label,
+.scientific-workspace .science-parameters details {
+  color: #53647a;
+}
+.scientific-workspace .science-plot-switch button {
+  background: #fff;
+  border-color: #cfd7e2;
+  color: #53647a;
+}
+.scientific-workspace .science-plot-switch button[aria-pressed='true'] {
+  background: #eaf0f7;
+  border-color: #9eb5cf;
+  color: #2f557e;
+}
+.scientific-workspace .science-data {
+  border-color: #dce1e7;
+  color: #53647a;
+}
+.scientific-workspace .science-data th {
+  background: #f1f4f8;
+  color: #435674;
+}
+.scientific-workspace .science-data td,
+.scientific-workspace .science-data th {
+  border-color: #dce1e7;
+  font-size: 12px;
+  padding: 7px 10px;
+}
+.scientific-workspace .science-formula {
+  background: #f6f8fb;
+  color: #344f73;
+  border: 1px solid #dce3ed;
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+.scientific-workspace .science-verdict {
+  color: #58687c;
+  padding: 0 0 14px;
+}
+.scientific-workspace .science-verdict strong {
+  color: #325d88;
+  font-size: 15px;
+}
+.scientific-workspace .science-current-values {
+  color: #596677;
+}
+.scientific-workspace .science-current-values b {
+  color: #355e8a;
+}
+.ivc-output-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 13px;
+  color: #344357;
+}
+.ivc-output-table th,
+.ivc-output-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #dce1e7;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ivc-output-table thead th {
+  background: #f1f4f8;
+  font-weight: 550;
+  color: #3d506b;
+}
+.ivc-output-table th:first-child,
+.ivc-output-table td:first-child {
+  text-align: left;
+}
+.ivc-output-table td {
+  font-family: ui-monospace, Consolas, monospace;
+}
+.ivc-output-table .ivc-result-value {
+  color: #315f98;
+  font-weight: 500;
+}
+.ivc-metrics-table {
+  font-size: 12px;
+}
+.ivc-metrics-table th {
+  width: 28%;
+  font-weight: 500;
+}
+.ivc-metrics-table td:last-child {
+  width: 42%;
+  text-align: left;
+  font-family: inherit;
+}
+.ivc-metrics-table summary {
+  cursor: pointer;
+  color: #486b95;
+}
+.ivc-metrics-table p {
+  color: #526175;
+  line-height: 1.9;
+  margin-top: 8px;
+  max-width: 65ch;
+}
+.ivc-report-details {
+  border-top: 1px solid #dce1e7;
+  padding-top: 14px;
+}
+.ivc-fit-settings {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+.ivc-fit-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #53647a;
+}
+.ivc-fit-settings .ivc-checkbox {
+  flex-direction: row;
+  align-items: center;
+}
+.ivc-command {
+  display: block;
+  white-space: pre-wrap;
+  background: #f1f4f8;
+  padding: 10px;
+  border: 1px solid #dce3ed;
+  border-radius: 3px;
+  color: #355b88;
+  font-size: 13px;
+}
+.ivc-axis-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4c5e76;
+}
+.ivc-integral {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  padding: 8px 12px 16px;
+  color: #293b53;
+  font:
+    22px/1.5 Georgia,
+    'Times New Roman',
+    serif;
+}
+.ivc-integral strong {
+  font-weight: 500;
+  color: #315f98;
+}
+.ivc-integral-sign {
+  display: inline-grid;
+  justify-items: center;
+  align-items: center;
+  grid-template-rows: 18px 56px 18px;
+  min-width: 36px;
+  height: 92px;
+}
+.ivc-integral-sign > span {
+  grid-area: 2 / 1;
+  font-size: 57px;
+  line-height: 1;
+}
+.ivc-integral-sign sup {
+  grid-area: 1 / 1;
+}
+.ivc-integral-sign sub {
+  grid-area: 3 / 1;
+}
+.ivc-integral-sign sup,
+.ivc-integral-sign sub {
+  display: block;
+  position: static;
+  color: #293b53;
+  font:
+    13px/1.3 ui-monospace,
+    Consolas,
+    monospace;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 850px) {
+  .workspace .ivc-toolbar {
+    margin: 0 14px;
+  }
+  .workspace .workspace-content {
+    padding-inline: 14px;
+  }
+  .workspace-nav-container {
+    padding-inline: 14px;
+  }
+  .workspace .sectioned-workspace .model-column,
+  .scientific-workspace .scientific-model {
+    grid-template-columns: 1fr;
+  }
+  body .scientific-workspace {
+    padding-inline: 14px;
+  }
+  .ivc-toolbar .ivc-brand {
+    flex-basis: 50%;
+  }
+  .ivc-toolbar .local-status {
+    display: none;
+  }
+  .workspace .module-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 550px) {
+  .ivc-brand > span {
+    font-size: 11px;
+  }
+  .ivc-toolbar .ivc-brand {
+    font-size: 16px;
+  }
+  .ivc-toolbar-actions {
+    width: 100%;
+  }
+  .ivc-toolbar .github-link {
+    display: none;
+  }
+  .workspace-screen-links {
+    width: 100%;
+  }
+  .workspace-navigation .workspace-screen-button,
+  .scientific-workspace .scientific-navigation > button {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+  .workspace .solution-value,
+  .workspace .solution-value:nth-child(n) {
+    gap: 8px;
+    padding: 8px;
+    grid-template-columns: 45px minmax(80px, 1fr);
+  }
+  .workspace .solution-value .value-caption {
+    grid-column: 2;
+  }
+  .workspace .module-card {
+    min-height: 175px;
+    padding: 15px;
+  }
+  .workspace .module-card-title {
+    font-size: 15px;
+  }
+  .workspace .module-grid {
+    gap: 10px;
+  }
+  .scientific-workspace .science-panel {
+    padding: 14px;
+  }
+  .ivc-output-table th,
+  .ivc-output-table td {
+    padding: 7px;
+    font-size: 12px;
+  }
+  .ivc-metrics-table td:last-child {
+    min-width: 105px;
+  }
+  .ivc-integral {
+    font-size: 19px;
+  }
+}
+
+/* Keep the large branch plot close to the top while retaining every control. */
+.workspace .simulation-panel {
+  border-color: #d6dce4;
+  border-radius: 5px;
+  background: #fff;
+  color: #344357;
+}
+.workspace .simulation-panel-heading h3 {
+  color: #365779;
+}
+.workspace .merged-branch-chip {
+  border-radius: 4px;
+  border-color: #cfd9e5;
+  color: #425a77;
+}
+.workspace .merged-branch-chip.is-active {
+  background: #edf2f8;
+}
+.workspace .merged-parameter-controls {
+  border-color: #dce1e7;
+}
+.workspace .merged-parameter-controls .results-parameters {
+  background: #f8f9fb;
+}
+.workspace .sc-view-controls {
+  color: #586a7f;
+}
+.workspace .sc-view-controls select,
+.workspace .sc-reset-view {
+  background: #fff;
+  border-color: #cfd7e2;
+  color: #4a607b;
+}
+.workspace .report-content h4,
+.workspace .report-content .report-explanation,
+.workspace .report-content .report-param-list p {
+  color: #53647a;
+}
+.workspace .report-content pre {
+  background: #f5f7fa;
+  border-color: #d8dfe8;
+  color: #3d5677;
+}
+.workspace .condition-norm-setting,
+.workspace .condition-norm-controls {
+  border-color: #d8dfe8;
+}
+.workspace .analysis-view .solution-summary > .summary-label {
+  display: none;
+}
+.simulation-focused .ivc-toolbar {
+  min-height: 50px;
+  padding-block: 5px;
+}
+.simulation-focused .workspace-nav-container {
+  padding-top: 4px;
+}
+.simulation-focused .workspace-navigation .workspace-screen-button {
+  min-height: 34px;
+  padding-block: 6px;
+}
+.simulation-focused .results-heading {
+  padding-block: 6px;
+}
+.simulation-focused .merge-actions {
+  padding-block: 2px;
+}
+.simulation-focused .merge-actions .secondary-button {
+  padding-block: 6px;
+}
+.simulation-focused .default-overview .simulation-panel {
+  padding: 10px 14px;
+}
+.simulation-focused .default-overview .simulation-panel-header h3 {
+  font-size: 14px;
+}
+.simulation-focused .default-overview .merged-set-Chips {
+  padding-block: 3px;
+}
+.simulation-focused .default-overview .merged-branch-chip {
+  padding: 4px 8px;
+}
+.simulation-focused .default-overview .merged-current-wrap {
+  margin-block: 2px;
+  font-size: 11px;
+}
+.simulation-focused .default-overview .sc-view-controls {
+  margin-bottom: 4px;
+}
+
+.workspace .condition-controls {
+  border-color: #dce1e7;
+}
+.workspace .condition-controls label {
+  color: #53647a;
+}
+.workspace .condition-select-wrap select {
+  color: #425f82;
+  border-color: #cfd8e4;
+  background: #f8fafc;
 }
 ```

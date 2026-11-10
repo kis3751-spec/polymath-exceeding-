@@ -57,6 +57,13 @@ describe('discrete interpolation integrals', () => {
     const result = solve(`${linear}\nintegrate y(x) 5 0 10 lin`)
     expect(result.values.integral).toBeCloseTo(-30, 12)
     expect(result.rows.at(-1)![2]).toBeCloseTo(-30, 12)
+    expect(result.integration).toEqual({
+      from: 5,
+      to: 0,
+      independent: 'x',
+      dependent: 'y',
+      value: result.values.integral,
+    })
   })
   it('sorts unordered samples explicitly and preserves the integral', () => {
     const result = solve('[\nx y\n2 5\n0 1\n1 3\n]\nintegrate y(x) 0 2')

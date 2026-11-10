@@ -99,7 +99,7 @@ export default function SimulationPanelView({
     )
     const link = document.createElement('a')
     link.href = url
-    link.download = `polymath-simulation-${panel.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-data.csv`
+    link.download = `ivc-simulation-${panel.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-data.csv`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }

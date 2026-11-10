@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `21abb803eff59c5f8f85ef4b8dbad9405a8e6fad184a3bc031d22800437b2393`
+소스 묶음 SHA-256: `61a13b5054d891c0523ff2ac85f6b599cf0c8af334cddb8a05e472e1ff35acf5`
 
 ## 다른 코드 묶음
 
@@ -51,7 +51,7 @@
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 617줄 · SHA-256: `0c0541c28d0e9994c80f835e0619a78460688f45bcdedb4d45ba0b45649e31e4`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 617줄 · SHA-256: `e854fb12bad73838d3bec377b7b9af0f045507e85aca1f87f35961f950a54576`
 
 ```typescript
 import type { VariableBounds, SearchWindow } from './search-analysis'
@@ -372,7 +372,7 @@ export function compileModel(source: string): Compiled {
     const sides = text.split('=')
     if (sides.length !== 2 || !sides[0].trim() || !sides[1].trim())
       throw new ModelError(
-        '한 줄에 완성된 등식 하나를 입력해 주세요. 예: 2x + y = 10',
+        '완성된 등식을 입력해 주세요. 예: 2x + y = 10',
         i + 1,
       )
     try {
@@ -4532,7 +4532,7 @@ export function normalizedModelCall<T>(
 
 ## src/engine/preprocessor.ts
 
-원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 631줄 · SHA-256: `8c0a32616b030369ee8745a277f9da812751a9f19b7c69ba62a8ec1c10b419fd`
+원본: [src/engine/preprocessor.ts](../../src/engine/preprocessor.ts) · 631줄 · SHA-256: `8fc6e47b83bfd1654a62f43cc8f8e2a2a5ef347495d620ab04d5d22ab747a3bc`
 
 ```typescript
 import { normalizeEquationSource } from './source-statements'
@@ -4840,7 +4840,7 @@ export function preprocessModelSource(
     }
     sides.push(text.slice(start))
     if (sides.length > 2) {
-      throw new ModelError('한 줄에는 등호를 하나만 사용하세요.', lineNo)
+      throw new ModelError('등식의 등호 연결을 확인하세요.', lineNo)
     }
 
     if (sides.length === 2) {
@@ -7254,7 +7254,7 @@ export function searchConclusion(
 
 ## src/engine/automatic.ts
 
-원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,576줄 · SHA-256: `a08c0fa34a676db2480c58e8ebd1d238472809cf680b0f269130e37a64739cca`
+원본: [src/engine/automatic.ts](../../src/engine/automatic.ts) · 1,576줄 · SHA-256: `321c717aeaf679bfe3c4b10ea87f051e61df9b09fdc94762018580c89826684c`
 
 ```typescript
 import { classifyScalarRoot } from './tangency'
@@ -7431,7 +7431,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     for (const { text, line } of lines) {
       const sides = text.split('=')
       if (sides.length > 2)
-        throw new ModelError('한 줄에는 등호를 하나만 사용하세요.', line)
+        throw new ModelError('등식의 등호 연결을 확인하세요.', line)
       const residual = sides.length === 2 ? `(${sides[0]})-(${sides[1]})` : text
       const parsed = parseNonlinearExpression(residual, line)
       if (residuals.length === 0) expression = parsed.node

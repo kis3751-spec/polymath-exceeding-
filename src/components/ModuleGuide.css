@@ -1,0 +1,430 @@
+.ivc-guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(22 30 42 / 45%);
+}
+
+.ivc-guide-dialog {
+  width: min(1200px, 100%);
+  height: min(940px, 94dvh);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #253044;
+  background: #fff;
+  border: 1px solid #cdd3dd;
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgb(0 0 0 / 20%);
+  font-size: 15px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.ivc-guide-dialog *,
+.ivc-guide-dialog *::before,
+.ivc-guide-dialog *::after {
+  box-sizing: border-box;
+}
+.ivc-guide-dialog :is(h2, h3, h4, p, figure, ul) {
+  margin: 0;
+}
+.ivc-guide-dialog button {
+  font: inherit;
+  cursor: pointer;
+}
+.ivc-guide-dialog button:focus-visible,
+.ivc-guide-dialog input:focus-visible,
+.ivc-guide-dialog [tabindex]:focus-visible {
+  outline: 2px solid #245ec1;
+  outline-offset: 3px;
+}
+
+.ivc-guide-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid #dce0e6;
+  background: #f7f8fa;
+}
+.ivc-guide-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 650;
+  color: #24324b;
+}
+.ivc-guide-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #d4dae3;
+  border-radius: 4px;
+  background: #fff;
+  color: #4c5667;
+}
+.ivc-guide-close:hover {
+  background: #eaf0f8;
+}
+.ivc-guide-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+}
+.ivc-guide-sidebar {
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px 10px 24px;
+  background: #f6f7f9;
+  border-right: 1px solid #dce0e6;
+  overscroll-behavior: contain;
+}
+.ivc-guide-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ivc-guide-tabs button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  color: #424c5e;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.ivc-guide-tabs button:hover {
+  background: #e8edf5;
+}
+.ivc-guide-tabs button[aria-selected='true'] {
+  color: #174c9a;
+  border-color: #bed0eb;
+  background: #e8f0fc;
+  font-weight: 650;
+}
+.ivc-guide-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 22px;
+  padding: 0 10px;
+}
+.ivc-guide-toc h3 {
+  color: #596476;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.ivc-guide-toc button {
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: #535d6d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ivc-guide-toc button:hover {
+  color: #174c9a;
+  text-decoration: underline;
+}
+.ivc-guide-reading-layout {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.ivc-guide-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-bottom: 1px solid #e2e5eb;
+  background: #fff;
+  flex: 0 0 auto;
+}
+.ivc-guide-search label {
+  display: flex;
+  color: #647087;
+}
+.ivc-guide-search input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #d4dae3;
+  border-radius: 4px;
+  background: #fff;
+  color: #253044;
+  font: inherit;
+  font-size: 13px;
+}
+.ivc-guide-search-count {
+  white-space: nowrap;
+  color: #667080;
+  font-size: 12px;
+}
+.ivc-guide-reading {
+  flex: 1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px 32px 50px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.ivc-guide-chapter-heading {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #dce2eb;
+}
+.ivc-guide-chapter-heading h3 {
+  color: #1e3558;
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.ivc-guide-chapter-heading p {
+  color: #556176;
+  line-height: 1.8;
+}
+.ivc-guide-section {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding-top: 28px;
+}
+.ivc-guide-section + .ivc-guide-section {
+  margin-top: 26px;
+  border-top: 1px solid #e5e8ed;
+}
+.ivc-guide-section h4 {
+  display: block;
+  width: 100%;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.6;
+  color: #283d5d;
+  margin-bottom: 15px;
+}
+.ivc-guide-section p {
+  display: block;
+  width: 100%;
+  color: #354052;
+  margin: 12px 0;
+  line-height: 1.9;
+}
+.ivc-guide-section ul {
+  padding-left: 22px;
+  margin: 14px 0;
+}
+.ivc-guide-section li {
+  margin: 9px 0;
+  padding-left: 2px;
+  line-height: 1.9;
+  color: #354052;
+}
+.ivc-guide-example {
+  margin: 18px 0 !important;
+  min-width: 0;
+  border: 1px solid #d4dce7;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #f7f9fc;
+}
+.ivc-guide-example-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #dfe5ee;
+  background: #edf1f7;
+}
+.ivc-guide-example figcaption {
+  color: #4c5970;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ivc-guide-example-heading button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  color: #27569a;
+  border: 1px solid #c2cee0;
+  border-radius: 3px;
+  font-size: 12px;
+  background: #fff;
+}
+.ivc-guide-example pre {
+  margin: 0;
+  padding: 15px 16px;
+  overflow-x: auto;
+  white-space: pre;
+  color: #233b61;
+  background: transparent;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.85;
+  tab-size: 2;
+}
+.ivc-guide-example code {
+  font: inherit;
+  white-space: inherit;
+}
+.ivc-guide-table-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid #d8dfe9;
+  border-radius: 4px;
+}
+.ivc-guide-table-wrap table {
+  width: 100%;
+  min-width: 360px;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 13px;
+  color: #354052;
+}
+.ivc-guide-table-wrap :is(th, td) {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e6ed;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.8;
+}
+.ivc-guide-table-wrap thead th {
+  color: #344d70;
+  font-weight: 650;
+  background: #f0f3f8;
+}
+.ivc-guide-table-wrap tbody th {
+  width: 29%;
+  min-width: 145px;
+  color: #2b4264;
+  font-weight: 600;
+  background: #fafbfd;
+}
+.ivc-guide-table-wrap tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.ivc-guide-note {
+  display: block;
+  margin: 18px 0;
+  padding: 12px 15px;
+  border-left: 3px solid #6b91c5;
+  background: #f0f4fa;
+  border-radius: 0 4px 4px 0;
+}
+.ivc-guide-note strong {
+  font-size: 13px;
+  color: #30517d;
+  font-weight: 650;
+}
+.ivc-guide-note p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #405472;
+  line-height: 1.85;
+}
+.ivc-guide-no-results {
+  padding: 24px 0;
+  color: #5c6677;
+}
+.ivc-guide-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .ivc-guide-backdrop {
+    padding: 8px;
+  }
+  .ivc-guide-dialog {
+    height: 97dvh;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+  .ivc-guide-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .ivc-guide-sidebar {
+    padding: 7px 10px;
+    border-right: 0;
+    border-bottom: 1px solid #dce0e6;
+    overflow: visible;
+  }
+  .ivc-guide-tabs {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 5px;
+    padding: 3px;
+    overscroll-behavior-x: contain;
+  }
+  .ivc-guide-tabs button {
+    width: auto;
+    flex: 0 0 auto;
+    padding: 7px 9px;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .ivc-guide-toc {
+    display: none;
+  }
+  .ivc-guide-search {
+    padding: 9px 14px;
+  }
+  .ivc-guide-reading {
+    padding: 22px 18px 36px;
+  }
+  .ivc-guide-chapter-heading h3 {
+    font-size: 21px;
+  }
+  .ivc-guide-section h4 {
+    font-size: 17px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ivc-guide-dialog * {
+    scroll-behavior: auto !important;
+  }
+}

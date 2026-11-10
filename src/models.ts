@@ -37,8 +37,8 @@ export type Project = {
 
 export const DEFAULT_PROJECT: Project = {
   mode: 'linear',
-  title: '새 선형 모델',
-  description: '방정식을 한 줄씩 입력하고 조절할 값을 파라미터로 추가하세요.',
+  title: 'New Linear Model',
+  description: '방정식을 입력하고 조절할 값을 Parameter로 추가하세요.',
   source: '',
   parameters: [],
   sweepName: '',
@@ -47,7 +47,7 @@ export const DEFAULT_PROJECT: Project = {
 
 export const DEFAULT_NONLINEAR_PROJECT: Project = {
   mode: 'nonlinear',
-  title: '새 비선형 모델',
+  title: 'New Nonlinear Model',
   description:
     '방정식을 그대로 입력하면 실수 해를 자동으로 탐색합니다. 발견한 해를 선택해 결과를 비교하세요.',
   source: '',

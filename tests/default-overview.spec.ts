@@ -26,7 +26,7 @@ async function open(
     .click()
   await page
     .locator('.workspace-navigation')
-    .getByRole('button', { name: '시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Simulation', exact: true })
     .click()
   return page.getByRole('region', { name: '전체 해 탐색 병합 시뮬레이션' })
 }

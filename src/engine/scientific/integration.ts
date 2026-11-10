@@ -338,6 +338,13 @@ export function solveIntegration(request: ScientificRequest): ScientificResult {
       },
     ],
     values: { integral },
+    integration: {
+      from,
+      to,
+      independent: xName,
+      dependent: yName,
+      value: integral,
+    },
     metrics: [
       {
         label: '정적분',

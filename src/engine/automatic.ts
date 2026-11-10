@@ -172,7 +172,7 @@ function prepare(source: string, parameterNames: string[]): Prepared {
     for (const { text, line } of lines) {
       const sides = text.split('=')
       if (sides.length > 2)
-        throw new ModelError('한 줄에는 등호를 하나만 사용하세요.', line)
+        throw new ModelError('등식의 등호 연결을 확인하세요.', line)
       const residual = sides.length === 2 ? `(${sides[0]})-(${sides[1]})` : text
       const parsed = parseNonlinearExpression(residual, line)
       if (residuals.length === 0) expression = parsed.node

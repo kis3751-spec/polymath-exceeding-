@@ -140,7 +140,7 @@ export default function MergedSimulationSetView({
     )
     const link = document.createElement('a')
     link.href = url
-    link.download = `polymath-${mergedSet.name.replace(/\s+/g, '-')}-data.csv`
+    link.download = `ivc-${mergedSet.name.replace(/\s+/g, '-')}-data.csv`
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }

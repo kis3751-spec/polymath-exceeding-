@@ -56,7 +56,7 @@ import {
   X,
 } from 'lucide-react'
 import SolutionChart, { SERIES_COLORS } from './components/SolutionChart'
-import Guide from './components/Guide'
+import ModuleGuide from './components/ModuleGuide'
 import SimulationPanelView from './components/SimulationPanelView'
 import MergedSimulationSetView from './components/MergedSimulationSetView'
 import { createSolverInput, solverInputKey } from './solver-input'
@@ -1016,7 +1016,7 @@ export default function App() {
   function exportReport() {
     if (!result || pending || error) return
     downloadFile(
-      'polymath-report.md',
+      'ivc-report.md',
       buildReport(
         result,
         automatic && !selectedBranch ? solutionIndex : undefined,
@@ -1030,7 +1030,7 @@ export default function App() {
   function exportAllReports() {
     if (!solutions.length || pending || discoveryPending || error) return
     downloadFile(
-      'polymath-all-solutions.md',
+      'ivc-all-solutions.md',
       solutions.map((item, i) => buildReport(item, i)).join('\n---\n\n'),
       'text/markdown;charset=utf-8',
     )
@@ -1058,9 +1058,9 @@ export default function App() {
     downloadFile(
       automatic
         ? project.selectedAnchor
-          ? `polymath-${project.selectedAnchor.label.replaceAll(' ', '-')}-data.csv`
-          : `polymath-solution-${solutionIndex + 1}-data.csv`
-        : 'polymath-data.csv',
+          ? `ivc-${project.selectedAnchor.label.replaceAll(' ', '-')}-data.csv`
+          : `ivc-solution-${solutionIndex + 1}-data.csv`
+        : 'ivc-data.csv',
       '\uFEFF' + csv,
       'text/csv;charset=utf-8',
     )
@@ -1105,24 +1105,58 @@ export default function App() {
       className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
     >
       <div className="workspace">
-        <header className="topbar">
-          <div className="wordmark">
-            polymath<span>studio</span>
-            <span className="beta">PREVIEW</span>
-          </div>
-          <div className="top-right">
+        <header className="ivc-toolbar">
+          {screen !== 'home' && (
+            <button
+              type="button"
+              className="ivc-home"
+              onClick={() => navigate('home')}
+            >
+              <ArrowRight size={16} className="ivc-back-arrow" /> Home
+            </button>
+          )}
+          <strong className="ivc-brand">
+            {screen === 'home' ? 'IVC' : 'Equation Solver'}
+            {screen === 'home' && <span>Interaction Visual Calculator</span>}
+          </strong>
+          <div className="ivc-toolbar-actions">
+            {screen !== 'home' && (
+              <>
+                <button type="button" onClick={newModel}>
+                  <Plus size={15} /> New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => importRef.current?.click()}
+                >
+                  <FolderOpen size={15} /> Import
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadFile(
+                      'ivc-project.json',
+                      JSON.stringify(project, null, 2),
+                      'application/json',
+                    )
+                    setToast('프로젝트를 JSON 파일로 저장했습니다.')
+                  }}
+                >
+                  <Download size={15} /> Save Project
+                </button>
+              </>
+            )}
             <span className="local-status">
               <i />
-              {storageOk ? '로컬 자동 저장' : '자동 저장 불가'}
+              {storageOk ? 'Autosaved' : 'Save unavailable'}
             </span>
-            <div className="top-divider" />
             <button
               className="quiet-button"
-              aria-label="사용 가이드"
+              aria-label="User Guide"
               onClick={() => setGuide(true)}
             >
-              <CircleHelp size={16} />
-              <span>사용 가이드 · 공식집</span>
+              <BookOpen size={16} />
+              <span>User Guide</span>
             </button>
             <a
               className="github-link"
@@ -1134,6 +1168,16 @@ export default function App() {
               <Code2 size={19} />
             </a>
           </div>
+          <input
+            ref={importRef}
+            type="file"
+            accept=".json,application/json"
+            hidden
+            onChange={(e) => {
+              void importProject(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
         </header>
         {screen === 'home' && (
           <main className="module-home-page" data-screen="home">
@@ -1153,70 +1197,6 @@ export default function App() {
           data-screen={screen}
           className={`workspace-content workspace-screen-${screen}`}
         >
-          <div className="breadcrumbs">
-            <span>계산 도구</span>
-            <ChevronRight size={13} />
-            <span>Equation Solver</span>
-            <ChevronRight size={13} />
-            <span>{nonlinear ? 'Nonlinear' : 'Linear'}</span>
-          </div>
-          <section className="page-heading">
-            <div>
-              <div className="eyebrow">
-                <span /> ENGINEERING TOOLKIT · 01
-              </div>
-              <h1>
-                Equation <span>Solver</span>
-              </h1>
-              <p>
-                {screen === 'model'
-                  ? '수식과 파라미터를 정의하세요.'
-                  : screen === 'simulation'
-                    ? '같은 해의 변화를 그래프로 살펴보세요.'
-                    : '계산 결과와 수치 검증을 확인하세요.'}
-              </p>
-            </div>
-            <div className="heading-actions">
-              <button
-                className="secondary-button new-model-button"
-                onClick={newModel}
-              >
-                <Plus size={16} />
-                <span>새 모델</span>
-              </button>
-              <button
-                className="secondary-button import-button"
-                onClick={() => importRef.current?.click()}
-              >
-                <FolderOpen size={16} />
-                <span>불러오기</span>
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  downloadFile(
-                    'polymath-project.json',
-                    JSON.stringify(project, null, 2),
-                    'application/json',
-                  )
-                  setToast('프로젝트를 JSON 파일로 저장했습니다.')
-                }}
-              >
-                <Download size={16} />
-                <span>프로젝트 저장</span>
-              </button>
-            </div>
-            <input
-              ref={importRef}
-              type="file"
-              accept=".json,application/json"
-              hidden
-              onChange={(e) => {
-                void importProject(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-          </section>
           <div
             className="problem-tabs"
             hidden={screen !== 'model'}
@@ -1231,7 +1211,7 @@ export default function App() {
               onClick={() => switchMode('linear')}
             >
               <Grid2X2 size={16} />
-              Linear<span>선형 방정식</span>
+              Linear
             </button>
             <button
               role="tab"
@@ -1241,11 +1221,8 @@ export default function App() {
               onClick={() => switchMode('nonlinear')}
             >
               <Activity size={16} />
-              Nonlinear<span>비선형 방정식</span>
+              Nonlinear
             </button>
-            <div className="browser-badge">
-              <span />내 브라우저에서 안전하게 연산
-            </div>
           </div>
           {activeExample && !expanded && (
             <ExampleWalkthrough
@@ -1258,14 +1235,14 @@ export default function App() {
             data-screen={screen}
             role={expanded ? 'dialog' : undefined}
             aria-modal={expanded ? true : undefined}
-            aria-label={expanded ? '결과 탐색 전체화면' : undefined}
+            aria-label={expanded ? 'Simulation 전체화면' : undefined}
           >
             <div className="model-column" hidden={screen !== 'model'}>
               <section className="panel model-panel">
                 <div className="panel-heading">
                   <div className="section-label">
                     <span className="step-number">01</span>
-                    <h2>모델 정의</h2>
+                    <h2>Model</h2>
                   </div>
                   {nonlinear && (
                     <div className="examples-wrap" ref={examplesRef}>
@@ -1274,13 +1251,13 @@ export default function App() {
                         aria-expanded={examplesOpen}
                         onClick={() => setExamplesOpen((v) => !v)}
                       >
-                        예제 불러오기
+                        Examples
                         <ChevronDown size={14} />
                       </button>
                       {examplesOpen && (
                         <div className="examples-menu">
                           <span className="menu-label">
-                            수학·과학 예제 · 모델을 선택하세요
+                            Examples · Mathematics & Science
                           </span>
                           {NONLINEAR_EXAMPLES.map((ex) => (
                             <button
@@ -1315,18 +1292,23 @@ export default function App() {
                     {nonlinear ? 'NONLINEAR SYSTEM' : 'LINEAR SYSTEM'}
                   </span>
                 </div>
-                <p className="model-description">{project.description}</p>
+                <p className="model-description">
+                  {project.description.replace(
+                    '방정식을 한 줄씩 입력하고 조절할 값을 파라미터로 추가하세요.',
+                    '방정식을 입력하고 조절할 값을 Parameter로 추가하세요.',
+                  )}
+                </p>
                 <div className="editor-toolbar">
                   <span>
                     <Code2 size={14} />
-                    수식 에디터
+                    Input
                   </span>
                   <span>
                     {nonlinear
                       ? automatic
                         ? '식만 입력 · 실수 해 자동 탐색'
                         : '등식 입력 · 초기값 또는 범위로 한 해 탐색'
-                      : '한 줄에 하나의 방정식'}
+                      : 'Linear equations'}
                   </span>
                 </div>
                 <div
@@ -1401,7 +1383,7 @@ export default function App() {
                     placeholder={
                       nonlinear
                         ? automatic
-                          ? 'x^2 = 4\n\n# 연립식도 한 줄에 하나씩 입력하세요'
+                          ? 'x^2 = 4'
                           : 'x^2 = 4\nx(0) = 1'
                         : '방정식을 입력하세요\n예: 2x + y = 10'
                     }
@@ -1443,7 +1425,7 @@ export default function App() {
                     className="text-button syntax-button"
                     onClick={() => setGuide(true)}
                   >
-                    문법 알아보기
+                    Syntax Guide
                     <ArrowRight size={13} />
                   </button>
                 </div>
@@ -1451,7 +1433,7 @@ export default function App() {
                   <details className="nonlinear-settings">
                     <summary>
                       <Settings2 size={14} />
-                      고급 탐색 설정
+                      Solver Settings
                       <ChevronDown size={13} />
                     </summary>
                     <div className="nonlinear-settings-body">
@@ -1548,8 +1530,10 @@ export default function App() {
                     ) : (
                       <Play size={14} fill="currentColor" />
                     )}
-                    {pending ? '계산 중' : '모델 풀기'}
-                    <span className="button-arrow">↗</span>
+                    {pending ? '계산 중' : 'Solve'}
+                    <span className="button-arrow" aria-hidden="true">
+                      ↗
+                    </span>
                   </button>
                 </div>
               </section>
@@ -1557,7 +1541,7 @@ export default function App() {
                 <div className="panel-heading">
                   <div className="section-label">
                     <span className="step-number">02</span>
-                    <h2>파라미터</h2>
+                    <h2>Parameters</h2>
                     <span className="count-badge">
                       {project.parameters.length}
                     </span>
@@ -1627,7 +1611,7 @@ export default function App() {
                       </div>
                       <div className="range-labels">
                         <span>{fmt(p.min)}</span>
-                        <span>샘플 간격 {String(p.step)}</span>
+                        <span>Sample Spacing {String(p.step)}</span>
                         <span>{fmt(p.max)}</span>
                       </div>
                       {rangeEditor && (
@@ -1665,7 +1649,7 @@ export default function App() {
                   }}
                 >
                   <Plus size={15} />
-                  파라미터 추가
+                  Add Parameter
                 </button>
                 <div className="live-note">
                   <span className="live-dot" />
@@ -1680,14 +1664,14 @@ export default function App() {
                       ? computeError
                       : hasSource
                         ? '설정을 마쳤다면 시뮬레이션으로 이동하세요.'
-                        : '한 줄에 방정식을 하나씩 입력해 시작하세요.'}
+                        : '방정식을 입력해 계산을 시작하세요.'}
                 </p>
                 <button
                   type="button"
                   className="primary-button"
                   onClick={() => navigate('simulation')}
                 >
-                  시뮬레이션 열기 <ArrowRight size={15} />
+                  Open Simulation <ArrowRight size={15} />
                 </button>
               </div>
               <div className="tip-card">
@@ -1717,9 +1701,7 @@ export default function App() {
                 <div className="results-heading">
                   <div className="section-label">
                     <span className="step-number">03</span>
-                    <h2>
-                      {view === 'simulation' ? '시뮬레이션' : '해석 리포트'}
-                    </h2>
+                    <h2>{view === 'simulation' ? 'Simulation' : 'Report'}</h2>
                   </div>
                   <div className="results-heading-right">
                     <span
@@ -1913,7 +1895,7 @@ export default function App() {
                         ? automatic
                           ? '방정식을 그대로 입력하면 실수 해를 자동으로 탐색합니다. 초기값이나 구간을 입력하지 않아도 됩니다.'
                           : '단일근은 탐색 구간을, 연립방정식은 초기 추정값을 함께 적어 주세요.'
-                        : '한 줄에 방정식 하나를 입력하세요. 알려진 값은 파라미터로 등록할 수 있습니다.'}
+                        : '방정식을 입력하세요. 알려진 값은 Parameter로 등록할 수 있습니다.'}
                     </p>
                     {nonlinear && (
                       <button
@@ -2125,7 +2107,7 @@ export default function App() {
                                     className="text-button"
                                     onClick={() => setParamOpen(true)}
                                   >
-                                    첫 파라미터 추가
+                                    Add Parameter
                                     <Plus size={14} />
                                   </button>
                                 </div>
@@ -2215,7 +2197,7 @@ export default function App() {
                             onClick={exportReport}
                           >
                             <Download size={14} />
-                            리포트 저장
+                            Save Report
                           </button>
                         </div>
                         {automatic && solutions.length > 1 && (
@@ -2225,7 +2207,7 @@ export default function App() {
                             onClick={exportAllReports}
                           >
                             <Download size={14} />
-                            모든 해 리포트 저장
+                            Save All Reports
                             <span>{solutions.length}개 해</span>
                           </button>
                         )}
@@ -2255,8 +2237,8 @@ export default function App() {
                             <div>
                               <label htmlFor="condition-norm">
                                 {nonlinear
-                                  ? '국소 조건수 계산 방식'
-                                  : '조건수 계산 방식'}
+                                  ? 'Local Condition Number'
+                                  : 'Condition Number'}
                               </label>
                               <details className="analysis-details condition-help">
                                 <summary>조건수는 어떻게 해석하나요?</summary>
@@ -2312,9 +2294,7 @@ export default function App() {
                           </div>
                         )}
                         <details className="analysis-details technical-diagnostics">
-                          <summary>
-                            조건수·등식 오차·계산 시간 자세히 보기
-                          </summary>
+                          <summary>Numerical Diagnostics</summary>
                           <div
                             className={`report-metrics ${evaluation ? 'evaluation-metrics' : ''}`}
                           >
@@ -2355,7 +2335,7 @@ export default function App() {
                               </div>
                             )}
                             <div>
-                              <span>계산 시간</span>
+                              <span>Runtime</span>
                               <strong>
                                 {fmt(result.durationMs, 3)}
                                 <small> ms</small>
@@ -2428,57 +2408,60 @@ export default function App() {
                             </div>
                           )}
                         </details>
-                        <h4>01 / 입력 모델</h4>
-                        <pre>{project.source}</pre>
-                        <h4>02 / 파라미터</h4>
-                        <div className="report-param-list">
-                          {project.parameters.length ? (
-                            project.parameters.map((p) => (
-                              <span key={p.id}>
-                                {p.name}
-                                <b>{fmt(p.value, 10)}</b>
-                              </span>
-                            ))
-                          ) : (
-                            <p>별도로 정의된 파라미터가 없습니다.</p>
-                          )}
-                        </div>
-                        <h4>03 / 수치 검증</h4>
-                        <p className="report-explanation">
-                          {nonlinear
-                            ? evaluation
-                              ? '명시식의 의존 관계를 확인하여 순서대로 계산합니다.'
-                              : '등식 오차는 구한 해를 넣었을 때 좌변과 우변의 차이입니다. 아래 Jacobian은 해 주변의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
-                            : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 등식 오차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
-                        </p>
-                        {!evaluation && (
-                          <details className="matrix-details">
-                            <summary>
-                              <Grid2X2 size={14} />
-                              <span>
+                        <details className="analysis-details">
+                          <summary>Model & Calculation Details</summary>
+                          <h4>Source</h4>
+                          <pre>{project.source}</pre>
+                          <h4>Parameters</h4>
+                          <div className="report-param-list">
+                            {project.parameters.length ? (
+                              project.parameters.map((p) => (
+                                <span key={p.id}>
+                                  {p.name}
+                                  <b>{fmt(p.value, 10)}</b>
+                                </span>
+                              ))
+                            ) : (
+                              <p>별도로 정의된 파라미터가 없습니다.</p>
+                            )}
+                          </div>
+                          <h4>Numerical Method</h4>
+                          <p className="report-explanation">
+                            {nonlinear
+                              ? evaluation
+                                ? '명시식의 의존 관계를 확인하여 순서대로 계산합니다.'
+                                : '등식 오차는 구한 해를 넣었을 때 좌변과 우변의 차이입니다. 아래 Jacobian은 해 주변의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
+                              : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 등식 오차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
+                          </p>
+                          {!evaluation && (
+                            <details className="matrix-details">
+                              <summary>
+                                <Grid2X2 size={14} />
+                                <span>
+                                  {nonlinear
+                                    ? 'Jacobian·수치 검증 자세히 보기'
+                                    : '행렬·수치 검증 자세히 보기'}
+                                </span>
+                                <ChevronDown size={15} />
+                              </summary>
+                              <p>
                                 {nonlinear
-                                  ? 'Jacobian·수치 검증 자세히 보기'
-                                  : '행렬·수치 검증 자세히 보기'}
-                              </span>
-                              <ChevronDown size={15} />
-                            </summary>
-                            <p>
-                              {nonlinear
-                                ? '해 주변의 Jacobian J와 각 방정식의 좌변·우변 차이를 확인합니다. 수치 계산의 수렴과 민감도를 검토할 수 있습니다.'
-                                : '수식을 A·x = b로 변환한 계수와 우변을 확인합니다. 부호나 누락된 항을 검토할 때 활용하세요.'}
-                            </p>
-                            <MatrixView result={result} />
-                            <div className="residual-list">
-                              {result.residuals.map((r, i) => (
-                                <div key={i}>
-                                  <span>방정식 {i + 1}</span>
-                                  <code>{r.toExponential(3)}</code>
-                                  <CheckCircle2 size={13} />
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
+                                  ? '해 주변의 Jacobian J와 각 방정식의 좌변·우변 차이를 확인합니다. 수치 계산의 수렴과 민감도를 검토할 수 있습니다.'
+                                  : '수식을 A·x = b로 변환한 계수와 우변을 확인합니다. 부호나 누락된 항을 검토할 때 활용하세요.'}
+                              </p>
+                              <MatrixView result={result} />
+                              <div className="residual-list">
+                                {result.residuals.map((r, i) => (
+                                  <div key={i}>
+                                    <span>방정식 {i + 1}</span>
+                                    <code>{r.toExponential(3)}</code>
+                                    <CheckCircle2 size={13} />
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          )}
+                        </details>
                       </div>
                     )}
                     <div className="result-footer">
@@ -2521,13 +2504,13 @@ export default function App() {
                       disabled={pending || discoveryPending}
                       onClick={() =>
                         downloadFile(
-                          'polymath-verification-report.md',
+                          'ivc-verification-report.md',
                           `# ${project.title}\n\n${certificateReport(certificateWithoutRoot)}\n\n## 입력 모델\n\n\`\`\`text\n${project.source}\n\`\`\``,
                           'text/markdown;charset=utf-8',
                         )
                       }
                     >
-                      검증 리포트 저장
+                      Save Verification Report
                     </button>
                   </section>
                 )}
@@ -2801,7 +2784,11 @@ export default function App() {
           </div>
           <footer className="page-footer">
             <span>
-              polymath<span className="footer-studio"> studio</span>
+              IVC
+              <span className="footer-studio">
+                {' '}
+                Interaction Visual Calculator
+              </span>
               <i />
               모델링의 다음 가능성
             </span>
@@ -2833,7 +2820,9 @@ export default function App() {
           </button>
         </div>
       )}
-      {guide && <Guide mode={mode} onClose={() => setGuide(false)} />}
+      {guide && (
+        <ModuleGuide initialTopic={mode} onClose={() => setGuide(false)} />
+      )}
       {paramOpen && (
         <div className="modal-backdrop" onClick={() => setParamOpen(false)}>
           <section
@@ -2892,7 +2881,7 @@ export default function App() {
                 </button>
                 <button className="primary-button" type="submit">
                   <Plus size={15} />
-                  파라미터 추가
+                  Add Parameter
                 </button>
               </div>
             </form>
@@ -3292,7 +3281,7 @@ function IntervalCertificateView({
         className="outline-button"
         onClick={() =>
           downloadFile(
-            'polymath-interval-verification.md',
+            'ivc-interval-verification.md',
             certificateReport(c),
             'text/markdown;charset=utf-8',
           )

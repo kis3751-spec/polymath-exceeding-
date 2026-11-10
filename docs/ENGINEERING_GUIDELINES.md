@@ -91,3 +91,12 @@
 - 이산 적분은 보간 모델을 명시하고 표 범위 밖 외삽을 승인하지 않습니다. 서로 다른 x축/단위의 데이터·누적량·수렴 이력은 별도 그래프 모드로 나눕니다.
 - 파라미터·모델이 바뀌면 과거 결과를 현재 수치로 내보내지 않습니다. 새 Worker 요청은 이전 계산을 종료하고 결과 ID를 확인합니다. 표는 페이지로 표시하고 CSV에는 전체 행을 보존합니다.
 - 검증된 확률 범위는 원래 함수와 유한 범위의 명시적 단일 Gaussian 오프셋에 한정합니다. 목록 대조 전 100% 승인과 미산정값의 0% 대체를 하지 않습니다. Markdown 내보내기도 화면과 같은 바깥쪽 반올림 원칙을 유지합니다.
+
+## IVC 화면·교재·통계 표기
+
+- 제품 표기는 Interaction Visual Calculator (IVC)로 통일합니다. 기존 브라우저 저장 키·프로젝트 호환성은 이름 변경과 별개로 보존합니다.
+- 모든 모듈은 동일한 compact toolbar와 Model & Data / Simulation / Report 흐름을 사용합니다. Technical terms는 English, 사용법과 지표 해석은 한국어로 설명합니다. 핵심 결과·계수·2~3개 지표를 우선 보여주고 고급 진단·가정은 접어 둡니다.
+- User Guide는 Linear / Nonlinear / ODE / 각 회귀 / Integration / Optimization / LSQ의 독립 탭입니다. 새 기능은 해당 탭에 입력 예제, 예상 결과, 숫자 해석, 알고리즘의 역할, 지원 범위·오해를 함께 갱신합니다. 초보자가 다른 모듈의 설명을 읽어야만 시작할 수 없게 합니다.
+- 회귀 선택 UI는 polyfit 명령 등 실제 Input을 수정합니다. UI와 문법에 서로 다른 숨은 설정을 만들지 않습니다. 기존 입력을 바꾸면 계산 결과와 다운로드는 최신 작업 완료 전까지 stale로 처리합니다.
+- 95% CI는 유한 Degrees of Freedom의 Student-t 임계값과 계수 공분산을 사용합니다. RMSE, R², Prediction Interval, 수치 오차 상한, Gaussian root-count 확률과 구분합니다. Origin 고정 계수·자유도 부족·활성 경계·수렴 실패·최종 Jacobian의 미분 불가 차분 대체를 일반 CI로 표시하지 않습니다. 중앙차분의 가짜 full rank를 통계적 식별 근거로 승격하지 않습니다. 비선형 CI는 Local Approximation이라고 명시합니다.
+- 적분 음영은 실제 계산 범위를 표시하고 signed integral과 연결합니다. 출력 샘플을 늘리는 행위와 측정 데이터·수치 정확도 증가를 혼동하지 않게 합니다. Phase Plot의 X/Y 축에는 실제 선택한 변수를 표시합니다.

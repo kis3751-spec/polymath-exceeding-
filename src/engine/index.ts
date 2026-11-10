@@ -316,7 +316,7 @@ export function compileModel(source: string): Compiled {
     const sides = text.split('=')
     if (sides.length !== 2 || !sides[0].trim() || !sides[1].trim())
       throw new ModelError(
-        '한 줄에 완성된 등식 하나를 입력해 주세요. 예: 2x + y = 10',
+        '완성된 등식을 입력해 주세요. 예: 2x + y = 10',
         i + 1,
       )
     try {

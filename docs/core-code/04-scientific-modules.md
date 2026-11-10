@@ -12,7 +12,7 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `64115745cf6867b6fc2b5c4b9520f73a9bd84c5a30c04cdb78f428c49173afc0`
+소스 묶음 SHA-256: `3f79f951013e5a208ed4f4c7853f0e4bde2d3b366ced30fb47193f8e7526d536`
 
 ## 다른 코드 묶음
 
@@ -30,22 +30,27 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 - [src/engine/scientific/ode.ts](#source-5) · [저장소 원본](../../src/engine/scientific/ode.ts)
 - [src/engine/scientific/ode-examples.ts](#source-6) · [저장소 원본](../../src/engine/scientific/ode-examples.ts)
 - [src/engine/scientific/fitting.ts](#source-7) · [저장소 원본](../../src/engine/scientific/fitting.ts)
-- [src/engine/scientific/fitting-examples.ts](#source-8) · [저장소 원본](../../src/engine/scientific/fitting-examples.ts)
-- [src/engine/scientific/integration.ts](#source-9) · [저장소 원본](../../src/engine/scientific/integration.ts)
-- [src/engine/scientific/integration-examples.ts](#source-10) · [저장소 원본](../../src/engine/scientific/integration-examples.ts)
-- [src/engine/scientific/optimization.ts](#source-11) · [저장소 원본](../../src/engine/scientific/optimization.ts)
-- [src/engine/scientific/optimization-examples.ts](#source-12) · [저장소 원본](../../src/engine/scientific/optimization-examples.ts)
-- [src/engine/scientific/worker.ts](#source-13) · [저장소 원본](../../src/engine/scientific/worker.ts)
-- [src/components/ScientificWorkspace.tsx](#source-14) · [저장소 원본](../../src/components/ScientificWorkspace.tsx)
-- [src/components/ScientificWorkspace.css](#source-15) · [저장소 원본](../../src/components/ScientificWorkspace.css)
-- [src/components/ScientificChart.tsx](#source-16) · [저장소 원본](../../src/components/ScientificChart.tsx)
-- [src/components/ScientificChart.css](#source-17) · [저장소 원본](../../src/components/ScientificChart.css)
+- [src/engine/scientific/statistics.ts](#source-8) · [저장소 원본](../../src/engine/scientific/statistics.ts)
+- [src/engine/scientific/fitting-examples.ts](#source-9) · [저장소 원본](../../src/engine/scientific/fitting-examples.ts)
+- [src/engine/scientific/integration.ts](#source-10) · [저장소 원본](../../src/engine/scientific/integration.ts)
+- [src/engine/scientific/integration-examples.ts](#source-11) · [저장소 원본](../../src/engine/scientific/integration-examples.ts)
+- [src/engine/scientific/optimization.ts](#source-12) · [저장소 원본](../../src/engine/scientific/optimization.ts)
+- [src/engine/scientific/optimization-examples.ts](#source-13) · [저장소 원본](../../src/engine/scientific/optimization-examples.ts)
+- [src/engine/scientific/worker.ts](#source-14) · [저장소 원본](../../src/engine/scientific/worker.ts)
+- [src/components/ScientificWorkspace.tsx](#source-15) · [저장소 원본](../../src/components/ScientificWorkspace.tsx)
+- [src/components/ScientificWorkspace.css](#source-16) · [저장소 원본](../../src/components/ScientificWorkspace.css)
+- [src/components/ScientificChart.tsx](#source-17) · [저장소 원본](../../src/components/ScientificChart.tsx)
+- [src/components/ScientificChart.css](#source-18) · [저장소 원본](../../src/components/ScientificChart.css)
+- [src/components/scientific-chart-geometry.ts](#source-19) · [저장소 원본](../../src/components/scientific-chart-geometry.ts)
+- [src/components/ScientificOutput.tsx](#source-20) · [저장소 원본](../../src/components/ScientificOutput.tsx)
+- [src/components/RegressionResult.tsx](#source-21) · [저장소 원본](../../src/components/RegressionResult.tsx)
+- [src/components/RegressionResult.css](#source-22) · [저장소 원본](../../src/components/RegressionResult.css)
 
 <a id="source-1"></a>
 
 ## src/engine/scientific/types.ts
 
-원본: [src/engine/scientific/types.ts](../../src/engine/scientific/types.ts) · 49줄 · SHA-256: `c4f113b6173f90df250a2f39547c7e2ea339e59f282237ea1d02caa8a0083062`
+원본: [src/engine/scientific/types.ts](../../src/engine/scientific/types.ts) · 81줄 · SHA-256: `b5e5e0c68b8b00be7691b55f5a8b81c3dba63743f7ce91643064fe65c6eff3c1`
 
 ```typescript
 export type ScientificModule =
@@ -81,6 +86,24 @@ export type ScientificMetric = {
   value: number | string
   detail: string
 }
+export type ScientificCoefficient = {
+  name: string
+  estimate: number
+  standardError?: number
+  confidence95?: { lower: number; upper: number; halfWidth: number }
+  fixed?: boolean
+  note?: string
+}
+export type RegressionDiagnostics = {
+  model: string
+  sampleCount: number
+  parameterCount: number
+  degreesOfFreedom: number
+  rank?: number
+  origin: boolean
+  confidenceMethod: 'linear-normal' | 'nonlinear-local'
+  confidenceUnavailableReason?: string
+}
 export type ScientificResult = {
   module: ScientificModule
   method: string
@@ -96,6 +119,20 @@ export type ScientificResult = {
   evaluations?: number
   durationMs: number
   formula?: string
+  coefficients?: ScientificCoefficient[]
+  regression?: RegressionDiagnostics
+  comparison?: {
+    observed: number[]
+    predicted: number[]
+    dependent: string
+  }
+  integration?: {
+    from: number
+    to: number
+    independent: string
+    dependent: string
+    value: number
+  }
 }
 ```
 
@@ -1111,7 +1148,7 @@ t|0:1`,
 
 ## src/engine/scientific/fitting.ts
 
-원본: [src/engine/scientific/fitting.ts](../../src/engine/scientific/fitting.ts) · 906줄 · SHA-256: `47434897094d074c8bdd47cadb4e072d199392f0e4190261940ce8a33dd35143`
+원본: [src/engine/scientific/fitting.ts](../../src/engine/scientific/fitting.ts) · 1,016줄 · SHA-256: `6a4c8a633b2bafef0489773a3bdac9871ea12bbfd28f5b53b6e0bb596d75fd71`
 
 ```typescript
 import { Matrix, SingularValueDecomposition } from 'ml-matrix'
@@ -1121,7 +1158,9 @@ import { evaluateDual, type Dual } from '../expression-derivative'
 import { preprocessSolverSource } from '../preprocessor'
 import { compileAssignments, compileExpression } from './expression'
 import { parseDataTable } from './data'
+import { coefficientConfidence95, studentTCritical95 } from './statistics'
 import type {
+  ScientificCoefficient,
   ScientificMetric,
   ScientificRequest,
   ScientificResult,
@@ -1234,12 +1273,12 @@ function summary(
         '측정값 평균만 사용하는 모델에 비해 제곱오차를 얼마나 줄였는지 나타냅니다. 음수도 가능하며, 높은 값만으로 물리적 타당성이나 외삽 정확도를 보장하지 않습니다.',
     },
     {
-      label: '최대 절대 오차',
+      label: 'Max absolute error',
       value: Math.max(...residuals.map(Math.abs)),
       detail: '입력한 데이터 점 중 예측값과 가장 크게 벌어진 점의 차이입니다.',
     },
     {
-      label: '잔차 자유도',
+      label: 'Degrees of freedom',
       value: df,
       detail:
         '데이터 행 수에서 추정한 계수 수를 뺀 값입니다. 0 이하이면 데이터로 오차 분산이나 계수 표준오차를 추정할 여유가 없습니다.',
@@ -1253,7 +1292,7 @@ function summary(
   ]
   if (r2 !== undefined && df > 0 && y.length > 1)
     metrics.push({
-      label: '조정 R²',
+      label: 'Adjusted R²',
       value: 1 - ((1 - r2) * (y.length - 1)) / df,
       detail:
         '계수 수 증가에 따른 과적합을 일부 보정한 평균 기준의 설명력입니다. 같은 종속변수·같은 데이터로 계산한 모델을 비교하세요.',
@@ -1502,25 +1541,48 @@ function linearFit(
     warnings.push(
       '원점 통과를 강제한 모델입니다. R²는 데이터 평균 기준으로 계산했으므로 음수가 될 수 있습니다.',
     )
+  const coefficientRows: ScientificCoefficient[] = labels
+    .map((name, i) => ({
+      name,
+      estimate: coefficients[i],
+      fixed: poly && origin && i === 0,
+    }))
+    .filter((row) => Number.isFinite(row.estimate))
   if (stats.df > 0) {
     const errors = standardErrors(
       solved.svd,
       transform,
       Math.sqrt(stats.sseNormalized / stats.df) * yScale,
     )
+    const critical = studentTCritical95(stats.df)
     errors.forEach((v, i) => {
-      if (Number.isFinite(v)) values[`SE_${labels[i]}`] = v
+      if (!Number.isFinite(v)) return
+      values[`SE_${labels[i]}`] = v
+      const row = coefficientRows.find((r) => r.name === labels[i])
+      if (row && !row.fixed) {
+        row.standardError = v
+        row.confidence95 = coefficientConfidence95(row.estimate, v, critical)
+        if (!row.confidence95) row.note = '구간 폭이 Float64 범위를 넘었습니다.'
+      }
     })
   }
+  for (const row of coefficientRows)
+    if (row.fixed)
+      row.note = 'Origin 조건으로 0에 고정한 값이며 추정한 계수가 아닙니다.'
+    else if (!row.confidence95 && !row.note)
+      row.note =
+        stats.df <= 0
+          ? 'Degrees of freedom이 0이어서 오차 분산을 추정할 수 없습니다.'
+          : '원래 계수의 Standard Error를 유한한 값으로 계산할 수 없습니다.'
   stats.metrics.push(
     {
-      label: '식별 랭크',
+      label: 'Rank',
       value: `${solved.rank} / ${p}`,
       detail:
         '정규화한 설계행렬의 수치 랭크입니다. 모든 계수를 독립적으로 구분할 수 있을 때만 결과를 반환합니다.',
     },
     {
-      label: '설계행렬 조건수',
+      label: 'Design condition number',
       value: numeric(solved.condition),
       detail:
         '정규화한 설명변수에서 계수 추정의 수치 민감도를 나타냅니다. 측정 데이터의 정확성이나 모델의 신뢰 확률은 아닙니다.',
@@ -1567,7 +1629,7 @@ function linearFit(
     : `${dependent} = ${[...(!origin ? [print(coefficients[0])] : []), ...predictors.map((name, j) => `${print(coefficients[j + (origin ? 0 : 1)])}*${name}`)].join(' + ')}`
   return {
     module: request.module,
-    method: '정규화 SVD 최소제곱',
+    method: 'Normalized SVD least squares',
     status: 'completed',
     columns: [...parsed.table.columns, 'prediction', 'data_error'],
     rows: parsed.table.rows.map((row, i) => [
@@ -1581,6 +1643,31 @@ function linearFit(
     warnings,
     durationMs: performance.now() - start,
     formula,
+    coefficients: coefficientRows,
+    regression: {
+      model: poly
+        ? `${dependent} = ${Array.from(
+            { length: degree + (origin ? 0 : 1) },
+            (_, j) => {
+              const k = j + (origin ? 1 : 0)
+              return `a${k}${k ? `*${predictors[0]}${k > 1 ? `^${k}` : ''}` : ''}`
+            },
+          ).join(' + ')}`
+        : `${dependent} = ${[...(!origin ? ['intercept'] : []), ...predictors.map((name) => `b_${name}*${name}`)].join(' + ')}`,
+      sampleCount: y.length,
+      parameterCount: p,
+      degreesOfFreedom: stats.df,
+      rank: solved.rank,
+      origin,
+      confidenceMethod: 'linear-normal',
+      ...(stats.df <= 0
+        ? {
+            confidenceUnavailableReason:
+              'Degrees of freedom이 0이어서 Standard Error와 95% CI를 추정하지 않습니다.',
+          }
+        : {}),
+    },
+    comparison: { observed: [...y], predicted: [...pred], dependent },
   }
 }
 
@@ -1679,7 +1766,8 @@ function nonlinearFit(
     )
   const yScale = Math.max(...y.map(Math.abs)) || 1
   let evaluations = 0,
-    usedDifference = false
+    usedDifference = false,
+    lastJacobianUsedDifference = false
   const predict = (theta: number[]) => {
     evaluations++
     const params = Object.fromEntries(names.map((name, j) => [name, theta[j]]))
@@ -1690,6 +1778,7 @@ function nonlinearFit(
     return values.map((v) => v / yScale)
   }
   const jacobian = (theta: number[], base: number[]) => {
+    lastJacobianUsedDifference = false
     const params = Object.fromEntries(names.map((name, j) => [name, theta[j]]))
     const cols = names.map((name, j) => {
       const values = parsed.raw.map((row) => {
@@ -1718,6 +1807,7 @@ function nonlinearFit(
       )
         return values.map((v) => v / yScale)
       usedDifference = true
+      lastJacobianUsedDifference = true
       let h = Math.sqrt(Number.EPSILON) * Math.max(Math.abs(theta[j]), 1)
       const bound = parsed.bounds.get(name) ?? { min: -Infinity, max: Infinity }
       for (let attempt = 0; attempt < 12; attempt++, h /= 2) {
@@ -1870,6 +1960,10 @@ function nonlinearFit(
     values = Object.fromEntries(names.map((name, i) => [name, theta[i]])),
     warnings = [...stats.warnings]
   finalJ = jacobian(theta, pred)
+  // A central secant across a kink may have full rank even when the model
+  // is not locally differentiable or identifiable (e.g. a + abs(a) at a=0).
+  // Keep that secant for numerical iteration, not for statistical inference.
+  const regularDerivative = !lastJacobianUsedDifference
   const finalScales = names.map(
     (_, k) => Math.hypot(...finalJ.map((row) => row[k])) || 1,
   )
@@ -1884,8 +1978,22 @@ function nonlinearFit(
     converged = false
     stop = '수렴 위치의 Jacobian 랭크가 부족해 계수를 구분할 수 없습니다.'
   }
+  const coefficientRows: ScientificCoefficient[] = names.map((name, i) => ({
+    name,
+    estimate: theta[i],
+  }))
+  const confidenceUnavailableReason = !regularDerivative
+    ? '최종 적합점에서 정칙 미분을 확인하지 못해 유한차분을 사용했습니다. 차분의 랭크나 작은 수치 오차만으로 계수 식별을 판단할 수 없어 Standard Error와 95% CI를 제공하지 않습니다.'
+    : !converged
+      ? '최소제곱 수렴 조건을 만족하지 않아 계수의 95% CI를 제공하지 않습니다.'
+      : stats.df <= 0
+        ? 'Degrees of freedom이 0이어서 오차 분산을 추정할 수 없습니다.'
+        : activeBounds.length
+          ? '활성 경계에 놓인 계수가 있어 대칭적인 95% CI를 제공하지 않습니다.'
+          : undefined
   if (
     converged &&
+    regularDerivative &&
     stats.df > 0 &&
     svd.rank === names.length &&
     !activeBounds.length
@@ -1897,10 +2005,24 @@ function nonlinearFit(
       ),
       Math.sqrt(stats.sseNormalized / stats.df),
     )
+    const critical = studentTCritical95(stats.df)
     errors.forEach((v, i) => {
-      if (Number.isFinite(v)) values[`SE_${names[i]}`] = v
+      if (!Number.isFinite(v)) return
+      values[`SE_${names[i]}`] = v
+      coefficientRows[i].standardError = v
+      coefficientRows[i].confidence95 = coefficientConfidence95(
+        theta[i],
+        v,
+        critical,
+      )
     })
   }
+  coefficientRows.forEach((row) => {
+    if (!row.confidence95)
+      row.note =
+        confidenceUnavailableReason ??
+        '국소 오차 구간을 유한한 값으로 계산할 수 없습니다.'
+  })
   if (!converged) warnings.push(stop)
   if (activeBounds.length)
     warnings.push(
@@ -1908,20 +2030,29 @@ function nonlinearFit(
     )
   if (usedDifference)
     warnings.push(
-      '일부 비매끄러운 지점 또는 경계에서 유한차분 Jacobian을 사용했습니다. 이 지점의 계수 민감도는 국소 근사입니다.',
+      regularDerivative
+        ? '일부 반복에서 유한차분 Jacobian을 사용했습니다. 최종 적합점에서는 자동미분이 가능하여 해당 위치의 국소 통계 추정만 제공합니다.'
+        : confidenceUnavailableReason!,
     )
   warnings.push(
     '비선형 회귀는 초기값에 따른 국소 최소제곱 해입니다. 다른 초기값에서 더 나은 해가 있을 수 있습니다. 계수 표준오차는 독립·동일분산 오차 및 국소 선형화 가정의 추정치입니다.',
   )
   stats.metrics.push(
+    regularDerivative
+      ? {
+          label: 'Jacobian rank',
+          value: `${svd.rank} / ${names.length}`,
+          detail:
+            '현재 적합점에서 데이터가 계수 변화에 독립적으로 반응하는지 보여줍니다. 랭크가 부족하면 계수의 유일한 식별을 주장하지 않습니다.',
+        }
+      : {
+          label: 'Derivative regularity',
+          value: 'Not verified',
+          detail:
+            '최종 적합점의 자동미분이 실패해 유한차분으로 반복을 마쳤습니다. 비매끄러운 점에서는 양측 차분이 실제로 존재하지 않는 기울기를 만들 수 있으므로, 차분 행렬의 랭크를 계수의 국소 식별 근거로 표시하지 않습니다.',
+        },
     {
-      label: 'Jacobian 랭크',
-      value: `${svd.rank} / ${names.length}`,
-      detail:
-        '현재 적합점에서 데이터가 계수 변화에 독립적으로 반응하는지 보여줍니다. 랭크가 부족하면 계수의 유일한 식별을 주장하지 않습니다.',
-    },
-    {
-      label: '반복 횟수',
+      label: 'Iterations',
       value: iteration,
       detail:
         '감쇠 계수를 조정하며 수행한 Levenberg–Marquardt 반복 횟수입니다. 반복 상한 도달은 수렴으로 표시하지 않습니다.',
@@ -1986,7 +2117,7 @@ function nonlinearFit(
   const formula = `${parsed.dependent} = ${parsed.expression}; ${names.map((name, i) => `${name}=${print(theta[i])}`).join(', ')}`
   return {
     module: request.module,
-    method: '감쇠 Levenberg–Marquardt · SVD',
+    method: 'Damped Levenberg–Marquardt · SVD',
     status: converged ? 'converged' : 'stopped',
     message: converged ? '국소 최소제곱 수렴 조건을 만족했습니다.' : stop,
     columns: [...parsed.table.columns, 'prediction', 'data_error'],
@@ -2003,6 +2134,22 @@ function nonlinearFit(
     evaluations,
     durationMs: performance.now() - start,
     formula,
+    coefficients: coefficientRows,
+    regression: {
+      model: `${parsed.dependent} = ${parsed.expression}`,
+      sampleCount: y.length,
+      parameterCount: names.length,
+      degreesOfFreedom: stats.df,
+      ...(regularDerivative ? { rank: svd.rank } : {}),
+      origin: false,
+      confidenceMethod: 'nonlinear-local',
+      confidenceUnavailableReason,
+    },
+    comparison: {
+      observed: [...y],
+      predicted: [...predicted],
+      dependent: parsed.dependent,
+    },
   }
 }
 
@@ -2023,6 +2170,113 @@ export function solveFitting(request: ScientificRequest): ScientificResult {
 ```
 
 <a id="source-8"></a>
+
+## src/engine/scientific/statistics.ts
+
+원본: [src/engine/scientific/statistics.ts](../../src/engine/scientific/statistics.ts) · 98줄 · SHA-256: `c9afe3e033931a239e6d7a99a0e4b8ef2aea1642cf759786343af6e1c38a1314`
+
+```typescript
+// Statistical (not interval-certified) Student-t confidence calculations.
+// The incomplete beta continued fraction uses Lentz's method; all inputs to
+// this module come from a finite, positive regression degrees of freedom.
+const lanczos = [
+  676.5203681218851, -1259.1392167224028, 771.3234287776531, -176.6150291621406,
+  12.507343278686905, -0.13857109526572012, 9.984369578019572e-6,
+  1.5056327351493116e-7,
+]
+function logGamma(z: number): number {
+  if (z < 0.5)
+    return Math.log(Math.PI) - Math.log(Math.sin(Math.PI * z)) - logGamma(1 - z)
+  const a = z - 1
+  let x = 0.9999999999998099
+  for (let i = 0; i < lanczos.length; i++) x += lanczos[i] / (a + i + 1)
+  const t = a + 7.5
+  return 0.5 * Math.log(2 * Math.PI) + (a + 0.5) * Math.log(t) - t + Math.log(x)
+}
+function betaFraction(a: number, b: number, x: number): number {
+  const tiny = 1e-300
+  const guard = (v: number) => (Math.abs(v) < tiny ? (v < 0 ? -tiny : tiny) : v)
+  const qab = a + b,
+    qap = a + 1,
+    qam = a - 1
+  let c = 1,
+    d = 1 / guard(1 - (qab * x) / qap),
+    h = d
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m
+    let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2))
+    d = 1 / guard(1 + aa * d)
+    c = guard(1 + aa / c)
+    h *= d * c
+    aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2))
+    d = 1 / guard(1 + aa * d)
+    c = guard(1 + aa / c)
+    const change = d * c
+    h *= change
+    if (Math.abs(change - 1) <= 8 * Number.EPSILON) return h
+  }
+  throw new Error('Student-t incomplete beta did not converge.')
+}
+function regularizedBeta(x: number, a: number, b: number): number {
+  if (x <= 0) return 0
+  if (x >= 1) return 1
+  const front = Math.exp(
+    logGamma(a + b) -
+      logGamma(a) -
+      logGamma(b) +
+      a * Math.log(x) +
+      b * Math.log1p(-x),
+  )
+  const result =
+    x < (a + 1) / (a + b + 2)
+      ? (front * betaFraction(a, b, x)) / a
+      : 1 - (front * betaFraction(b, a, 1 - x)) / b
+  return Math.max(0, Math.min(1, result))
+}
+/** Two-sided 95% Student-t critical value, using the upper tail to avoid
+ * subtracting a CDF close to one. Valid for finite positive degrees of freedom. */
+export function studentTCritical95(df: number): number {
+  if (!(df > 0) || !Number.isFinite(df))
+    throw new RangeError(
+      'Student-t degrees of freedom must be positive and finite.',
+    )
+  const tail = (t: number) =>
+    0.5 * regularizedBeta(df / (df + t * t), df / 2, 0.5)
+  let low = 0,
+    high = 2
+  while (tail(high) > 0.025 && Number.isFinite(high)) high *= 2
+  if (!Number.isFinite(high))
+    throw new RangeError('Student-t critical value exceeded Float64.')
+  for (let i = 0; i < 90; i++) {
+    const mid = low / 2 + high / 2
+    if (mid === low || mid === high) break
+    if (tail(mid) > 0.025) low = mid
+    else high = mid
+  }
+  return low / 2 + high / 2
+}
+
+export function coefficientConfidence95(
+  estimate: number,
+  standardError: number,
+  critical: number,
+) {
+  if (
+    ![estimate, standardError, critical].every(Number.isFinite) ||
+    standardError < 0 ||
+    critical <= 0
+  )
+    return undefined
+  const halfWidth = critical * standardError
+  const lower = estimate - halfWidth,
+    upper = estimate + halfWidth
+  return Number.isFinite(lower) && Number.isFinite(upper)
+    ? { lower, upper, halfWidth }
+    : undefined
+}
+```
+
+<a id="source-9"></a>
 
 ## src/engine/scientific/fitting-examples.ts
 
@@ -2135,11 +2389,11 @@ k(min)=0`,
 ]
 ```
 
-<a id="source-9"></a>
+<a id="source-10"></a>
 
 ## src/engine/scientific/integration.ts
 
-원본: [src/engine/scientific/integration.ts](../../src/engine/scientific/integration.ts) · 372줄 · SHA-256: `982883bf58c1be7e923557f044c5e18b493f1a7be593c06254f771923068d6ed`
+원본: [src/engine/scientific/integration.ts](../../src/engine/scientific/integration.ts) · 379줄 · SHA-256: `40191e64fae159262c90bbdec6e430871f695a08153a9072fd7a73dc7f54a7fa`
 
 ```typescript
 import { ModelError } from '../index'
@@ -2482,6 +2736,13 @@ export function solveIntegration(request: ScientificRequest): ScientificResult {
       },
     ],
     values: { integral },
+    integration: {
+      from,
+      to,
+      independent: xName,
+      dependent: yName,
+      value: integral,
+    },
     metrics: [
       {
         label: '정적분',
@@ -2516,7 +2777,7 @@ export function solveIntegration(request: ScientificRequest): ScientificResult {
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-11"></a>
 
 ## src/engine/scientific/integration-examples.ts
 
@@ -2578,7 +2839,7 @@ integrate y(x) 0 4 200 akm`,
 ]
 ```
 
-<a id="source-11"></a>
+<a id="source-12"></a>
 
 ## src/engine/scientific/optimization.ts
 
@@ -3385,7 +3646,7 @@ function safe<T>(fn: () => T): T | undefined {
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-13"></a>
 
 ## src/engine/scientific/optimization-examples.ts
 
@@ -3442,7 +3703,7 @@ export const optimizationExamples: {
 ]
 ```
 
-<a id="source-13"></a>
+<a id="source-14"></a>
 
 ## src/engine/scientific/worker.ts
 
@@ -3480,11 +3741,11 @@ self.onmessage = async ({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-15"></a>
 
 ## src/components/ScientificWorkspace.tsx
 
-원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,242줄 · SHA-256: `25bb0e69a06a033369484eedd58d6f8c08662628af3e38f948bd65422ddbcccb`
+원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,225줄 · SHA-256: `da828e9701b18dca7e05bda4811328580afe667c919285bf7c67c0cf7d6911d5`
 
 ```tsx
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -3496,7 +3757,6 @@ import {
   Play,
   Pause,
   Save,
-  X,
 } from 'lucide-react'
 import { encodeCsv } from '../csv'
 import type {
@@ -3511,6 +3771,9 @@ import {
   scientificTitles,
 } from '../engine/scientific/catalog'
 import ScientificChart from './ScientificChart'
+import ModuleGuide from './ModuleGuide'
+import RegressionResult from './RegressionResult'
+import ScientificOutput, { IntegralFormula } from './ScientificOutput'
 import './ScientificWorkspace.css'
 
 type Draft = {
@@ -3526,7 +3789,7 @@ type Props = {
 const storageKey = (m: string) => `polymath-scientific-${m}-v1`
 const format = (x: number) =>
   !Number.isFinite(x)
-    ? '산정 불가'
+    ? 'N/A'
     : x === 0
       ? '0'
       : Math.abs(x) < 0.0001 || Math.abs(x) > 1e7
@@ -3594,15 +3857,8 @@ function constants(source: string) {
   }
   return list
 }
-const labels: Record<ScientificModule, string> = {
-  ode: '미분방정식',
-  'curve-fit': '선형·다항 회귀',
-  multilinear: '다중선형 회귀',
-  'nonlinear-fit': '비선형 회귀',
-  integration: '이산 적분',
-  optimization: '제약 최적화',
-  lsq: '최소제곱 최적화',
-}
+const labels = scientificTitles
+
 export default function ScientificWorkspace({
   module,
   onHome,
@@ -3717,40 +3973,29 @@ export default function ScientificWorkspace({
     )
     return () => clearInterval(t)
   }, [playing, result, screen])
-  useEffect(() => {
-    if (!guide) return
-    const before = document.activeElement as HTMLElement | null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setGuide(false)
-      if (e.key === 'Tab') {
-        const dialog = document.querySelector<HTMLElement>(
-          '.science-guide-modal',
-        )
-        const controls = Array.from(
-          dialog?.querySelectorAll<HTMLElement>(
-            'button,a,input,select,summary,[tabindex="0"]',
-          ) ?? [],
-        )
-        const first = controls[0],
-          last = controls.at(-1)
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last?.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first?.focus()
-        }
-      }
-    }
-    document.addEventListener('keydown', key)
-    return () => {
-      document.removeEventListener('keydown', key)
-      document.body.style.overflow = previousOverflow
-      before?.focus({ preventScroll: true })
-    }
-  }, [guide])
+  function editSource(source: string) {
+    if (timer.current) clearTimeout(timer.current)
+    worker.current?.terminate()
+    version.current++
+    setPending(false)
+    setDraft({ ...draft, source, parameters: {} })
+    setRanges({})
+    setError('')
+  }
+  const polyfit =
+    /^[ \t]*polyfit[ \t]+([A-Za-z][A-Za-z0-9_]*)\s+([A-Za-z][A-Za-z0-9_]*)\s+(\d+)(?:[ \t]+(origin))?[ \t]*(?:#.*)?$/im.exec(
+      draft.source,
+    )
+  const fitDegree = Number(polyfit?.[3] ?? 1)
+  function editFit(degree: number, origin = Boolean(polyfit?.[4])) {
+    if (!polyfit) return
+    const command = `polyfit ${polyfit[1]} ${polyfit[2]} ${degree}${origin ? ' origin' : ''}`
+    editSource(
+      draft.source.slice(0, polyfit.index) +
+        command +
+        draft.source.slice(polyfit.index + polyfit[0].length),
+    )
+  }
   function editParameter(name: string, value: number) {
     if (!Number.isFinite(value)) return
     const next = {
@@ -3774,7 +4019,7 @@ export default function ScientificWorkspace({
   }
   function saveProject() {
     download(
-      `polymath-${module}.json`,
+      `ivc-${module}.json`,
       JSON.stringify(
         { version: 1, kind: 'scientific', module, ...draft },
         null,
@@ -3826,7 +4071,7 @@ export default function ScientificWorkspace({
   function exportReport() {
     if (!result || stale || pending) return
     download(
-      `polymath-${module}-report.md`,
+      `ivc-${module}-report.md`,
       [
         `# ${scientificTitles[module]}`,
         `방법: ${result.method}`,
@@ -3845,6 +4090,18 @@ export default function ScientificWorkspace({
             `- ${k}: ${Number.isFinite(v) ? v.toPrecision(17) : '산정 불가'}`,
         ),
         result.formula ? `\n모델: ${result.formula}` : '',
+        result.coefficients?.length
+          ? [
+              '\n## Coefficients · 95% Confidence Interval',
+              '| Coefficient | Estimate | 95% CI |',
+              '| --- | --- | --- |',
+              ...result.coefficients.map(
+                (c) =>
+                  `| ${c.name} | ${c.estimate.toPrecision(17)} | ${c.fixed ? 'Fixed by model' : c.confidence95 ? `[${c.confidence95.lower.toPrecision(17)}, ${c.confidence95.upper.toPrecision(17)}]` : 'Not estimated'} |`,
+              ),
+              'Student-t marginal intervals under independent, constant-variance normal observation errors. Nonlinear intervals are a local approximation; these are not prediction intervals or numerical error bounds.',
+            ].join('\n')
+          : '',
         result.warnings.length
           ? '\n## 확인할 사항\n' +
             result.warnings.map((x) => '- ' + x).join('\n')
@@ -3898,23 +4155,23 @@ export default function ScientificWorkspace({
   const fieldValues = result?.rows[Math.min(cursor, result.rows.length - 1)]
   return (
     <div className="scientific-workspace">
-      <header className="scientific-header">
+      <header className="scientific-header ivc-toolbar">
         <button type="button" onClick={onHome}>
           <ArrowLeft size={16} />
-          모듈 홈
+          Home
         </button>
-        <strong>{scientificTitles[module]}</strong>
+        <strong className="ivc-brand">{scientificTitles[module]}</strong>
         <button type="button" onClick={() => setGuide(true)}>
           <BookOpen size={16} />
-          사용법
+          User Guide
         </button>
         <button type="button" onClick={saveProject}>
           <Save size={16} />
-          프로젝트 저장
+          Save Project
         </button>
         <button type="button" onClick={() => importRef.current?.click()}>
           <FolderOpen size={16} />
-          불러오기
+          Import
         </button>
         <input
           ref={importRef}
@@ -3940,39 +4197,39 @@ export default function ScientificWorkspace({
           >
             <span>0{i + 1}</span>
             {s === 'model'
-              ? '모델·데이터'
+              ? 'Model & Data'
               : s === 'simulation'
-                ? '시뮬레이션'
-                : '해석 리포트'}
+                ? 'Simulation'
+                : 'Report'}
           </button>
         ))}
         {['curve-fit', 'multilinear'].includes(module) && (
           <label>
-            회귀 모델{' '}
+            Regression Module{' '}
             <select
-              aria-label="회귀 모델"
+              aria-label="Regression Module"
               value={module}
               onChange={(e) =>
                 onModuleChange?.(e.target.value as ScientificModule)
               }
             >
-              <option value="curve-fit">선형·다항 회귀</option>
-              <option value="multilinear">다중선형 회귀</option>
+              <option value="curve-fit">Curve Fitting</option>
+              <option value="multilinear">Multilinear Regression</option>
             </select>
           </label>
         )}
         {['optimization', 'lsq'].includes(module) && (
           <label>
-            최적화 방식{' '}
+            Optimization Module{' '}
             <select
-              aria-label="최적화 방식"
+              aria-label="Optimization Module"
               value={module}
               onChange={(e) =>
                 onModuleChange?.(e.target.value as ScientificModule)
               }
             >
-              <option value="optimization">목적함수·제약조건</option>
-              <option value="lsq">최소제곱·제약조건</option>
+              <option value="optimization">Constrained Optimization</option>
+              <option value="lsq">LSQ Optimization</option>
             </select>
           </label>
         )}
@@ -3993,7 +4250,7 @@ export default function ScientificWorkspace({
                 onChange={(e) => applyExample(Number(e.target.value))}
               >
                 <option value="" disabled>
-                  예제 불러오기
+                  Examples
                 </option>
                 {examples.map((x, i) => (
                   <option key={i} value={i}>
@@ -4006,22 +4263,14 @@ export default function ScientificWorkspace({
               {scientificDescriptions[module]}
             </p>
             <label className="science-editor-label" htmlFor="scientific-source">
-              수식·데이터
+              Input
             </label>
             <textarea
               id="scientific-source"
               aria-label="과학 계산 모델 입력"
               spellCheck={false}
               value={draft.source}
-              onChange={(e) => {
-                if (timer.current) clearTimeout(timer.current)
-                worker.current?.terminate()
-                version.current++
-                setPending(false)
-                setDraft({ ...draft, source: e.target.value, parameters: {} })
-                setRanges({})
-                setError('')
-              }}
+              onChange={(e) => editSource(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                   e.preventDefault()
@@ -4039,17 +4288,86 @@ export default function ScientificWorkspace({
                 }}
               >
                 <Play size={15} />
-                계산·시뮬레이션
+                Compute & Simulate
               </button>
               <span>Ctrl / ⌘ + Enter</span>
             </div>
           </section>
           <aside className="science-panel">
-            <h2>계산 설정</h2>
+            <h2>Settings</h2>
+            {module === 'curve-fit' && (
+              <div className="ivc-fit-settings">
+                <label>
+                  Fit Type
+                  <select
+                    aria-label="Fit Type"
+                    disabled={!polyfit}
+                    value={fitDegree > 1 ? 'polynomial' : 'linear'}
+                    onChange={(e) =>
+                      editFit(
+                        e.target.value === 'linear'
+                          ? 1
+                          : Math.max(2, fitDegree),
+                      )
+                    }
+                  >
+                    <option value="linear">Linear Regression</option>
+                    <option value="polynomial">Polynomial Regression</option>
+                  </select>
+                </label>
+                {fitDegree > 1 && (
+                  <label>
+                    Degree
+                    <input
+                      aria-label="Polynomial Degree"
+                      type="number"
+                      min="2"
+                      max="12"
+                      step="1"
+                      value={fitDegree}
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        if (Number.isInteger(n) && n >= 2 && n <= 12) editFit(n)
+                      }}
+                    />
+                  </label>
+                )}
+                <label className="ivc-checkbox">
+                  <input
+                    aria-label="Through Origin"
+                    type="checkbox"
+                    disabled={!polyfit}
+                    checked={Boolean(polyfit?.[4])}
+                    onChange={(e) => editFit(fitDegree, e.target.checked)}
+                  />{' '}
+                  Through Origin
+                </label>
+                {polyfit ? (
+                  <code className="ivc-command">{polyfit[0].trim()}</code>
+                ) : (
+                  <p>
+                    데이터 표 아래에 <code>polyfit x y 1</code>을 입력하면
+                    선택할 수 있습니다. x와 y는 표의 열 이름입니다.
+                  </p>
+                )}
+                <details className="science-help">
+                  <summary>Fit Type 읽는 법</summary>
+                  <p>
+                    Linear는 직선으로, Polynomial은 곡선으로 데이터 경향을
+                    맞춥니다. Degree 2는 제곱항까지, Degree 3은 세제곱항까지
+                    사용합니다. Degree를 높이면 데이터에 더 잘 맞아 보여도 새
+                    데이터 예측은 나빠질 수 있습니다. Through Origin은 x=0일 때
+                    y=0이라는 조건을 강제하므로 실험 이론상 맞을 때만
+                    선택하세요. 선택 내용은 Input의 polyfit 명령에 그대로
+                    반영되며 문법으로 직접 바꿀 수도 있습니다.
+                  </p>
+                </details>
+              </div>
+            )}
             {module === 'ode' && (
               <>
                 <label>
-                  적분 방법
+                  Integration Method
                   <select
                     aria-label="미분방정식 적분 방법"
                     value={draft.options.method ?? 'auto'}
@@ -4060,13 +4378,41 @@ export default function ScientificWorkspace({
                       })
                     }
                   >
-                    <option value="auto">자동 · RK45 / 강성 대응</option>
+                    <option value="auto">Auto · RK45 / Implicit Euler</option>
                     <option value="rk45">RK45</option>
-                    <option value="implicit">음해법 · 강성 대응</option>
+                    <option value="implicit">Implicit Euler · Stiffness</option>
                   </select>
                 </label>
+                <details className="science-help ivc-method-help">
+                  <summary>Integration Method 선택 가이드</summary>
+                  <p>
+                    <b>Auto</b>는 RK45로 시작하고 반복적인 스텝 축소 부담이
+                    감지되면 Implicit Euler로 전환합니다. 처음 사용할 때
+                    권장합니다. 모든 모델의 강성을 자동으로 증명하는 판정은
+                    아닙니다.
+                  </p>
+                  <p>
+                    <b>RK45</b>는 같은 짧은 구간을 4차·5차 공식으로 계산한
+                    차이로 오차를 추정해 내부 시간 간격을 조절합니다. 부드럽게
+                    변하는 일반적인 모델에 효율적입니다.
+                  </p>
+                  <p>
+                    <b>Implicit Euler</b>는 다음 상태가 다음 상태의 변화율도
+                    만족하도록 반복해서 풉니다. 빠른 변화와 느린 변화가 섞인
+                    Stiff 모델에서 유리할 수 있습니다. 1회 전체 스텝과 2회 반
+                    스텝을 비교해 오차를 제어하며 RK45보다 많은 계산이 필요할 수
+                    있습니다.
+                  </p>
+                  <p>
+                    <b>Tolerance</b>는 각 내부 스텝의 수치 오차 제어 목표입니다.
+                    Output Samples는 표와 그래프에 출력할 지점 수로 내부 스텝
+                    간격과 다릅니다. 실제 측정 오차나 전 구간의 엄밀한 오차
+                    상한을 보장하는 설정은 아닙니다. 자세한 계산 과정은 User
+                    Guide의 ODE 탭을 참고하세요.
+                  </p>
+                </details>
                 <label>
-                  출력 샘플 수
+                  Output Samples
                   <input
                     aria-label="ODE 출력 샘플 수"
                     type="number"
@@ -4088,7 +4434,7 @@ export default function ScientificWorkspace({
             )}
             {module === 'integration' && (
               <label>
-                보간 방법
+                Interpolation Method
                 <select
                   aria-label="이산 적분 보간 방법"
                   value={draft.options.method ?? ''}
@@ -4102,9 +4448,9 @@ export default function ScientificWorkspace({
                     })
                   }
                 >
-                  <option value="">입력 모델의 설정</option>
-                  <option value="lin">구간별 선형</option>
-                  <option value="ccs">자연 3차 스플라인</option>
+                  <option value="">From Source</option>
+                  <option value="lin">Piecewise Linear</option>
+                  <option value="ccs">Natural Cubic Spline</option>
                   <option value="akm">Akima</option>
                 </select>
               </label>
@@ -4113,7 +4459,7 @@ export default function ScientificWorkspace({
               module,
             ) && (
               <label>
-                수치 허용 오차
+                Tolerance
                 <input
                   aria-label="과학 계산 허용 오차"
                   type="number"
@@ -4138,7 +4484,7 @@ export default function ScientificWorkspace({
             )}
             {['optimization', 'lsq', 'nonlinear-fit'].includes(module) && (
               <label>
-                최대 반복
+                Max Iterations
                 <input
                   aria-label="최대 반복 횟수"
                   type="number"
@@ -4177,7 +4523,7 @@ export default function ScientificWorkspace({
                 setScreen('report')
               }}
             >
-              계산 후 리포트 보기
+              Compute & Report
             </button>
           </aside>
         </main>
@@ -4294,10 +4640,10 @@ export default function ScientificWorkspace({
               <div className="science-section-title">
                 <h2>
                   {module === 'ode'
-                    ? '시간에 따른 변화'
+                    ? 'Time Series'
                     : module === 'integration'
-                      ? '데이터와 적분'
-                      : '계산 결과'}
+                      ? 'Integration'
+                      : 'Output'}
                 </h2>
                 <div className="science-plot-switch">
                   {module === 'ode' && result.columns.length > 2 ? (
@@ -4307,39 +4653,49 @@ export default function ScientificWorkspace({
                         aria-pressed={!phase}
                         onClick={() => setPhase(false)}
                       >
-                        시간 그래프
+                        Time Series
                       </button>
                       <button
                         type="button"
                         aria-pressed={phase}
                         onClick={() => setPhase(true)}
                       >
-                        위상 그래프
+                        Phase Plot
                       </button>
                       {phase && (
                         <>
-                          <select
-                            aria-label="위상 X 변수"
-                            value={phaseX}
-                            onChange={(e) => setPhaseX(Number(e.target.value))}
-                          >
-                            {result.columns.slice(1).map((x, i) => (
-                              <option key={i} value={i + 1}>
-                                {x}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            aria-label="위상 Y 변수"
-                            value={phaseY}
-                            onChange={(e) => setPhaseY(Number(e.target.value))}
-                          >
-                            {result.columns.slice(1).map((x, i) => (
-                              <option key={i} value={i + 1}>
-                                {x}
-                              </option>
-                            ))}
-                          </select>
+                          <label className="ivc-axis-select">
+                            X Axis
+                            <select
+                              aria-label="위상 X 변수"
+                              value={phaseX}
+                              onChange={(e) =>
+                                setPhaseX(Number(e.target.value))
+                              }
+                            >
+                              {result.columns.slice(1).map((x, i) => (
+                                <option key={i} value={i + 1}>
+                                  {x}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="ivc-axis-select">
+                            Y Axis
+                            <select
+                              aria-label="위상 Y 변수"
+                              value={phaseY}
+                              onChange={(e) =>
+                                setPhaseY(Number(e.target.value))
+                              }
+                            >
+                              {result.columns.slice(1).map((x, i) => (
+                                <option key={i} value={i + 1}>
+                                  {x}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         </>
                       )}
                     </>
@@ -4351,14 +4707,14 @@ export default function ScientificWorkspace({
                         aria-pressed={plotGroup === 'model'}
                         onClick={() => setPlotGroup('model')}
                       >
-                        데이터·적합
+                        Data & Fit
                       </button>
                       <button
                         type="button"
                         aria-pressed={plotGroup === 'convergence'}
                         onClick={() => setPlotGroup('convergence')}
                       >
-                        수렴 이력
+                        Convergence
                       </button>
                     </>
                   )}
@@ -4369,14 +4725,14 @@ export default function ScientificWorkspace({
                         aria-pressed={plotGroup === 'model'}
                         onClick={() => setPlotGroup('model')}
                       >
-                        측정·보간
+                        Data & Interpolation
                       </button>
                       <button
                         type="button"
                         aria-pressed={plotGroup === 'cumulative'}
                         onClick={() => setPlotGroup('cumulative')}
                       >
-                        누적 적분
+                        Cumulative Integral
                       </button>
                     </>
                   ) : (
@@ -4389,22 +4745,51 @@ export default function ScientificWorkspace({
                           aria-pressed={plotGroup === 'model'}
                           onClick={() => setPlotGroup('model')}
                         >
-                          데이터·모델
+                          Data & Model
                         </button>
                         <button
                           type="button"
                           aria-pressed={plotGroup === 'residual'}
                           onClick={() => setPlotGroup('residual')}
                         >
-                          오차
+                          Error
                         </button>
                       </>
                     )
                   )}
                 </div>
               </div>
+              {module === 'integration' && <IntegralFormula result={result} />}
               <ScientificChart
                 series={plotted}
+                yLabel={
+                  phase
+                    ? result.columns[phaseY]
+                    : module === 'integration'
+                      ? plotGroup === 'cumulative'
+                        ? `I(${result.integration?.independent ?? result.columns[0]})`
+                        : result.integration?.dependent
+                      : plotGroup === 'residual'
+                        ? 'Prediction Error'
+                        : module === 'optimization' ||
+                            plotGroup === 'convergence'
+                          ? 'Objective'
+                          : module === 'ode'
+                            ? 'State Value'
+                            : 'Response'
+                }
+                area={
+                  module === 'integration' &&
+                  plotGroup !== 'cumulative' &&
+                  result.integration
+                    ? {
+                        from: result.integration.from,
+                        to: result.integration.to,
+                        seriesName: plotted.find((s) => s.style !== 'points')
+                          ?.name,
+                      }
+                    : undefined
+                }
                 xLabel={
                   phase
                     ? result.columns[phaseX]
@@ -4447,13 +4832,13 @@ export default function ScientificWorkspace({
                 </div>
               )}
               <details className="science-data">
-                <summary>데이터 표 · {result.rows.length}행</summary>
+                <summary>Data Table · {result.rows.length} rows</summary>
                 <button
                   type="button"
                   disabled={stale || pending}
                   onClick={() =>
                     download(
-                      `polymath-${module}-data.csv`,
+                      `ivc-${module}-data.csv`,
                       '\uFEFF' + encodeCsv([result.columns, ...result.rows]),
                       'text/csv',
                     )
@@ -4523,14 +4908,14 @@ export default function ScientificWorkspace({
           {screen === 'report' && result && (
             <section className="science-panel science-report">
               <div className="science-section-title">
-                <h1>해석 리포트</h1>
+                <h1>Report</h1>
                 <button
                   type="button"
                   disabled={!reportResult}
                   onClick={exportReport}
                 >
                   <Download size={16} />
-                  리포트 저장
+                  Save Report
                 </button>
               </div>
               {!reportResult ? (
@@ -4542,64 +4927,24 @@ export default function ScientificWorkspace({
                   >
                     <strong>
                       {result.status === 'stopped'
-                        ? '수렴·정확도 조건 미충족'
+                        ? 'Stopped'
                         : result.status === 'converged'
-                          ? '수렴 조건 충족'
-                          : '계산 완료'}
+                          ? 'Converged'
+                          : 'Completed'}
                     </strong>
                     <span>{result.message ?? result.method}</span>
                   </div>
-                  {result.formula && (
-                    <div className="science-formula">{result.formula}</div>
+                  {['curve-fit', 'multilinear', 'nonlinear-fit'].includes(
+                    module,
+                  ) ? (
+                    <RegressionResult result={result} />
+                  ) : (
+                    <ScientificOutput
+                      result={result}
+                      source={draft.source}
+                      options={draft.options}
+                    />
                   )}
-                  <div className="science-metric-grid">
-                    {result.metrics.map((m, i) => (
-                      <article key={i}>
-                        <span>{m.label}</span>
-                        <strong>
-                          {typeof m.value === 'number'
-                            ? format(m.value)
-                            : m.value}
-                        </strong>
-                        <details>
-                          <summary>이 지표 읽는 법</summary>
-                          <p>{m.detail}</p>
-                        </details>
-                      </article>
-                    ))}
-                  </div>
-                  <details className="science-data" open>
-                    <summary>계산값·계수</summary>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>변수</th>
-                          <th>값</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(result.values).map(([name, value]) => (
-                          <tr key={name}>
-                            <th>{name}</th>
-                            <td>{format(value)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </details>
-                  <details className="science-help">
-                    <summary>계산 방법·설정</summary>
-                    <p>
-                      {result.method} · {result.durationMs.toFixed(2)} ms{' '}
-                      {result.iterations !== undefined
-                        ? ` · 반복 ${result.iterations}회`
-                        : ''}
-                      {result.evaluations !== undefined
-                        ? ` · 평가 ${result.evaluations}회`
-                        : ''}
-                    </p>
-                    <pre>{JSON.stringify(draft.options, null, 2)}</pre>
-                  </details>
                 </>
               )}
             </section>
@@ -4623,115 +4968,14 @@ export default function ScientificWorkspace({
         </div>
       )}
       {guide && (
-        <div
-          className="science-modal-backdrop"
-          onPointerDown={(e) => {
-            if (e.currentTarget === e.target) setGuide(false)
-          }}
-        >
-          <section
-            className="science-guide-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="science-guide-title"
-          >
-            <button
-              type="button"
-              autoFocus
-              className="science-guide-close"
-              aria-label="과학 계산 사용법 닫기"
-              onClick={() => setGuide(false)}
-            >
-              <X size={22} />
-            </button>
-            <h2 id="science-guide-title">{scientificTitles[module]} 사용법</h2>
-            <p>{scientificDescriptions[module]}</p>
-            <p>
-              모델·데이터에서 식과 측정값을 입력하고 계산합니다. 시뮬레이션에서
-              그래프·표를 확인하고, 리포트에서 지표를 클릭해 해석을 확인하세요.
-              JSON 프로젝트는 입력과 설정을 함께 저장합니다.
-            </p>
-            <table>
-              <thead>
-                <tr>
-                  <th>도구</th>
-                  <th>입력 문법</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th>미분방정식</th>
-                  <td>
-                    <code>d(A)/d(t)=-k*A</code>
-                    <br />
-                    <code>A(0)=1; t(0)=0; t(f)=10</code> (조건은 한 줄씩)
-                  </td>
-                </tr>
-                <tr>
-                  <th>선형·다항 회귀</th>
-                  <td>
-                    <code>polyfit x y 1</code> · 차수를 2 이상으로 바꾸면 다항식
-                  </td>
-                </tr>
-                <tr>
-                  <th>다중선형 회귀</th>
-                  <td>
-                    <code>mlinfit x1 x2 y</code>
-                  </td>
-                </tr>
-                <tr>
-                  <th>비선형 회귀</th>
-                  <td>
-                    <code>nlinfit y = a*x/(b+x)</code>
-                    <br />
-                    <code>m(a)=2</code>, <code>m(b)=1</code>을 각 줄에 입력
-                  </td>
-                </tr>
-                <tr>
-                  <th>이산 적분</th>
-                  <td>
-                    <code>integrate y(x) 0 4 200 lin</code> · lin / ccs / akm
-                  </td>
-                </tr>
-                <tr>
-                  <th>최적화</th>
-                  <td>
-                    <code>min: (x-2)^2+(y-1)^2</code>
-                    <br />
-                    <code>x|0 -10 10</code> · 이름|초기값 최소 최대
-                  </td>
-                </tr>
-                <tr>
-                  <th>LSQ 최적화</th>
-                  <td>
-                    <code>fit: y = a*x+b</code> · 표와 계수의 초기값·범위,
-                    제약조건
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <p>
-              표는 <code>[</code>와 <code>]</code> 사이에 첫 줄로 열 이름, 이후
-              줄에 숫자를 입력합니다. 탭·공백·쉼표로 열을 구분할 수 있고
-              소수점은 .을 사용합니다. # 뒤는 주석입니다.
-            </p>
-            <p>
-              함수: sin, cos, tan, asin, acos, atan, exp, ln(자연로그),
-              log·log10(상용로그), sqrt, abs, sinh, cosh, tanh, min, max.
-              거듭제곱은 ^, 곱셈은 *입니다. 정의역 밖의 식은 계산 오류로
-              안내합니다.
-            </p>
-            <h3>예제의 입력 형태</h3>
-            <pre>{examples[0]?.source}</pre>
-          </section>
-        </div>
+        <ModuleGuide initialTopic={module} onClose={() => setGuide(false)} />
       )}
     </div>
   )
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-16"></a>
 
 ## src/components/ScientificWorkspace.css
 
@@ -5384,23 +5628,27 @@ export default function ScientificWorkspace({
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-17"></a>
 
 ## src/components/ScientificChart.tsx
 
-원본: [src/components/ScientificChart.tsx](../../src/components/ScientificChart.tsx) · 436줄 · SHA-256: `99debbfe70f0011a27711b9ab4d4838d0228168d492a7ae6cd838242b123c797`
+원본: [src/components/ScientificChart.tsx](../../src/components/ScientificChart.tsx) · 548줄 · SHA-256: `0a8b52aedadb5acc1523d35cd3a8f8f91310215b835115e6167be2e53f1ec6d4`
 
 ```tsx
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ScientificSeries } from '../engine/scientific/types'
+import {
+  identitySegment,
+  integrationAreaPolygons,
+} from './scientific-chart-geometry'
 import './ScientificChart.css'
 const colors = [
-  '#347e70',
-  '#cb8c55',
-  '#7870d5',
-  '#4a8daf',
-  '#bb658e',
-  '#809747',
+  '#376eae',
+  '#b37836',
+  '#7961a8',
+  '#368078',
+  '#a85773',
+  '#6c8039',
 ]
 const num = (x: number) =>
   Math.abs(x) > 1e5 || (x !== 0 && Math.abs(x) < 0.001)
@@ -5409,12 +5657,18 @@ const num = (x: number) =>
 type Props = {
   series: ScientificSeries[]
   xLabel?: string
+  yLabel?: string
+  area?: { from: number; to: number; seriesName?: string }
+  identityLine?: boolean
   cursorIndex?: number
   onSelectIndex?: (i: number) => void
 }
 export default function ScientificChart({
   series,
   xLabel = '',
+  yLabel = '',
+  area,
+  identityLine = false,
   cursorIndex,
   onSelectIndex,
 }: Props) {
@@ -5478,6 +5732,10 @@ export default function ScientificChart({
         ymax = Math.max(ymax, y)
       }
     if (!Number.isFinite(xmin)) return null
+    if (area) {
+      ymin = Math.min(ymin, 0)
+      ymax = Math.max(ymax, 0)
+    }
     const xs = Math.max(Math.abs(xmin), Math.abs(xmax)) || 1,
       ys = Math.max(Math.abs(ymin), Math.abs(ymax)) || 1
     let x0 = xmin / xs,
@@ -5491,13 +5749,13 @@ export default function ScientificChart({
     y0 -= dy * 0.08
     y1 += dy * 0.08
     return { xs, ys, x0, x1, y0, y1 }
-  }, [series])
+  }, [series, area])
   const width = size.width,
     height = size.height,
     left = 70,
     right = width - 22,
-    top = 24,
-    bottom = height - 50
+    top = 30,
+    bottom = height - 55
   const plotWidth = Math.max(1, right - left),
     plotHeight = Math.max(1, bottom - top)
   const geometry = useMemo(() => {
@@ -5534,6 +5792,30 @@ export default function ScientificChart({
       }),
     [series, geometry],
   )
+  const areaPolygons = useMemo(() => {
+    if (!area || !geometry) return []
+    const source = area.seriesName
+      ? series.find((s) => s.name === area.seriesName)
+      : series.find((s) => s.style !== 'points')
+    if (!source || hidden.includes(source.name)) return []
+    return integrationAreaPolygons(source.x, source.y, area.from, area.to).map(
+      (polygon) => ({
+        sign: polygon.sign,
+        points: polygon.points
+          .map((p) => `${geometry.x(p.x)},${geometry.y(p.y)}`)
+          .join(' '),
+      }),
+    )
+  }, [area, series, hidden, geometry])
+  const diagonal =
+    geometry && bounds && identityLine
+      ? identitySegment(
+          geometry.x0 * bounds.xs,
+          geometry.x1 * bounds.xs,
+          geometry.y0 * bounds.ys,
+          geometry.y1 * bounds.ys,
+        )
+      : null
   useEffect(() => {
     const el = svg.current
     if (!el) return
@@ -5654,29 +5936,29 @@ export default function ScientificChart({
           ))}
         </div>
         <label>
-          확대 축{' '}
+          Zoom{' '}
           <select
             aria-label="시각화 확대 축"
             value={axis}
             onChange={(e) => setAxis(e.target.value)}
           >
-            <option value="both">양축</option>
-            <option value="x">X축</option>
-            <option value="y">Y축</option>
+            <option value="both">X & Y</option>
+            <option value="x">X</option>
+            <option value="y">Y</option>
           </select>
         </label>
         <button
           type="button"
           onClick={() => setZoom({ l: 0, r: 1, b: 0, t: 1 })}
         >
-          축 초기화
+          Reset
         </button>
       </div>
       <div className="scientific-chart-stage" ref={container}>
         <svg
           ref={svg}
           role="img"
-          aria-label={`${xLabel || '데이터'} 시각화`}
+          aria-label={`X: ${xLabel || 'x'}, Y: ${yLabel || 'y'}${identityLine ? ', y = x reference' : ''}`}
           tabIndex={0}
           width={width}
           height={height}
@@ -5728,14 +6010,19 @@ export default function ScientificChart({
                 y = bottom - f * plotHeight
               return (
                 <g key={i}>
-                  <line x1={left} y1={y} x2={right} y2={y} stroke="#e5ebe4" />
+                  <line
+                    x1={left}
+                    y1={y}
+                    x2={right}
+                    y2={y}
+                    className="science-grid"
+                  />
                   <line
                     x1={x}
                     y1={top}
                     x2={x}
                     y2={bottom}
-                    stroke="#edf0eb"
-                    strokeDasharray="3 5"
+                    className="science-grid"
                   />
                   <text x={left - 9} y={y + 4} textAnchor="end">
                     {num(
@@ -5753,6 +6040,49 @@ export default function ScientificChart({
               )
             })}
           <g clipPath={`url(#${clip})`}>
+            {areaPolygons.map((polygon, i) => (
+              <polygon
+                key={i}
+                points={polygon.points}
+                className={
+                  polygon.sign > 0
+                    ? 'science-area-positive'
+                    : 'science-area-negative'
+                }
+              />
+            ))}
+            {area && geometry && (
+              <>
+                <line
+                  x1={left}
+                  y1={geometry.y(0)}
+                  x2={right}
+                  y2={geometry.y(0)}
+                  className="science-zero-line"
+                />
+                {[area.from, area.to]
+                  .filter(Number.isFinite)
+                  .map((value, i) => (
+                    <line
+                      key={i}
+                      x1={geometry.x(value)}
+                      y1={top}
+                      x2={geometry.x(value)}
+                      y2={bottom}
+                      className="science-area-limit"
+                    />
+                  ))}
+              </>
+            )}
+            {diagonal && geometry && (
+              <line
+                x1={geometry.x(diagonal.from)}
+                y1={geometry.y(diagonal.from)}
+                x2={geometry.x(diagonal.to)}
+                y2={geometry.y(diagonal.to)}
+                className="science-identity-line"
+              />
+            )}
             {series.map((s, i) =>
               hidden.includes(s.name) || !geometry ? null : (
                 <g key={s.name}>
@@ -5798,8 +6128,16 @@ export default function ScientificChart({
               ),
             )}
           </g>
-          <text x={(left + right) / 2} y={height - 5} textAnchor="middle">
-            {xLabel}
+          <text
+            className="science-axis-label"
+            x={(left + right) / 2}
+            y={height - 8}
+            textAnchor="middle"
+          >
+            X: {xLabel || 'x'}
+          </text>
+          <text className="science-axis-label" x={left} y={15}>
+            Y: {yLabel || 'y'}
           </text>
           {!bounds && (
             <text x={width / 2} y={height / 2} textAnchor="middle">
@@ -5810,30 +6148,48 @@ export default function ScientificChart({
         {hovered && (
           <div className="science-chart-tooltip">
             <strong>{hovered.name}</strong>
-            <span>x {num(hovered.x)}</span>
-            <span>y {num(hovered.y)}</span>
+            <span>
+              {xLabel || 'x'} {num(hovered.x)}
+            </span>
+            <span>
+              {yLabel || 'y'} {num(hovered.y)}
+            </span>
           </div>
         )}
       </div>
       <details className="science-help">
-        <summary>그래프 조작</summary>
+        <summary>Graph controls</summary>
         <p>
           범례로 곡선을 숨기거나 표시합니다. 그래프를 클릭한 뒤 휠로 확대·축소할
           수 있습니다. 빈 원은 관측값이며 600개를 넘으면 마커 일부만 표시합니다.
           표와 CSV에는 전체 데이터가 포함됩니다. ODE 그래프에서는 클릭하거나
           방향키로 계산 시점을 선택합니다.
         </p>
+        {area && (
+          <p>
+            음영은 지정한 적분 범위에서 곡선과 Y=0 사이의 면적입니다. 파란
+            영역은 양의 기여, 주황 영역은 음의 기여입니다. 적분 한계의 순서를
+            바꾸면 최종 적분값의 부호가 반대로 바뀝니다.
+          </p>
+        )}
+        {identityLine && (
+          <p>
+            점선 y=x는 예측값과 관측값이 같은 위치입니다. 점이 점선 위에 있으면
+            과대 예측, 아래에 있으면 과소 예측입니다. 두 축은 동일한 물리 단위를
+            사용합니다.
+          </p>
+        )}
       </details>
     </div>
   )
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## src/components/ScientificChart.css
 
-원본: [src/components/ScientificChart.css](../../src/components/ScientificChart.css) · 109줄 · SHA-256: `f5d85af4d57bd86fbd120f6b01c0a9e38318a4a60335cfc6363ac461f75adb30`
+원본: [src/components/ScientificChart.css](../../src/components/ScientificChart.css) · 147줄 · SHA-256: `382ad4ebbc7819f595725928ce327472e7f1572fcd62552c27886d5555e3394b`
 
 ```css
 .scientific-chart {
@@ -5861,6 +6217,12 @@ export default function ScientificChart({
   font-size: 12px;
   padding: 6px;
   border-radius: 5px;
+  color: #3f4b59;
+  background: transparent;
+  border: 1px solid transparent;
+}
+.science-chart-legend button:hover {
+  background: #f3f5f8;
 }
 .science-chart-legend button[aria-pressed='false'] {
   opacity: 0.4;
@@ -5872,11 +6234,11 @@ export default function ScientificChart({
 }
 .science-chart-tools select,
 .science-chart-tools > button {
-  border: 1px solid #dce5d9;
+  border: 1px solid #d3d9e0;
   border-radius: 5px;
   padding: 5px 7px;
   background: #fff;
-  color: #587165;
+  color: #465568;
 }
 .scientific-chart-stage {
   height: clamp(310px, 57vh, 620px);
@@ -5889,16 +6251,48 @@ export default function ScientificChart({
   max-width: 100%;
   outline: none;
   touch-action: pan-y;
+  background: #fff;
 }
 .scientific-chart-stage svg:focus-visible {
-  outline: 2px solid #6b9e8a;
+  outline: 2px solid #567eae;
   outline-offset: 3px;
 }
 .scientific-chart-stage text {
   font:
     11px 'IBM Plex Mono',
     monospace;
-  fill: #84928b;
+  fill: #566373;
+}
+.scientific-chart-stage .science-axis-label {
+  fill: #344154;
+  font-weight: 600;
+  font-size: 12px;
+}
+.science-grid {
+  stroke: #e4e8ee;
+  stroke-width: 1;
+}
+.science-area-positive {
+  fill: #528ac7;
+  fill-opacity: 0.2;
+}
+.science-area-negative {
+  fill: #c58545;
+  fill-opacity: 0.22;
+}
+.science-zero-line {
+  stroke: #8d99a8;
+  stroke-width: 1;
+}
+.science-area-limit {
+  stroke: #738296;
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+.science-identity-line {
+  stroke: #697789;
+  stroke-width: 1.3;
+  stroke-dasharray: 6 5;
 }
 .science-chart-tooltip {
   pointer-events: none;
@@ -5909,16 +6303,16 @@ export default function ScientificChart({
   gap: 12px;
   flex-wrap: wrap;
   padding: 10px 14px;
-  border: 1px solid #dce6d9;
+  border: 1px solid #d3d9e0;
   border-radius: 6px;
   background: #fffffff2;
   font-size: 12px;
-  color: #426f60;
-  box-shadow: 0 4px 12px #294a3910;
+  color: #344154;
+  box-shadow: 0 4px 12px #26344810;
 }
 .science-help {
   font-size: 12px;
-  color: #597366;
+  color: #5c6877;
   line-height: 1.8;
   margin-top: 10px;
 }
@@ -5943,6 +6337,914 @@ export default function ScientificChart({
     font-size: 10px;
     padding: 6px;
     gap: 7px;
+  }
+}
+```
+
+<a id="source-19"></a>
+
+## src/components/scientific-chart-geometry.ts
+
+원본: [src/components/scientific-chart-geometry.ts](../../src/components/scientific-chart-geometry.ts) · 128줄 · SHA-256: `31ea029dcdad218c62c2f55396836906f5e66b26dbdedf9e135da8df4282009a`
+
+```typescript
+export type ChartPoint = { x: number; y: number }
+export type IntegrationArea = { points: ChartPoint[]; sign: -1 | 1 }
+
+const lerp = (a: number, b: number, t: number) =>
+  t === 0 ? a : t === 1 ? b : (1 - t) * a + t * b
+const same = (a: ChartPoint, b: ChartPoint) => a.x === b.x && a.y === b.y
+
+/** Clip the displayed polyline, preserving undefined gaps and the exact limits. */
+function clippedRuns(x: number[], y: number[], from: number, to: number) {
+  const lower = Math.min(from, to),
+    upper = Math.max(from, to)
+  const runs: ChartPoint[][] = []
+  let run: ChartPoint[] = []
+  const flush = () => {
+    if (run.length > 1) runs.push(run)
+    run = []
+  }
+  for (let i = 1; i < Math.min(x.length, y.length); i++) {
+    const a = { x: x[i - 1], y: y[i - 1] },
+      b = { x: x[i], y: y[i] }
+    if (![a.x, a.y, b.x, b.y].every(Number.isFinite) || a.x === b.x) {
+      flush()
+      continue
+    }
+    // Normalized coordinates avoid overflowing b.x - a.x for finite extremes.
+    const clippedLower = Math.max(lower, Math.min(a.x, b.x))
+    const clippedUpper = Math.min(upper, Math.max(a.x, b.x))
+    if (!(clippedLower < clippedUpper)) {
+      flush()
+      continue
+    }
+    const scale = Math.max(Math.abs(a.x), Math.abs(b.x)) || 1
+    const dx = b.x / scale - a.x / scale
+    const point = (value: number): ChartPoint => ({
+      x: value,
+      y: lerp(
+        a.y,
+        b.y,
+        value === a.x
+          ? 0
+          : value === b.x
+            ? 1
+            : (value / scale - a.x / scale) / dx,
+      ),
+    })
+    const first = point(a.x < b.x ? clippedLower : clippedUpper)
+    const last = point(a.x < b.x ? clippedUpper : clippedLower)
+    if (run.length && !same(run[run.length - 1], first)) flush()
+    if (!run.length) run.push(first)
+    run.push(last)
+  }
+  flush()
+  return runs
+}
+
+/** Polygons follow the displayed curve, split at zero, and never bridge NaN gaps. */
+export function integrationAreaPolygons(
+  x: number[],
+  y: number[],
+  from: number,
+  to: number,
+): IntegrationArea[] {
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return []
+  const areas: IntegrationArea[] = []
+  for (const run of clippedRuns(x, y, from, to)) {
+    let curve: ChartPoint[] = [],
+      sign: -1 | 0 | 1 = 0
+    const flush = () => {
+      if (sign && curve.length > 1 && curve.some((p) => p.x !== curve[0].x)) {
+        areas.push({
+          sign,
+          points: [
+            { x: curve[0].x, y: 0 },
+            ...curve,
+            { x: curve[curve.length - 1].x, y: 0 },
+          ],
+        })
+      }
+      curve = []
+      sign = 0
+    }
+    const add = (a: ChartPoint, b: ChartPoint) => {
+      const nextSign = Math.sign(a.y || b.y) as -1 | 0 | 1
+      if (!nextSign) {
+        flush()
+        return
+      }
+      if (
+        nextSign !== sign ||
+        (curve.length && !same(curve[curve.length - 1], a))
+      )
+        flush()
+      sign = nextSign
+      if (!curve.length) curve.push(a)
+      curve.push(b)
+    }
+    for (let i = 1; i < run.length; i++) {
+      const a = run[i - 1],
+        b = run[i]
+      if ((a.y < 0 && b.y > 0) || (a.y > 0 && b.y < 0)) {
+        const scale = Math.max(Math.abs(a.y), Math.abs(b.y))
+        const t =
+          Math.abs(a.y) /
+          scale /
+          (Math.abs(a.y) / scale + Math.abs(b.y) / scale)
+        const crossing = { x: lerp(a.x, b.x, t), y: 0 }
+        add(a, crossing)
+        add(crossing, b)
+      } else add(a, b)
+    }
+    flush()
+  }
+  return areas
+}
+
+/** A y=x segment clipped to the actual visible data rectangle. */
+export function identitySegment(
+  xMin: number,
+  xMax: number,
+  yMin: number,
+  yMax: number,
+) {
+  const from = Math.max(xMin, yMin),
+    to = Math.min(xMax, yMax)
+  return Number.isFinite(from) && Number.isFinite(to) && from < to
+    ? { from, to }
+    : null
+}
+```
+
+<a id="source-20"></a>
+
+## src/components/ScientificOutput.tsx
+
+원본: [src/components/ScientificOutput.tsx](../../src/components/ScientificOutput.tsx) · 225줄 · SHA-256: `1422c0290e1329d6a9f78f6b6b94f4e45178d792056d85014d9dc8764122ee09`
+
+```tsx
+import type {
+  ScientificOptions,
+  ScientificResult,
+} from '../engine/scientific/types'
+
+const number = (value: number) =>
+  !Number.isFinite(value)
+    ? '—'
+    : value === 0
+      ? '0'
+      : Number(value.toPrecision(8)).toString()
+
+export function IntegralFormula({ result }: { result: ScientificResult }) {
+  const integral = result.integration
+  if (!integral) return null
+  return (
+    <div
+      className="ivc-integral"
+      aria-label={`Integral from ${integral.from} to ${integral.to} of ${integral.dependent} with respect to ${integral.independent} equals ${integral.value}`}
+    >
+      <span className="ivc-integral-sign" aria-hidden="true">
+        <sup>{number(integral.to)}</sup>
+        <span>∫</span>
+        <sub>{number(integral.from)}</sub>
+      </span>
+      <span>
+        {integral.dependent}({integral.independent}) d{integral.independent} ={' '}
+        <strong>{number(integral.value)}</strong>
+      </span>
+    </div>
+  )
+}
+
+const metricNames: Record<string, string> = {
+  '완료한 시각': 'Final Time',
+  '허용 오차': 'Tolerance',
+  '최대 국소 오차 추정': 'Estimated Local Error',
+  '승인 / 거부 스텝': 'Accepted / Rejected Steps',
+  정적분: 'Integral',
+  '사다리꼴 대비 차이': 'Interpolation Difference',
+  '입력 데이터': 'Data Points',
+  '그래프 샘플': 'Output Samples',
+  '제곱 오차 합 SSE': 'SSE',
+  '목적함수 최종값': 'Objective',
+  '최대 제약 위반': 'Constraint Violation',
+  '정규화 국소 정상성': 'Projected Gradient',
+  '반복 횟수': 'Iterations',
+}
+
+function MetricTable({
+  result,
+  primary,
+}: {
+  result: ScientificResult
+  primary: boolean
+}) {
+  const preferred =
+    result.module === 'ode'
+      ? ['완료한 시각', '허용 오차']
+      : result.module === 'integration'
+        ? ['사다리꼴 대비 차이', '입력 데이터']
+        : result.module === 'lsq'
+          ? ['제곱 오차 합 SSE', 'RMSE', '최대 제약 위반']
+          : ['목적함수 최종값', '최대 제약 위반']
+  const metrics = result.metrics.filter(
+    (m) => preferred.includes(m.label) === primary && !/ 범위$/.test(m.label),
+  )
+  if (!metrics.length) return null
+  return (
+    <table className="ivc-output-table ivc-metrics-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+          <th>Interpretation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {metrics.map((m) => (
+          <tr key={m.label}>
+            <th>{metricNames[m.label] ?? m.label}</th>
+            <td>{typeof m.value === 'number' ? number(m.value) : m.value}</td>
+            <td>
+              <details>
+                <summary>
+                  이 지표 읽는 법<span className="sr-only"> {m.label}</span>
+                </summary>
+                <p>{m.detail}</p>
+              </details>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+/** Compact output keeps numerical claims supplied by the engine; display never upgrades estimates to bounds. */
+export default function ScientificOutput({
+  result,
+  source,
+  options,
+}: {
+  result: ScientificResult
+  source: string
+  options: ScientificOptions
+}) {
+  const ode = result.module === 'ode'
+  const optimization =
+    result.module === 'optimization' || result.module === 'lsq'
+  const variables = Object.entries(result.values)
+  const stateNames = result.series.map((s) => s.name)
+  const initials = new Map(
+    [
+      ...source.matchAll(
+        /^\s*([A-Za-z][A-Za-z0-9_]*)\s*\|\s*(\S+)\s+(\S+)\s+(\S+)\s*$/gm,
+      ),
+    ].map((m) => [m[1], m.slice(2)]),
+  )
+  return (
+    <>
+      {result.module === 'integration' ? (
+        <IntegralFormula result={result} />
+      ) : (
+        result.formula && (
+          <div className="science-formula">{result.formula}</div>
+        )
+      )}
+      {ode ? (
+        <>
+          <div className="science-table-scroll">
+            <table className="ivc-output-table ivc-state-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Initial</th>
+                  <th>Min</th>
+                  <th>Max</th>
+                  <th>Final Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stateNames.map((name) => {
+                  const index = result.columns.indexOf(name)
+                  const values = result.rows
+                    .map((row) => row[index])
+                    .filter(Number.isFinite)
+                  if (index < 0 || !values.length) return null
+                  return (
+                    <tr key={name}>
+                      <th>{name}</th>
+                      <td>{number(values[0])}</td>
+                      <td>{number(Math.min(...values))}</td>
+                      <td>{number(Math.max(...values))}</td>
+                      <td className="ivc-result-value">
+                        {number(values.at(-1)!)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <details className="science-help">
+            <summary>Min / Max 읽는 법</summary>
+            <p>
+              Min과 Max는 출력한 샘플 지점의 최솟값과 최댓값입니다. 두 지점
+              사이의 순간적인 극값을 모두 찾은 결과는 아닙니다. Initial은 시작
+              상태, Final Value는 마지막으로 계산을 완료한 시점의 상태입니다.
+              계산이 중단되면 요청한 종료 시점과 다를 수 있으므로 Final Time도
+              확인하세요.
+            </p>
+          </details>
+        </>
+      ) : (
+        result.module !== 'integration' && (
+          <div className="science-table-scroll">
+            <table className="ivc-output-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  {optimization && (
+                    <>
+                      <th>Initial</th>
+                      <th>Lower</th>
+                      <th>Upper</th>
+                    </>
+                  )}
+                  <th>{optimization ? 'Optimal Value' : 'Value'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {variables.map(([name, value]) => (
+                  <tr key={name}>
+                    <th>{name}</th>
+                    {optimization &&
+                      (initials.get(name) ?? ['—', '—', '—']).map((x, i) => (
+                        <td key={i}>{x}</td>
+                      ))}
+                    <td className="ivc-result-value">{number(value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+      <MetricTable result={result} primary />
+      <details className="science-help ivc-report-details">
+        <summary>Calculation Details</summary>
+        <p>
+          {result.method} · {result.durationMs.toFixed(2)} ms
+          {result.iterations !== undefined
+            ? ` · ${result.iterations} iterations`
+            : ''}
+          {result.evaluations !== undefined
+            ? ` · ${result.evaluations} evaluations`
+            : ''}
+        </p>
+        <MetricTable result={result} primary={false} />
+        <pre>{JSON.stringify(options, null, 2)}</pre>
+      </details>
+    </>
+  )
+}
+```
+
+<a id="source-21"></a>
+
+## src/components/RegressionResult.tsx
+
+원본: [src/components/RegressionResult.tsx](../../src/components/RegressionResult.tsx) · 330줄 · SHA-256: `c9ea69a6bc71f705d7b967445997cd6af48fbc30072de00de0e4dd187e6fc5d5`
+
+```tsx
+import { useMemo } from 'react'
+import type { ScientificResult } from '../engine/scientific/types'
+import ScientificChart from './ScientificChart'
+import './RegressionResult.css'
+
+const format = (value: number | string) => {
+  if (typeof value === 'string') return value
+  if (!Number.isFinite(value)) return 'Not available'
+  if (value === 0) return '0'
+  return Math.abs(value) < 1e-4 || Math.abs(value) >= 1e7
+    ? value.toExponential(5)
+    : Number(value.toPrecision(8)).toString()
+}
+
+export default function RegressionResult({
+  result,
+}: {
+  result: ScientificResult
+}) {
+  const regression = result.regression
+  const primary = result.metrics.filter(
+    (m) => m.label === 'RMSE' || m.label === 'R²',
+  )
+  const diagnostics = result.metrics.filter(
+    (m) => m.label !== 'RMSE' && m.label !== 'R²',
+  )
+  const comparison = useMemo(
+    () =>
+      result.comparison
+        ? [
+            {
+              name: 'Fitted observations',
+              x: result.comparison.observed,
+              y: result.comparison.predicted,
+              style: 'points' as const,
+            },
+          ]
+        : [],
+    [result.comparison],
+  )
+  const nonlinear = regression?.confidenceMethod === 'nonlinear-local'
+  return (
+    <div className="regression-result">
+      <div className="regression-output-heading">
+        <h2>Regression output</h2>
+        <span
+          className={
+            result.status === 'stopped'
+              ? 'regression-status stopped'
+              : 'regression-status'
+          }
+        >
+          {result.status === 'stopped' ? 'Stopped' : 'Fit completed'}
+        </span>
+      </div>
+      {result.message && result.status === 'stopped' && (
+        <p className="regression-stop">{result.message}</p>
+      )}
+      {regression?.model && (
+        <p className="regression-model">
+          <code>{regression.model}</code>
+        </p>
+      )}
+      <div className="regression-primary">
+        {primary.map((metric) => (
+          <div key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{format(metric.value)}</strong>
+          </div>
+        ))}
+        {regression && (
+          <div>
+            <span>Observations / Parameters</span>
+            <strong>
+              {regression.sampleCount} / {regression.parameterCount}
+            </strong>
+          </div>
+        )}
+      </div>
+      <details className="regression-help">
+        <summary>RMSE · R²를 어떻게 읽나요?</summary>
+        <p>
+          <strong>RMSE</strong>는 입력한 데이터에서 모델의 예측이 관측값과 보통
+          얼마나 떨어지는지 나타냅니다. 종속변수와 단위가 같습니다. 예를 들어
+          압력의 RMSE가 2 kPa이면, 적합한 데이터에서 오차의 대표적인 크기가 약 2
+          kPa라는 뜻입니다. 미래의 측정값도 항상 이 범위에 들어간다는 의미는
+          아닙니다.
+        </p>
+        <p>
+          <strong>R²</strong>는 관측값의 평균 하나만 쓰는 방법에 비해 제곱오차를
+          줄인 비율입니다. 1이면 입력 데이터와 정확히 일치하고, 0이면 평균만
+          쓰는 것과 같은 수준입니다. 음수이면 그보다도 나쁩니다. 관측값이 모두
+          같으면 비교 기준의 변동이 없어 정의하지 않습니다.
+        </p>
+        <p>
+          RMSE는 같은 종속변수·단위에서 비교하세요. R²가 높아도 잘못된 물리
+          모델일 수 있고, 데이터가 없는 범위의 예측은 나쁠 수 있습니다. 여기의
+          RMSE와 R²는 적합에 사용한 데이터의 결과이며 별도의 검증 데이터 점수는
+          아닙니다. <strong>Observations / Parameters</strong>는 관측 행 수와
+          실제로 추정한 계수 수입니다.
+        </p>
+      </details>
+      <div className="regression-table-scroll">
+        <table className="regression-coefficients">
+          <caption>
+            Coefficients{nonlinear ? ' · Local approximation' : ''}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Coefficient</th>
+              <th scope="col">Estimate</th>
+              <th scope="col">95% CI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.coefficients?.map((coefficient) => (
+              <tr key={coefficient.name}>
+                <th scope="row">
+                  <code>{coefficient.name}</code>
+                  {coefficient.fixed && <small>Fixed</small>}
+                </th>
+                <td>{format(coefficient.estimate)}</td>
+                <td>
+                  {coefficient.confidence95 ? (
+                    <>
+                      <span>
+                        [{format(coefficient.confidence95.lower)},{' '}
+                        {format(coefficient.confidence95.upper)}]
+                      </span>
+                      <small>
+                        ± {format(coefficient.confidence95.halfWidth)}
+                      </small>
+                    </>
+                  ) : coefficient.fixed ? (
+                    'Fixed by model'
+                  ) : (
+                    <details className="regression-inline-help">
+                      <summary>Not estimated</summary>
+                      <p>
+                        {coefficient.note ??
+                          '현재 결과에서 유효한 구간을 계산하지 못했습니다.'}
+                      </p>
+                    </details>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {regression?.confidenceUnavailableReason && (
+        <p className="regression-confidence-note">
+          {regression.confidenceUnavailableReason}
+        </p>
+      )}
+      <details className="regression-help">
+        <summary>Estimate · 95% CI · Standard Error 읽는 법</summary>
+        <p>
+          <strong>Estimate</strong>는 현재 관측 데이터에 가장 잘 맞도록 찾은
+          계수 값입니다. <strong>95% CI (Confidence Interval)</strong>는 같은
+          측정 조건과 같은 회귀 방법으로 데이터를 반복해서 얻었을 때, 그렇게
+          만든 구간의 약 95%가 고정된 실제 계수를 포함하도록 설계한 구간입니다.
+          실제 계수가 이 한 구간에 있을 확률이 95%라는 뜻이나, 예측의 95%가
+          맞는다는 뜻은 아닙니다.
+        </p>
+        <p>
+          표의 대괄호는 아래쪽·위쪽 끝값이고, <strong>±</strong>는 Estimate에서
+          끝값까지의 거리입니다. 구간이 넓으면 현재 데이터로 해당 계수를
+          정밀하게 정하기 어렵다는 뜻입니다. 0을 포함하면 다른 계수를 함께
+          추정한 이 모델에서 그 계수가 0인 경우를 양측 5% 검정으로 배제하지
+          못합니다. 불필요한 변수라고 자동으로 결론 내릴 수는 없습니다.
+        </p>
+        <p>
+          <strong>Standard Error (SE)</strong>는 반복 측정 시 계수 추정값이
+          얼마나 흔들릴지 추정한 표준편차입니다. 95% CI의 반폭은 Student-t
+          임계값 × SE입니다. 데이터 수에서 추정한 계수 수를 뺀{' '}
+          <strong>Degrees of freedom</strong>이 작으면 1.96보다 큰 임계값을 써서
+          구간을 더 넓게 만듭니다. SE 값은 아래 Diagnostics에서 확인할 수
+          있습니다.
+        </p>
+        <p>
+          이 구간은 설명변수를 오차 없는 고정값으로 보고, 관측 오차가 서로
+          독립이며 같은 분산을 갖는 정규분포라는 통계 모델을 가정합니다.
+          선형·다항·다중선형 회귀는 선택한 모델이 맞다는 가정 아래의 구간입니다.
+          각 계수마다 95%인 구간이며, 모든 계수가 동시에 포함될 확률을 95%로
+          맞춘 구간은 아닙니다. 측정 장치의 오차, 변수 누락, 외삽 오차를 모두
+          합친 보장도 아닙니다.
+        </p>
+        {nonlinear && (
+          <p>
+            <strong>Nonlinear regression</strong>에서는 수렴한 위치에서 모델을
+            국소 선형화해 SE와 95% CI를 근사합니다. 적은 데이터, 큰 비선형성
+            또는 나쁜 초기값에서는 구간이 부정확할 수 있습니다. 국소 최소값이며
+            전역 최적을 보장하지 않습니다. 경계에 놓인 계수, 랭크 부족, 자유도
+            부족 또는 수렴하지 않은 결과에는 일반적인 대칭 CI를 표시하지
+            않습니다.
+          </p>
+        )}
+        {regression?.origin && (
+          <p>
+            <strong>Origin</strong> 조건은 모델이 원점을 지나도록 강제합니다.
+            이때 고정된 0은 데이터로 추정한 계수가 아니므로 CI를 붙이지
+            않습니다. Origin을 강제한 모델도 R²는 관측 평균을 기준으로
+            계산합니다.
+          </p>
+        )}
+        <p>
+          동일 데이터가 모델에 정확히 들어맞으면 SE와 구간 폭이 매우 작거나 0이
+          될 수 있습니다. 측정이 완벽하다는 증거는 아니며, 데이터에 드러나지
+          않은 오차는 반영하지 못합니다. 종속변수를 log 등으로 변환했다면 회귀
+          오차와 통계 가정도 변환한 값의 단위에 적용됩니다.
+        </p>
+      </details>
+      {comparison.length > 0 && (
+        <section className="regression-comparison">
+          <h3>Observed vs Predicted</h3>
+          <ScientificChart
+            series={comparison}
+            xLabel={`Observed ${result.comparison?.dependent ?? ''}`}
+            yLabel={`Predicted ${result.comparison?.dependent ?? ''}`}
+            identityLine
+          />
+          <details className="regression-help">
+            <summary>이 그래프로 무엇을 확인하나요?</summary>
+            <p>
+              가로축은 관측값, 세로축은 같은 행에 대한 모델의 예측값입니다. 기준
+              대각선은 관측값과 예측값이 같은 위치입니다. 점이 선 위에 있으면
+              과대 예측, 아래에 있으면 과소 예측입니다. 한쪽으로 휘거나 특정
+              값에서만 오차가 커지는지 살펴보세요. 이 점들은 적합에 사용한
+              데이터이며, 계수의 95% CI나 미래 관측값의 Prediction Interval을
+              나타내는 그림은 아닙니다.
+            </p>
+          </details>
+        </section>
+      )}
+      <details className="regression-diagnostics">
+        <summary>Diagnostics · Calculation details</summary>
+        <dl className="regression-run-details">
+          <dt>Method</dt>
+          <dd>{result.method}</dd>
+          <dt>Status</dt>
+          <dd>{result.status}</dd>
+          <dt>Duration</dt>
+          <dd>{format(result.durationMs)} ms</dd>
+        </dl>
+        {result.message && <p>{result.message}</p>}
+        <div className="regression-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Value</th>
+                <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {diagnostics.map((metric) => (
+                <tr key={metric.label}>
+                  <th scope="row">{metric.label}</th>
+                  <td>{format(metric.value)}</td>
+                  <td>{metric.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="regression-table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Coefficient</th>
+                <th>Standard Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.coefficients
+                ?.filter((row) => !row.fixed)
+                .map((row) => (
+                  <tr key={row.name}>
+                    <th scope="row">{row.name}</th>
+                    <td>
+                      {row.standardError === undefined
+                        ? 'Not estimated'
+                        : format(row.standardError)}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        <details className="regression-help">
+          <summary>Rank · Condition number의 차이</summary>
+          <p>
+            <strong>Rank</strong>는 데이터가 계수들을 서로 구분할 수 있는지
+            확인합니다. 예를 들어 설명변수 두 열이 항상 정확히 두 배 관계라면 두
+            계수의 개별 효과를 구분하기 어렵습니다.{' '}
+            <strong>Condition number</strong>는 입력을 조금 바꿨을 때 계산이
+            얼마나 민감해질 수 있는지를 보여주는 수치 진단이며, 이 보고서에서는
+            정규화한 설계행렬을 사용합니다. 실제 측정 오차의 크기를 추정하는
+            SE나 통계적 CI와 목적이 다릅니다. 조건수가 작아도 관측 오차가 크거나
+            모델이 틀리면 좋은 예측을 보장하지 않습니다.
+          </p>
+          <p>
+            SE와 95% CI는 SVD에서 구한 공분산을 사용합니다. 다항식의 표시 계수는
+            원래 x의 거듭제곱으로 변환하면서 계수 사이의 공분산도 함께
+            반영합니다. 큰 좌표 오프셋에서 펼친 식은 숫자의 상쇄에 민감하므로
+            아래의 정규화된 Prediction formula와 그래프가 계산에 사용한
+            표현입니다.
+          </p>
+        </details>
+        {result.formula && (
+          <details className="regression-help">
+            <summary>Prediction formula</summary>
+            <code className="regression-full-formula">{result.formula}</code>
+          </details>
+        )}
+        {result.warnings.length > 0 && (
+          <details className="regression-help">
+            <summary>Assumptions · Warnings ({result.warnings.length})</summary>
+            <ul>
+              {result.warnings.map((warning, i) => (
+                <li key={i}>{warning}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </details>
+    </div>
+  )
+}
+```
+
+<a id="source-22"></a>
+
+## src/components/RegressionResult.css
+
+원본: [src/components/RegressionResult.css](../../src/components/RegressionResult.css) · 189줄 · SHA-256: `62032f3f7d45be69a60964b574ac316a49da5af21f1074155ff210dc9dec59db`
+
+```css
+.regression-result {
+  color: #29323d;
+  font-size: 14px;
+}
+.regression-output-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.regression-output-heading h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.regression-status {
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid #cbd5ce;
+  color: #365c47;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.regression-status.stopped {
+  color: #8e511f;
+  border-color: #dbc5b2;
+}
+.regression-stop,
+.regression-confidence-note {
+  color: #8e511f;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.regression-model {
+  margin: 10px 0 16px;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+.regression-primary {
+  display: flex;
+  gap: 14px 32px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  padding: 12px 0;
+  border-top: 1px solid #d7dce1;
+  border-bottom: 1px solid #d7dce1;
+}
+.regression-primary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.regression-primary span {
+  font-size: 12px;
+  color: #586473;
+}
+.regression-primary strong {
+  font-family: var(--mono, monospace);
+  font-size: 21px;
+  font-weight: 500;
+  color: #2e587d;
+}
+.regression-table-scroll {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.regression-result table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.regression-result caption {
+  text-align: left;
+  color: #4c5967;
+  font-weight: 600;
+  padding: 5px 0 8px;
+}
+.regression-result th,
+.regression-result td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e1e5e9;
+  vertical-align: top;
+}
+.regression-result thead th {
+  background: #f2f4f7;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.regression-result tbody th {
+  font-weight: 500;
+}
+.regression-coefficients td {
+  font-family: var(--mono, monospace);
+  color: #2e587d;
+}
+.regression-result td small,
+.regression-result th small {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--sans, sans-serif);
+  font-size: 11px;
+  color: #687381;
+}
+.regression-help {
+  margin: 10px 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.regression-help summary,
+.regression-diagnostics > summary {
+  cursor: pointer;
+  color: #486478;
+  font-size: 13px;
+}
+.regression-help p {
+  max-width: 90ch;
+  margin: 9px 0;
+  color: #465362;
+}
+.regression-help li {
+  margin: 5px 0;
+  color: #465362;
+}
+.regression-inline-help {
+  font-family: var(--sans, sans-serif);
+  font-size: 12px;
+  color: #687381;
+}
+.regression-inline-help summary {
+  cursor: pointer;
+}
+.regression-inline-help p {
+  max-width: 55ch;
+  line-height: 1.6;
+}
+.regression-comparison {
+  margin-top: 22px;
+  border-top: 1px solid #d7dce1;
+  padding-top: 14px;
+}
+.regression-comparison h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.regression-comparison .scientific-chart-stage {
+  height: 340px;
+  min-height: 260px;
+}
+.regression-diagnostics {
+  border-top: 1px solid #d7dce1;
+  padding-top: 12px;
+  margin-top: 20px;
+}
+.regression-run-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.regression-run-details dd {
+  margin: 0;
+}
+.regression-run-details dt {
+  color: #66717f;
+}
+.regression-full-formula {
+  display: block;
+  padding: 10px;
+  background: #f5f6f8;
+  color: #3d4855;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .regression-result th,
+  .regression-result td {
+    padding: 7px 8px;
+  }
+  .regression-primary {
+    gap: 12px 22px;
+  }
+  .regression-primary strong {
+    font-size: 18px;
   }
 }
 ```

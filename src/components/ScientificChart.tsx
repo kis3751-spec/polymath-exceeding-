@@ -1,13 +1,17 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ScientificSeries } from '../engine/scientific/types'
+import {
+  identitySegment,
+  integrationAreaPolygons,
+} from './scientific-chart-geometry'
 import './ScientificChart.css'
 const colors = [
-  '#347e70',
-  '#cb8c55',
-  '#7870d5',
-  '#4a8daf',
-  '#bb658e',
-  '#809747',
+  '#376eae',
+  '#b37836',
+  '#7961a8',
+  '#368078',
+  '#a85773',
+  '#6c8039',
 ]
 const num = (x: number) =>
   Math.abs(x) > 1e5 || (x !== 0 && Math.abs(x) < 0.001)
@@ -16,12 +20,18 @@ const num = (x: number) =>
 type Props = {
   series: ScientificSeries[]
   xLabel?: string
+  yLabel?: string
+  area?: { from: number; to: number; seriesName?: string }
+  identityLine?: boolean
   cursorIndex?: number
   onSelectIndex?: (i: number) => void
 }
 export default function ScientificChart({
   series,
   xLabel = '',
+  yLabel = '',
+  area,
+  identityLine = false,
   cursorIndex,
   onSelectIndex,
 }: Props) {
@@ -85,6 +95,10 @@ export default function ScientificChart({
         ymax = Math.max(ymax, y)
       }
     if (!Number.isFinite(xmin)) return null
+    if (area) {
+      ymin = Math.min(ymin, 0)
+      ymax = Math.max(ymax, 0)
+    }
     const xs = Math.max(Math.abs(xmin), Math.abs(xmax)) || 1,
       ys = Math.max(Math.abs(ymin), Math.abs(ymax)) || 1
     let x0 = xmin / xs,
@@ -98,13 +112,13 @@ export default function ScientificChart({
     y0 -= dy * 0.08
     y1 += dy * 0.08
     return { xs, ys, x0, x1, y0, y1 }
-  }, [series])
+  }, [series, area])
   const width = size.width,
     height = size.height,
     left = 70,
     right = width - 22,
-    top = 24,
-    bottom = height - 50
+    top = 30,
+    bottom = height - 55
   const plotWidth = Math.max(1, right - left),
     plotHeight = Math.max(1, bottom - top)
   const geometry = useMemo(() => {
@@ -141,6 +155,30 @@ export default function ScientificChart({
       }),
     [series, geometry],
   )
+  const areaPolygons = useMemo(() => {
+    if (!area || !geometry) return []
+    const source = area.seriesName
+      ? series.find((s) => s.name === area.seriesName)
+      : series.find((s) => s.style !== 'points')
+    if (!source || hidden.includes(source.name)) return []
+    return integrationAreaPolygons(source.x, source.y, area.from, area.to).map(
+      (polygon) => ({
+        sign: polygon.sign,
+        points: polygon.points
+          .map((p) => `${geometry.x(p.x)},${geometry.y(p.y)}`)
+          .join(' '),
+      }),
+    )
+  }, [area, series, hidden, geometry])
+  const diagonal =
+    geometry && bounds && identityLine
+      ? identitySegment(
+          geometry.x0 * bounds.xs,
+          geometry.x1 * bounds.xs,
+          geometry.y0 * bounds.ys,
+          geometry.y1 * bounds.ys,
+        )
+      : null
   useEffect(() => {
     const el = svg.current
     if (!el) return
@@ -261,29 +299,29 @@ export default function ScientificChart({
           ))}
         </div>
         <label>
-          확대 축{' '}
+          Zoom{' '}
           <select
             aria-label="시각화 확대 축"
             value={axis}
             onChange={(e) => setAxis(e.target.value)}
           >
-            <option value="both">양축</option>
-            <option value="x">X축</option>
-            <option value="y">Y축</option>
+            <option value="both">X & Y</option>
+            <option value="x">X</option>
+            <option value="y">Y</option>
           </select>
         </label>
         <button
           type="button"
           onClick={() => setZoom({ l: 0, r: 1, b: 0, t: 1 })}
         >
-          축 초기화
+          Reset
         </button>
       </div>
       <div className="scientific-chart-stage" ref={container}>
         <svg
           ref={svg}
           role="img"
-          aria-label={`${xLabel || '데이터'} 시각화`}
+          aria-label={`X: ${xLabel || 'x'}, Y: ${yLabel || 'y'}${identityLine ? ', y = x reference' : ''}`}
           tabIndex={0}
           width={width}
           height={height}
@@ -335,14 +373,19 @@ export default function ScientificChart({
                 y = bottom - f * plotHeight
               return (
                 <g key={i}>
-                  <line x1={left} y1={y} x2={right} y2={y} stroke="#e5ebe4" />
+                  <line
+                    x1={left}
+                    y1={y}
+                    x2={right}
+                    y2={y}
+                    className="science-grid"
+                  />
                   <line
                     x1={x}
                     y1={top}
                     x2={x}
                     y2={bottom}
-                    stroke="#edf0eb"
-                    strokeDasharray="3 5"
+                    className="science-grid"
                   />
                   <text x={left - 9} y={y + 4} textAnchor="end">
                     {num(
@@ -360,6 +403,49 @@ export default function ScientificChart({
               )
             })}
           <g clipPath={`url(#${clip})`}>
+            {areaPolygons.map((polygon, i) => (
+              <polygon
+                key={i}
+                points={polygon.points}
+                className={
+                  polygon.sign > 0
+                    ? 'science-area-positive'
+                    : 'science-area-negative'
+                }
+              />
+            ))}
+            {area && geometry && (
+              <>
+                <line
+                  x1={left}
+                  y1={geometry.y(0)}
+                  x2={right}
+                  y2={geometry.y(0)}
+                  className="science-zero-line"
+                />
+                {[area.from, area.to]
+                  .filter(Number.isFinite)
+                  .map((value, i) => (
+                    <line
+                      key={i}
+                      x1={geometry.x(value)}
+                      y1={top}
+                      x2={geometry.x(value)}
+                      y2={bottom}
+                      className="science-area-limit"
+                    />
+                  ))}
+              </>
+            )}
+            {diagonal && geometry && (
+              <line
+                x1={geometry.x(diagonal.from)}
+                y1={geometry.y(diagonal.from)}
+                x2={geometry.x(diagonal.to)}
+                y2={geometry.y(diagonal.to)}
+                className="science-identity-line"
+              />
+            )}
             {series.map((s, i) =>
               hidden.includes(s.name) || !geometry ? null : (
                 <g key={s.name}>
@@ -405,8 +491,16 @@ export default function ScientificChart({
               ),
             )}
           </g>
-          <text x={(left + right) / 2} y={height - 5} textAnchor="middle">
-            {xLabel}
+          <text
+            className="science-axis-label"
+            x={(left + right) / 2}
+            y={height - 8}
+            textAnchor="middle"
+          >
+            X: {xLabel || 'x'}
+          </text>
+          <text className="science-axis-label" x={left} y={15}>
+            Y: {yLabel || 'y'}
           </text>
           {!bounds && (
             <text x={width / 2} y={height / 2} textAnchor="middle">
@@ -417,19 +511,37 @@ export default function ScientificChart({
         {hovered && (
           <div className="science-chart-tooltip">
             <strong>{hovered.name}</strong>
-            <span>x {num(hovered.x)}</span>
-            <span>y {num(hovered.y)}</span>
+            <span>
+              {xLabel || 'x'} {num(hovered.x)}
+            </span>
+            <span>
+              {yLabel || 'y'} {num(hovered.y)}
+            </span>
           </div>
         )}
       </div>
       <details className="science-help">
-        <summary>그래프 조작</summary>
+        <summary>Graph controls</summary>
         <p>
           범례로 곡선을 숨기거나 표시합니다. 그래프를 클릭한 뒤 휠로 확대·축소할
           수 있습니다. 빈 원은 관측값이며 600개를 넘으면 마커 일부만 표시합니다.
           표와 CSV에는 전체 데이터가 포함됩니다. ODE 그래프에서는 클릭하거나
           방향키로 계산 시점을 선택합니다.
         </p>
+        {area && (
+          <p>
+            음영은 지정한 적분 범위에서 곡선과 Y=0 사이의 면적입니다. 파란
+            영역은 양의 기여, 주황 영역은 음의 기여입니다. 적분 한계의 순서를
+            바꾸면 최종 적분값의 부호가 반대로 바뀝니다.
+          </p>
+        )}
+        {identityLine && (
+          <p>
+            점선 y=x는 예측값과 관측값이 같은 위치입니다. 점이 점선 위에 있으면
+            과대 예측, 아래에 있으면 과소 예측입니다. 두 축은 동일한 물리 단위를
+            사용합니다.
+          </p>
+        )}
       </details>
     </div>
   )

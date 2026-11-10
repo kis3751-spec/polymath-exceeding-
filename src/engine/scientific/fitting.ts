@@ -5,7 +5,9 @@ import { evaluateDual, type Dual } from '../expression-derivative'
 import { preprocessSolverSource } from '../preprocessor'
 import { compileAssignments, compileExpression } from './expression'
 import { parseDataTable } from './data'
+import { coefficientConfidence95, studentTCritical95 } from './statistics'
 import type {
+  ScientificCoefficient,
   ScientificMetric,
   ScientificRequest,
   ScientificResult,
@@ -118,12 +120,12 @@ function summary(
         '측정값 평균만 사용하는 모델에 비해 제곱오차를 얼마나 줄였는지 나타냅니다. 음수도 가능하며, 높은 값만으로 물리적 타당성이나 외삽 정확도를 보장하지 않습니다.',
     },
     {
-      label: '최대 절대 오차',
+      label: 'Max absolute error',
       value: Math.max(...residuals.map(Math.abs)),
       detail: '입력한 데이터 점 중 예측값과 가장 크게 벌어진 점의 차이입니다.',
     },
     {
-      label: '잔차 자유도',
+      label: 'Degrees of freedom',
       value: df,
       detail:
         '데이터 행 수에서 추정한 계수 수를 뺀 값입니다. 0 이하이면 데이터로 오차 분산이나 계수 표준오차를 추정할 여유가 없습니다.',
@@ -137,7 +139,7 @@ function summary(
   ]
   if (r2 !== undefined && df > 0 && y.length > 1)
     metrics.push({
-      label: '조정 R²',
+      label: 'Adjusted R²',
       value: 1 - ((1 - r2) * (y.length - 1)) / df,
       detail:
         '계수 수 증가에 따른 과적합을 일부 보정한 평균 기준의 설명력입니다. 같은 종속변수·같은 데이터로 계산한 모델을 비교하세요.',
@@ -386,25 +388,48 @@ function linearFit(
     warnings.push(
       '원점 통과를 강제한 모델입니다. R²는 데이터 평균 기준으로 계산했으므로 음수가 될 수 있습니다.',
     )
+  const coefficientRows: ScientificCoefficient[] = labels
+    .map((name, i) => ({
+      name,
+      estimate: coefficients[i],
+      fixed: poly && origin && i === 0,
+    }))
+    .filter((row) => Number.isFinite(row.estimate))
   if (stats.df > 0) {
     const errors = standardErrors(
       solved.svd,
       transform,
       Math.sqrt(stats.sseNormalized / stats.df) * yScale,
     )
+    const critical = studentTCritical95(stats.df)
     errors.forEach((v, i) => {
-      if (Number.isFinite(v)) values[`SE_${labels[i]}`] = v
+      if (!Number.isFinite(v)) return
+      values[`SE_${labels[i]}`] = v
+      const row = coefficientRows.find((r) => r.name === labels[i])
+      if (row && !row.fixed) {
+        row.standardError = v
+        row.confidence95 = coefficientConfidence95(row.estimate, v, critical)
+        if (!row.confidence95) row.note = '구간 폭이 Float64 범위를 넘었습니다.'
+      }
     })
   }
+  for (const row of coefficientRows)
+    if (row.fixed)
+      row.note = 'Origin 조건으로 0에 고정한 값이며 추정한 계수가 아닙니다.'
+    else if (!row.confidence95 && !row.note)
+      row.note =
+        stats.df <= 0
+          ? 'Degrees of freedom이 0이어서 오차 분산을 추정할 수 없습니다.'
+          : '원래 계수의 Standard Error를 유한한 값으로 계산할 수 없습니다.'
   stats.metrics.push(
     {
-      label: '식별 랭크',
+      label: 'Rank',
       value: `${solved.rank} / ${p}`,
       detail:
         '정규화한 설계행렬의 수치 랭크입니다. 모든 계수를 독립적으로 구분할 수 있을 때만 결과를 반환합니다.',
     },
     {
-      label: '설계행렬 조건수',
+      label: 'Design condition number',
       value: numeric(solved.condition),
       detail:
         '정규화한 설명변수에서 계수 추정의 수치 민감도를 나타냅니다. 측정 데이터의 정확성이나 모델의 신뢰 확률은 아닙니다.',
@@ -451,7 +476,7 @@ function linearFit(
     : `${dependent} = ${[...(!origin ? [print(coefficients[0])] : []), ...predictors.map((name, j) => `${print(coefficients[j + (origin ? 0 : 1)])}*${name}`)].join(' + ')}`
   return {
     module: request.module,
-    method: '정규화 SVD 최소제곱',
+    method: 'Normalized SVD least squares',
     status: 'completed',
     columns: [...parsed.table.columns, 'prediction', 'data_error'],
     rows: parsed.table.rows.map((row, i) => [
@@ -465,6 +490,31 @@ function linearFit(
     warnings,
     durationMs: performance.now() - start,
     formula,
+    coefficients: coefficientRows,
+    regression: {
+      model: poly
+        ? `${dependent} = ${Array.from(
+            { length: degree + (origin ? 0 : 1) },
+            (_, j) => {
+              const k = j + (origin ? 1 : 0)
+              return `a${k}${k ? `*${predictors[0]}${k > 1 ? `^${k}` : ''}` : ''}`
+            },
+          ).join(' + ')}`
+        : `${dependent} = ${[...(!origin ? ['intercept'] : []), ...predictors.map((name) => `b_${name}*${name}`)].join(' + ')}`,
+      sampleCount: y.length,
+      parameterCount: p,
+      degreesOfFreedom: stats.df,
+      rank: solved.rank,
+      origin,
+      confidenceMethod: 'linear-normal',
+      ...(stats.df <= 0
+        ? {
+            confidenceUnavailableReason:
+              'Degrees of freedom이 0이어서 Standard Error와 95% CI를 추정하지 않습니다.',
+          }
+        : {}),
+    },
+    comparison: { observed: [...y], predicted: [...pred], dependent },
   }
 }
 
@@ -563,7 +613,8 @@ function nonlinearFit(
     )
   const yScale = Math.max(...y.map(Math.abs)) || 1
   let evaluations = 0,
-    usedDifference = false
+    usedDifference = false,
+    lastJacobianUsedDifference = false
   const predict = (theta: number[]) => {
     evaluations++
     const params = Object.fromEntries(names.map((name, j) => [name, theta[j]]))
@@ -574,6 +625,7 @@ function nonlinearFit(
     return values.map((v) => v / yScale)
   }
   const jacobian = (theta: number[], base: number[]) => {
+    lastJacobianUsedDifference = false
     const params = Object.fromEntries(names.map((name, j) => [name, theta[j]]))
     const cols = names.map((name, j) => {
       const values = parsed.raw.map((row) => {
@@ -602,6 +654,7 @@ function nonlinearFit(
       )
         return values.map((v) => v / yScale)
       usedDifference = true
+      lastJacobianUsedDifference = true
       let h = Math.sqrt(Number.EPSILON) * Math.max(Math.abs(theta[j]), 1)
       const bound = parsed.bounds.get(name) ?? { min: -Infinity, max: Infinity }
       for (let attempt = 0; attempt < 12; attempt++, h /= 2) {
@@ -754,6 +807,10 @@ function nonlinearFit(
     values = Object.fromEntries(names.map((name, i) => [name, theta[i]])),
     warnings = [...stats.warnings]
   finalJ = jacobian(theta, pred)
+  // A central secant across a kink may have full rank even when the model
+  // is not locally differentiable or identifiable (e.g. a + abs(a) at a=0).
+  // Keep that secant for numerical iteration, not for statistical inference.
+  const regularDerivative = !lastJacobianUsedDifference
   const finalScales = names.map(
     (_, k) => Math.hypot(...finalJ.map((row) => row[k])) || 1,
   )
@@ -768,8 +825,22 @@ function nonlinearFit(
     converged = false
     stop = '수렴 위치의 Jacobian 랭크가 부족해 계수를 구분할 수 없습니다.'
   }
+  const coefficientRows: ScientificCoefficient[] = names.map((name, i) => ({
+    name,
+    estimate: theta[i],
+  }))
+  const confidenceUnavailableReason = !regularDerivative
+    ? '최종 적합점에서 정칙 미분을 확인하지 못해 유한차분을 사용했습니다. 차분의 랭크나 작은 수치 오차만으로 계수 식별을 판단할 수 없어 Standard Error와 95% CI를 제공하지 않습니다.'
+    : !converged
+      ? '최소제곱 수렴 조건을 만족하지 않아 계수의 95% CI를 제공하지 않습니다.'
+      : stats.df <= 0
+        ? 'Degrees of freedom이 0이어서 오차 분산을 추정할 수 없습니다.'
+        : activeBounds.length
+          ? '활성 경계에 놓인 계수가 있어 대칭적인 95% CI를 제공하지 않습니다.'
+          : undefined
   if (
     converged &&
+    regularDerivative &&
     stats.df > 0 &&
     svd.rank === names.length &&
     !activeBounds.length
@@ -781,10 +852,24 @@ function nonlinearFit(
       ),
       Math.sqrt(stats.sseNormalized / stats.df),
     )
+    const critical = studentTCritical95(stats.df)
     errors.forEach((v, i) => {
-      if (Number.isFinite(v)) values[`SE_${names[i]}`] = v
+      if (!Number.isFinite(v)) return
+      values[`SE_${names[i]}`] = v
+      coefficientRows[i].standardError = v
+      coefficientRows[i].confidence95 = coefficientConfidence95(
+        theta[i],
+        v,
+        critical,
+      )
     })
   }
+  coefficientRows.forEach((row) => {
+    if (!row.confidence95)
+      row.note =
+        confidenceUnavailableReason ??
+        '국소 오차 구간을 유한한 값으로 계산할 수 없습니다.'
+  })
   if (!converged) warnings.push(stop)
   if (activeBounds.length)
     warnings.push(
@@ -792,20 +877,29 @@ function nonlinearFit(
     )
   if (usedDifference)
     warnings.push(
-      '일부 비매끄러운 지점 또는 경계에서 유한차분 Jacobian을 사용했습니다. 이 지점의 계수 민감도는 국소 근사입니다.',
+      regularDerivative
+        ? '일부 반복에서 유한차분 Jacobian을 사용했습니다. 최종 적합점에서는 자동미분이 가능하여 해당 위치의 국소 통계 추정만 제공합니다.'
+        : confidenceUnavailableReason!,
     )
   warnings.push(
     '비선형 회귀는 초기값에 따른 국소 최소제곱 해입니다. 다른 초기값에서 더 나은 해가 있을 수 있습니다. 계수 표준오차는 독립·동일분산 오차 및 국소 선형화 가정의 추정치입니다.',
   )
   stats.metrics.push(
+    regularDerivative
+      ? {
+          label: 'Jacobian rank',
+          value: `${svd.rank} / ${names.length}`,
+          detail:
+            '현재 적합점에서 데이터가 계수 변화에 독립적으로 반응하는지 보여줍니다. 랭크가 부족하면 계수의 유일한 식별을 주장하지 않습니다.',
+        }
+      : {
+          label: 'Derivative regularity',
+          value: 'Not verified',
+          detail:
+            '최종 적합점의 자동미분이 실패해 유한차분으로 반복을 마쳤습니다. 비매끄러운 점에서는 양측 차분이 실제로 존재하지 않는 기울기를 만들 수 있으므로, 차분 행렬의 랭크를 계수의 국소 식별 근거로 표시하지 않습니다.',
+        },
     {
-      label: 'Jacobian 랭크',
-      value: `${svd.rank} / ${names.length}`,
-      detail:
-        '현재 적합점에서 데이터가 계수 변화에 독립적으로 반응하는지 보여줍니다. 랭크가 부족하면 계수의 유일한 식별을 주장하지 않습니다.',
-    },
-    {
-      label: '반복 횟수',
+      label: 'Iterations',
       value: iteration,
       detail:
         '감쇠 계수를 조정하며 수행한 Levenberg–Marquardt 반복 횟수입니다. 반복 상한 도달은 수렴으로 표시하지 않습니다.',
@@ -870,7 +964,7 @@ function nonlinearFit(
   const formula = `${parsed.dependent} = ${parsed.expression}; ${names.map((name, i) => `${name}=${print(theta[i])}`).join(', ')}`
   return {
     module: request.module,
-    method: '감쇠 Levenberg–Marquardt · SVD',
+    method: 'Damped Levenberg–Marquardt · SVD',
     status: converged ? 'converged' : 'stopped',
     message: converged ? '국소 최소제곱 수렴 조건을 만족했습니다.' : stop,
     columns: [...parsed.table.columns, 'prediction', 'data_error'],
@@ -887,6 +981,22 @@ function nonlinearFit(
     evaluations,
     durationMs: performance.now() - start,
     formula,
+    coefficients: coefficientRows,
+    regression: {
+      model: `${parsed.dependent} = ${parsed.expression}`,
+      sampleCount: y.length,
+      parameterCount: names.length,
+      degreesOfFreedom: stats.df,
+      ...(regularDerivative ? { rank: svd.rank } : {}),
+      origin: false,
+      confidenceMethod: 'nonlinear-local',
+      confidenceUnavailableReason,
+    },
+    comparison: {
+      observed: [...y],
+      predicted: [...predicted],
+      dependent: parsed.dependent,
+    },
   }
 }
 

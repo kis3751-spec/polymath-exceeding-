@@ -7,7 +7,6 @@ import {
   Play,
   Pause,
   Save,
-  X,
 } from 'lucide-react'
 import { encodeCsv } from '../csv'
 import type {
@@ -22,6 +21,9 @@ import {
   scientificTitles,
 } from '../engine/scientific/catalog'
 import ScientificChart from './ScientificChart'
+import ModuleGuide from './ModuleGuide'
+import RegressionResult from './RegressionResult'
+import ScientificOutput, { IntegralFormula } from './ScientificOutput'
 import './ScientificWorkspace.css'
 
 type Draft = {
@@ -37,7 +39,7 @@ type Props = {
 const storageKey = (m: string) => `polymath-scientific-${m}-v1`
 const format = (x: number) =>
   !Number.isFinite(x)
-    ? '산정 불가'
+    ? 'N/A'
     : x === 0
       ? '0'
       : Math.abs(x) < 0.0001 || Math.abs(x) > 1e7
@@ -105,15 +107,8 @@ function constants(source: string) {
   }
   return list
 }
-const labels: Record<ScientificModule, string> = {
-  ode: '미분방정식',
-  'curve-fit': '선형·다항 회귀',
-  multilinear: '다중선형 회귀',
-  'nonlinear-fit': '비선형 회귀',
-  integration: '이산 적분',
-  optimization: '제약 최적화',
-  lsq: '최소제곱 최적화',
-}
+const labels = scientificTitles
+
 export default function ScientificWorkspace({
   module,
   onHome,
@@ -228,40 +223,29 @@ export default function ScientificWorkspace({
     )
     return () => clearInterval(t)
   }, [playing, result, screen])
-  useEffect(() => {
-    if (!guide) return
-    const before = document.activeElement as HTMLElement | null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setGuide(false)
-      if (e.key === 'Tab') {
-        const dialog = document.querySelector<HTMLElement>(
-          '.science-guide-modal',
-        )
-        const controls = Array.from(
-          dialog?.querySelectorAll<HTMLElement>(
-            'button,a,input,select,summary,[tabindex="0"]',
-          ) ?? [],
-        )
-        const first = controls[0],
-          last = controls.at(-1)
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last?.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first?.focus()
-        }
-      }
-    }
-    document.addEventListener('keydown', key)
-    return () => {
-      document.removeEventListener('keydown', key)
-      document.body.style.overflow = previousOverflow
-      before?.focus({ preventScroll: true })
-    }
-  }, [guide])
+  function editSource(source: string) {
+    if (timer.current) clearTimeout(timer.current)
+    worker.current?.terminate()
+    version.current++
+    setPending(false)
+    setDraft({ ...draft, source, parameters: {} })
+    setRanges({})
+    setError('')
+  }
+  const polyfit =
+    /^[ \t]*polyfit[ \t]+([A-Za-z][A-Za-z0-9_]*)\s+([A-Za-z][A-Za-z0-9_]*)\s+(\d+)(?:[ \t]+(origin))?[ \t]*(?:#.*)?$/im.exec(
+      draft.source,
+    )
+  const fitDegree = Number(polyfit?.[3] ?? 1)
+  function editFit(degree: number, origin = Boolean(polyfit?.[4])) {
+    if (!polyfit) return
+    const command = `polyfit ${polyfit[1]} ${polyfit[2]} ${degree}${origin ? ' origin' : ''}`
+    editSource(
+      draft.source.slice(0, polyfit.index) +
+        command +
+        draft.source.slice(polyfit.index + polyfit[0].length),
+    )
+  }
   function editParameter(name: string, value: number) {
     if (!Number.isFinite(value)) return
     const next = {
@@ -285,7 +269,7 @@ export default function ScientificWorkspace({
   }
   function saveProject() {
     download(
-      `polymath-${module}.json`,
+      `ivc-${module}.json`,
       JSON.stringify(
         { version: 1, kind: 'scientific', module, ...draft },
         null,
@@ -337,7 +321,7 @@ export default function ScientificWorkspace({
   function exportReport() {
     if (!result || stale || pending) return
     download(
-      `polymath-${module}-report.md`,
+      `ivc-${module}-report.md`,
       [
         `# ${scientificTitles[module]}`,
         `방법: ${result.method}`,
@@ -356,6 +340,18 @@ export default function ScientificWorkspace({
             `- ${k}: ${Number.isFinite(v) ? v.toPrecision(17) : '산정 불가'}`,
         ),
         result.formula ? `\n모델: ${result.formula}` : '',
+        result.coefficients?.length
+          ? [
+              '\n## Coefficients · 95% Confidence Interval',
+              '| Coefficient | Estimate | 95% CI |',
+              '| --- | --- | --- |',
+              ...result.coefficients.map(
+                (c) =>
+                  `| ${c.name} | ${c.estimate.toPrecision(17)} | ${c.fixed ? 'Fixed by model' : c.confidence95 ? `[${c.confidence95.lower.toPrecision(17)}, ${c.confidence95.upper.toPrecision(17)}]` : 'Not estimated'} |`,
+              ),
+              'Student-t marginal intervals under independent, constant-variance normal observation errors. Nonlinear intervals are a local approximation; these are not prediction intervals or numerical error bounds.',
+            ].join('\n')
+          : '',
         result.warnings.length
           ? '\n## 확인할 사항\n' +
             result.warnings.map((x) => '- ' + x).join('\n')
@@ -409,23 +405,23 @@ export default function ScientificWorkspace({
   const fieldValues = result?.rows[Math.min(cursor, result.rows.length - 1)]
   return (
     <div className="scientific-workspace">
-      <header className="scientific-header">
+      <header className="scientific-header ivc-toolbar">
         <button type="button" onClick={onHome}>
           <ArrowLeft size={16} />
-          모듈 홈
+          Home
         </button>
-        <strong>{scientificTitles[module]}</strong>
+        <strong className="ivc-brand">{scientificTitles[module]}</strong>
         <button type="button" onClick={() => setGuide(true)}>
           <BookOpen size={16} />
-          사용법
+          User Guide
         </button>
         <button type="button" onClick={saveProject}>
           <Save size={16} />
-          프로젝트 저장
+          Save Project
         </button>
         <button type="button" onClick={() => importRef.current?.click()}>
           <FolderOpen size={16} />
-          불러오기
+          Import
         </button>
         <input
           ref={importRef}
@@ -451,39 +447,39 @@ export default function ScientificWorkspace({
           >
             <span>0{i + 1}</span>
             {s === 'model'
-              ? '모델·데이터'
+              ? 'Model & Data'
               : s === 'simulation'
-                ? '시뮬레이션'
-                : '해석 리포트'}
+                ? 'Simulation'
+                : 'Report'}
           </button>
         ))}
         {['curve-fit', 'multilinear'].includes(module) && (
           <label>
-            회귀 모델{' '}
+            Regression Module{' '}
             <select
-              aria-label="회귀 모델"
+              aria-label="Regression Module"
               value={module}
               onChange={(e) =>
                 onModuleChange?.(e.target.value as ScientificModule)
               }
             >
-              <option value="curve-fit">선형·다항 회귀</option>
-              <option value="multilinear">다중선형 회귀</option>
+              <option value="curve-fit">Curve Fitting</option>
+              <option value="multilinear">Multilinear Regression</option>
             </select>
           </label>
         )}
         {['optimization', 'lsq'].includes(module) && (
           <label>
-            최적화 방식{' '}
+            Optimization Module{' '}
             <select
-              aria-label="최적화 방식"
+              aria-label="Optimization Module"
               value={module}
               onChange={(e) =>
                 onModuleChange?.(e.target.value as ScientificModule)
               }
             >
-              <option value="optimization">목적함수·제약조건</option>
-              <option value="lsq">최소제곱·제약조건</option>
+              <option value="optimization">Constrained Optimization</option>
+              <option value="lsq">LSQ Optimization</option>
             </select>
           </label>
         )}
@@ -504,7 +500,7 @@ export default function ScientificWorkspace({
                 onChange={(e) => applyExample(Number(e.target.value))}
               >
                 <option value="" disabled>
-                  예제 불러오기
+                  Examples
                 </option>
                 {examples.map((x, i) => (
                   <option key={i} value={i}>
@@ -517,22 +513,14 @@ export default function ScientificWorkspace({
               {scientificDescriptions[module]}
             </p>
             <label className="science-editor-label" htmlFor="scientific-source">
-              수식·데이터
+              Input
             </label>
             <textarea
               id="scientific-source"
               aria-label="과학 계산 모델 입력"
               spellCheck={false}
               value={draft.source}
-              onChange={(e) => {
-                if (timer.current) clearTimeout(timer.current)
-                worker.current?.terminate()
-                version.current++
-                setPending(false)
-                setDraft({ ...draft, source: e.target.value, parameters: {} })
-                setRanges({})
-                setError('')
-              }}
+              onChange={(e) => editSource(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                   e.preventDefault()
@@ -550,17 +538,86 @@ export default function ScientificWorkspace({
                 }}
               >
                 <Play size={15} />
-                계산·시뮬레이션
+                Compute & Simulate
               </button>
               <span>Ctrl / ⌘ + Enter</span>
             </div>
           </section>
           <aside className="science-panel">
-            <h2>계산 설정</h2>
+            <h2>Settings</h2>
+            {module === 'curve-fit' && (
+              <div className="ivc-fit-settings">
+                <label>
+                  Fit Type
+                  <select
+                    aria-label="Fit Type"
+                    disabled={!polyfit}
+                    value={fitDegree > 1 ? 'polynomial' : 'linear'}
+                    onChange={(e) =>
+                      editFit(
+                        e.target.value === 'linear'
+                          ? 1
+                          : Math.max(2, fitDegree),
+                      )
+                    }
+                  >
+                    <option value="linear">Linear Regression</option>
+                    <option value="polynomial">Polynomial Regression</option>
+                  </select>
+                </label>
+                {fitDegree > 1 && (
+                  <label>
+                    Degree
+                    <input
+                      aria-label="Polynomial Degree"
+                      type="number"
+                      min="2"
+                      max="12"
+                      step="1"
+                      value={fitDegree}
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        if (Number.isInteger(n) && n >= 2 && n <= 12) editFit(n)
+                      }}
+                    />
+                  </label>
+                )}
+                <label className="ivc-checkbox">
+                  <input
+                    aria-label="Through Origin"
+                    type="checkbox"
+                    disabled={!polyfit}
+                    checked={Boolean(polyfit?.[4])}
+                    onChange={(e) => editFit(fitDegree, e.target.checked)}
+                  />{' '}
+                  Through Origin
+                </label>
+                {polyfit ? (
+                  <code className="ivc-command">{polyfit[0].trim()}</code>
+                ) : (
+                  <p>
+                    데이터 표 아래에 <code>polyfit x y 1</code>을 입력하면
+                    선택할 수 있습니다. x와 y는 표의 열 이름입니다.
+                  </p>
+                )}
+                <details className="science-help">
+                  <summary>Fit Type 읽는 법</summary>
+                  <p>
+                    Linear는 직선으로, Polynomial은 곡선으로 데이터 경향을
+                    맞춥니다. Degree 2는 제곱항까지, Degree 3은 세제곱항까지
+                    사용합니다. Degree를 높이면 데이터에 더 잘 맞아 보여도 새
+                    데이터 예측은 나빠질 수 있습니다. Through Origin은 x=0일 때
+                    y=0이라는 조건을 강제하므로 실험 이론상 맞을 때만
+                    선택하세요. 선택 내용은 Input의 polyfit 명령에 그대로
+                    반영되며 문법으로 직접 바꿀 수도 있습니다.
+                  </p>
+                </details>
+              </div>
+            )}
             {module === 'ode' && (
               <>
                 <label>
-                  적분 방법
+                  Integration Method
                   <select
                     aria-label="미분방정식 적분 방법"
                     value={draft.options.method ?? 'auto'}
@@ -571,13 +628,41 @@ export default function ScientificWorkspace({
                       })
                     }
                   >
-                    <option value="auto">자동 · RK45 / 강성 대응</option>
+                    <option value="auto">Auto · RK45 / Implicit Euler</option>
                     <option value="rk45">RK45</option>
-                    <option value="implicit">음해법 · 강성 대응</option>
+                    <option value="implicit">Implicit Euler · Stiffness</option>
                   </select>
                 </label>
+                <details className="science-help ivc-method-help">
+                  <summary>Integration Method 선택 가이드</summary>
+                  <p>
+                    <b>Auto</b>는 RK45로 시작하고 반복적인 스텝 축소 부담이
+                    감지되면 Implicit Euler로 전환합니다. 처음 사용할 때
+                    권장합니다. 모든 모델의 강성을 자동으로 증명하는 판정은
+                    아닙니다.
+                  </p>
+                  <p>
+                    <b>RK45</b>는 같은 짧은 구간을 4차·5차 공식으로 계산한
+                    차이로 오차를 추정해 내부 시간 간격을 조절합니다. 부드럽게
+                    변하는 일반적인 모델에 효율적입니다.
+                  </p>
+                  <p>
+                    <b>Implicit Euler</b>는 다음 상태가 다음 상태의 변화율도
+                    만족하도록 반복해서 풉니다. 빠른 변화와 느린 변화가 섞인
+                    Stiff 모델에서 유리할 수 있습니다. 1회 전체 스텝과 2회 반
+                    스텝을 비교해 오차를 제어하며 RK45보다 많은 계산이 필요할 수
+                    있습니다.
+                  </p>
+                  <p>
+                    <b>Tolerance</b>는 각 내부 스텝의 수치 오차 제어 목표입니다.
+                    Output Samples는 표와 그래프에 출력할 지점 수로 내부 스텝
+                    간격과 다릅니다. 실제 측정 오차나 전 구간의 엄밀한 오차
+                    상한을 보장하는 설정은 아닙니다. 자세한 계산 과정은 User
+                    Guide의 ODE 탭을 참고하세요.
+                  </p>
+                </details>
                 <label>
-                  출력 샘플 수
+                  Output Samples
                   <input
                     aria-label="ODE 출력 샘플 수"
                     type="number"
@@ -599,7 +684,7 @@ export default function ScientificWorkspace({
             )}
             {module === 'integration' && (
               <label>
-                보간 방법
+                Interpolation Method
                 <select
                   aria-label="이산 적분 보간 방법"
                   value={draft.options.method ?? ''}
@@ -613,9 +698,9 @@ export default function ScientificWorkspace({
                     })
                   }
                 >
-                  <option value="">입력 모델의 설정</option>
-                  <option value="lin">구간별 선형</option>
-                  <option value="ccs">자연 3차 스플라인</option>
+                  <option value="">From Source</option>
+                  <option value="lin">Piecewise Linear</option>
+                  <option value="ccs">Natural Cubic Spline</option>
                   <option value="akm">Akima</option>
                 </select>
               </label>
@@ -624,7 +709,7 @@ export default function ScientificWorkspace({
               module,
             ) && (
               <label>
-                수치 허용 오차
+                Tolerance
                 <input
                   aria-label="과학 계산 허용 오차"
                   type="number"
@@ -649,7 +734,7 @@ export default function ScientificWorkspace({
             )}
             {['optimization', 'lsq', 'nonlinear-fit'].includes(module) && (
               <label>
-                최대 반복
+                Max Iterations
                 <input
                   aria-label="최대 반복 횟수"
                   type="number"
@@ -688,7 +773,7 @@ export default function ScientificWorkspace({
                 setScreen('report')
               }}
             >
-              계산 후 리포트 보기
+              Compute & Report
             </button>
           </aside>
         </main>
@@ -805,10 +890,10 @@ export default function ScientificWorkspace({
               <div className="science-section-title">
                 <h2>
                   {module === 'ode'
-                    ? '시간에 따른 변화'
+                    ? 'Time Series'
                     : module === 'integration'
-                      ? '데이터와 적분'
-                      : '계산 결과'}
+                      ? 'Integration'
+                      : 'Output'}
                 </h2>
                 <div className="science-plot-switch">
                   {module === 'ode' && result.columns.length > 2 ? (
@@ -818,39 +903,49 @@ export default function ScientificWorkspace({
                         aria-pressed={!phase}
                         onClick={() => setPhase(false)}
                       >
-                        시간 그래프
+                        Time Series
                       </button>
                       <button
                         type="button"
                         aria-pressed={phase}
                         onClick={() => setPhase(true)}
                       >
-                        위상 그래프
+                        Phase Plot
                       </button>
                       {phase && (
                         <>
-                          <select
-                            aria-label="위상 X 변수"
-                            value={phaseX}
-                            onChange={(e) => setPhaseX(Number(e.target.value))}
-                          >
-                            {result.columns.slice(1).map((x, i) => (
-                              <option key={i} value={i + 1}>
-                                {x}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            aria-label="위상 Y 변수"
-                            value={phaseY}
-                            onChange={(e) => setPhaseY(Number(e.target.value))}
-                          >
-                            {result.columns.slice(1).map((x, i) => (
-                              <option key={i} value={i + 1}>
-                                {x}
-                              </option>
-                            ))}
-                          </select>
+                          <label className="ivc-axis-select">
+                            X Axis
+                            <select
+                              aria-label="위상 X 변수"
+                              value={phaseX}
+                              onChange={(e) =>
+                                setPhaseX(Number(e.target.value))
+                              }
+                            >
+                              {result.columns.slice(1).map((x, i) => (
+                                <option key={i} value={i + 1}>
+                                  {x}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="ivc-axis-select">
+                            Y Axis
+                            <select
+                              aria-label="위상 Y 변수"
+                              value={phaseY}
+                              onChange={(e) =>
+                                setPhaseY(Number(e.target.value))
+                              }
+                            >
+                              {result.columns.slice(1).map((x, i) => (
+                                <option key={i} value={i + 1}>
+                                  {x}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         </>
                       )}
                     </>
@@ -862,14 +957,14 @@ export default function ScientificWorkspace({
                         aria-pressed={plotGroup === 'model'}
                         onClick={() => setPlotGroup('model')}
                       >
-                        데이터·적합
+                        Data & Fit
                       </button>
                       <button
                         type="button"
                         aria-pressed={plotGroup === 'convergence'}
                         onClick={() => setPlotGroup('convergence')}
                       >
-                        수렴 이력
+                        Convergence
                       </button>
                     </>
                   )}
@@ -880,14 +975,14 @@ export default function ScientificWorkspace({
                         aria-pressed={plotGroup === 'model'}
                         onClick={() => setPlotGroup('model')}
                       >
-                        측정·보간
+                        Data & Interpolation
                       </button>
                       <button
                         type="button"
                         aria-pressed={plotGroup === 'cumulative'}
                         onClick={() => setPlotGroup('cumulative')}
                       >
-                        누적 적분
+                        Cumulative Integral
                       </button>
                     </>
                   ) : (
@@ -900,22 +995,51 @@ export default function ScientificWorkspace({
                           aria-pressed={plotGroup === 'model'}
                           onClick={() => setPlotGroup('model')}
                         >
-                          데이터·모델
+                          Data & Model
                         </button>
                         <button
                           type="button"
                           aria-pressed={plotGroup === 'residual'}
                           onClick={() => setPlotGroup('residual')}
                         >
-                          오차
+                          Error
                         </button>
                       </>
                     )
                   )}
                 </div>
               </div>
+              {module === 'integration' && <IntegralFormula result={result} />}
               <ScientificChart
                 series={plotted}
+                yLabel={
+                  phase
+                    ? result.columns[phaseY]
+                    : module === 'integration'
+                      ? plotGroup === 'cumulative'
+                        ? `I(${result.integration?.independent ?? result.columns[0]})`
+                        : result.integration?.dependent
+                      : plotGroup === 'residual'
+                        ? 'Prediction Error'
+                        : module === 'optimization' ||
+                            plotGroup === 'convergence'
+                          ? 'Objective'
+                          : module === 'ode'
+                            ? 'State Value'
+                            : 'Response'
+                }
+                area={
+                  module === 'integration' &&
+                  plotGroup !== 'cumulative' &&
+                  result.integration
+                    ? {
+                        from: result.integration.from,
+                        to: result.integration.to,
+                        seriesName: plotted.find((s) => s.style !== 'points')
+                          ?.name,
+                      }
+                    : undefined
+                }
                 xLabel={
                   phase
                     ? result.columns[phaseX]
@@ -958,13 +1082,13 @@ export default function ScientificWorkspace({
                 </div>
               )}
               <details className="science-data">
-                <summary>데이터 표 · {result.rows.length}행</summary>
+                <summary>Data Table · {result.rows.length} rows</summary>
                 <button
                   type="button"
                   disabled={stale || pending}
                   onClick={() =>
                     download(
-                      `polymath-${module}-data.csv`,
+                      `ivc-${module}-data.csv`,
                       '\uFEFF' + encodeCsv([result.columns, ...result.rows]),
                       'text/csv',
                     )
@@ -1034,14 +1158,14 @@ export default function ScientificWorkspace({
           {screen === 'report' && result && (
             <section className="science-panel science-report">
               <div className="science-section-title">
-                <h1>해석 리포트</h1>
+                <h1>Report</h1>
                 <button
                   type="button"
                   disabled={!reportResult}
                   onClick={exportReport}
                 >
                   <Download size={16} />
-                  리포트 저장
+                  Save Report
                 </button>
               </div>
               {!reportResult ? (
@@ -1053,64 +1177,24 @@ export default function ScientificWorkspace({
                   >
                     <strong>
                       {result.status === 'stopped'
-                        ? '수렴·정확도 조건 미충족'
+                        ? 'Stopped'
                         : result.status === 'converged'
-                          ? '수렴 조건 충족'
-                          : '계산 완료'}
+                          ? 'Converged'
+                          : 'Completed'}
                     </strong>
                     <span>{result.message ?? result.method}</span>
                   </div>
-                  {result.formula && (
-                    <div className="science-formula">{result.formula}</div>
+                  {['curve-fit', 'multilinear', 'nonlinear-fit'].includes(
+                    module,
+                  ) ? (
+                    <RegressionResult result={result} />
+                  ) : (
+                    <ScientificOutput
+                      result={result}
+                      source={draft.source}
+                      options={draft.options}
+                    />
                   )}
-                  <div className="science-metric-grid">
-                    {result.metrics.map((m, i) => (
-                      <article key={i}>
-                        <span>{m.label}</span>
-                        <strong>
-                          {typeof m.value === 'number'
-                            ? format(m.value)
-                            : m.value}
-                        </strong>
-                        <details>
-                          <summary>이 지표 읽는 법</summary>
-                          <p>{m.detail}</p>
-                        </details>
-                      </article>
-                    ))}
-                  </div>
-                  <details className="science-data" open>
-                    <summary>계산값·계수</summary>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>변수</th>
-                          <th>값</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(result.values).map(([name, value]) => (
-                          <tr key={name}>
-                            <th>{name}</th>
-                            <td>{format(value)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </details>
-                  <details className="science-help">
-                    <summary>계산 방법·설정</summary>
-                    <p>
-                      {result.method} · {result.durationMs.toFixed(2)} ms{' '}
-                      {result.iterations !== undefined
-                        ? ` · 반복 ${result.iterations}회`
-                        : ''}
-                      {result.evaluations !== undefined
-                        ? ` · 평가 ${result.evaluations}회`
-                        : ''}
-                    </p>
-                    <pre>{JSON.stringify(draft.options, null, 2)}</pre>
-                  </details>
                 </>
               )}
             </section>
@@ -1134,108 +1218,7 @@ export default function ScientificWorkspace({
         </div>
       )}
       {guide && (
-        <div
-          className="science-modal-backdrop"
-          onPointerDown={(e) => {
-            if (e.currentTarget === e.target) setGuide(false)
-          }}
-        >
-          <section
-            className="science-guide-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="science-guide-title"
-          >
-            <button
-              type="button"
-              autoFocus
-              className="science-guide-close"
-              aria-label="과학 계산 사용법 닫기"
-              onClick={() => setGuide(false)}
-            >
-              <X size={22} />
-            </button>
-            <h2 id="science-guide-title">{scientificTitles[module]} 사용법</h2>
-            <p>{scientificDescriptions[module]}</p>
-            <p>
-              모델·데이터에서 식과 측정값을 입력하고 계산합니다. 시뮬레이션에서
-              그래프·표를 확인하고, 리포트에서 지표를 클릭해 해석을 확인하세요.
-              JSON 프로젝트는 입력과 설정을 함께 저장합니다.
-            </p>
-            <table>
-              <thead>
-                <tr>
-                  <th>도구</th>
-                  <th>입력 문법</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th>미분방정식</th>
-                  <td>
-                    <code>d(A)/d(t)=-k*A</code>
-                    <br />
-                    <code>A(0)=1; t(0)=0; t(f)=10</code> (조건은 한 줄씩)
-                  </td>
-                </tr>
-                <tr>
-                  <th>선형·다항 회귀</th>
-                  <td>
-                    <code>polyfit x y 1</code> · 차수를 2 이상으로 바꾸면 다항식
-                  </td>
-                </tr>
-                <tr>
-                  <th>다중선형 회귀</th>
-                  <td>
-                    <code>mlinfit x1 x2 y</code>
-                  </td>
-                </tr>
-                <tr>
-                  <th>비선형 회귀</th>
-                  <td>
-                    <code>nlinfit y = a*x/(b+x)</code>
-                    <br />
-                    <code>m(a)=2</code>, <code>m(b)=1</code>을 각 줄에 입력
-                  </td>
-                </tr>
-                <tr>
-                  <th>이산 적분</th>
-                  <td>
-                    <code>integrate y(x) 0 4 200 lin</code> · lin / ccs / akm
-                  </td>
-                </tr>
-                <tr>
-                  <th>최적화</th>
-                  <td>
-                    <code>min: (x-2)^2+(y-1)^2</code>
-                    <br />
-                    <code>x|0 -10 10</code> · 이름|초기값 최소 최대
-                  </td>
-                </tr>
-                <tr>
-                  <th>LSQ 최적화</th>
-                  <td>
-                    <code>fit: y = a*x+b</code> · 표와 계수의 초기값·범위,
-                    제약조건
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <p>
-              표는 <code>[</code>와 <code>]</code> 사이에 첫 줄로 열 이름, 이후
-              줄에 숫자를 입력합니다. 탭·공백·쉼표로 열을 구분할 수 있고
-              소수점은 .을 사용합니다. # 뒤는 주석입니다.
-            </p>
-            <p>
-              함수: sin, cos, tan, asin, acos, atan, exp, ln(자연로그),
-              log·log10(상용로그), sqrt, abs, sinh, cosh, tanh, min, max.
-              거듭제곱은 ^, 곱셈은 *입니다. 정의역 밖의 식은 계산 오류로
-              안내합니다.
-            </p>
-            <h3>예제의 입력 형태</h3>
-            <pre>{examples[0]?.source}</pre>
-          </section>
-        </div>
+        <ModuleGuide initialTopic={module} onClose={() => setGuide(false)} />
       )}
     </div>
   )

@@ -62,14 +62,14 @@ export default function CertificationReport({
   const segments = certificateSegments(c)
   const span = c.domain.max - c.domain.min
   const counts = [
-    ['root', '근 격리', c.rootIntervals.length],
-    ['free', '해 부재', c.rootFreeIntervals?.length ?? 0],
+    ['root', 'Root Interval', c.rootIntervals.length],
+    ['free', 'Root-free', c.rootFreeIntervals?.length ?? 0],
     [
       'excluded',
-      '정의역 제외',
+      'Excluded',
       c.excludedIntervals?.length ?? c.excludedDomainCount,
     ],
-    ['unresolved', '미결정', c.unresolved.length],
+    ['unresolved', 'Unresolved', c.unresolved.length],
   ] as const
 
   return (
@@ -79,7 +79,7 @@ export default function CertificationReport({
       aria-busy={pending}
     >
       <div className="certificate-heading">
-        <h4>현재 탐색 구간</h4>
+        <h4>Search Domain Verification</h4>
         <span
           className={`certificate-state${state.complete ? ' is-complete' : ''}`}
         >
@@ -124,13 +124,13 @@ export default function CertificationReport({
         ))}
       </div>
       <details className="analysis-details certificate-reading">
-        <summary>검증 지도 읽는 법</summary>
+        <summary>Verification Map · 검증 지도 읽는 법</summary>
         <p>
-          색은 구간 연산으로 기록한 판정입니다. ‘근 격리’는 그 상자 안에 확인된
-          근이 있다는 뜻으로, 상자 전체가 해라는 뜻은 아닙니다. 작은 근 상자는
-          위치를 식별할 수 있도록 최소 너비로 표시합니다. ‘해 부재’는 추가 근이
-          없다고 검증한 구간이고 ‘정의역 제외’는 실수 수식이 정의되지 않는
-          구간입니다.
+          색은 구간 연산으로 기록한 판정입니다. Root Interval은 그 상자 안에
+          확인된 근이 있다는 뜻으로, 상자 전체가 해라는 뜻은 아닙니다. 작은 근
+          상자는 위치를 식별할 수 있도록 최소 너비로 표시합니다. Root-free는
+          추가 근이 없다고 검증한 구간이고 Excluded는 실수 수식이 정의되지 않는
+          구간입니다. Unresolved는 아직 판정이 끝나지 않은 구간입니다.
         </p>
         {truncated && (
           <p>
@@ -146,89 +146,105 @@ export default function CertificationReport({
         </p>
       </details>
 
-      <div className="probability-summary">
-        <div className="probability-value">
-          <span>입력 오차에 따른 근 개수 유지 확률</span>
-          <strong>
-            {pending ? '계산 중…' : (probability ?? '산정 조건 확인')}
-          </strong>
-          <small>
-            {probability
-              ? '현재 탐색 구간 · 검증된 확률 범위'
-              : '검증된 임계점과 확률 범위가 있는 경우 표시'}
-          </small>
+      <details className="analysis-details gaussian-model">
+        <summary>Gaussian Noise Model · 입력 오차와 근 개수</summary>
+        <p>
+          입력 오차에 따른 근 개수 유지 확률을 따로 살펴보는 선택 항목입니다.
+          측정 오차 모형을 알고 있을 때 사용하세요.
+        </p>
+        <div className="probability-summary">
+          <div className="probability-value">
+            <span>Root Count Stability</span>
+            <strong>
+              {pending ? '계산 중…' : (probability ?? '산정 조건 확인')}
+            </strong>
+            <small>
+              {probability
+                ? '현재 탐색 구간 · 검증된 확률 범위'
+                : '검증된 임계점과 확률 범위가 있는 경우 표시'}
+            </small>
+          </div>
+          <label className="probability-sigma">
+            Noise Standard Deviation σ
+            <input
+              aria-label="입력 오차 표준편차"
+              type="number"
+              min="0"
+              step="any"
+              value={sigmaText}
+              readOnly={!onInputNoiseSigmaChange}
+              onChange={(e) => setSigmaText(e.target.value)}
+              onBlur={applySigma}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  applySigma()
+                }
+                if (e.key === 'Escape') {
+                  setSigmaText(String(sigma))
+                  setSigmaError('')
+                }
+              }}
+            />
+            {sigmaError && <small role="alert">{sigmaError}</small>}
+          </label>
         </div>
-        <label className="probability-sigma">
-          입력 오차 표준편차 σ
-          <input
-            aria-label="입력 오차 표준편차"
-            type="number"
-            min="0"
-            step="any"
-            value={sigmaText}
-            readOnly={!onInputNoiseSigmaChange}
-            onChange={(e) => setSigmaText(e.target.value)}
-            onBlur={applySigma}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                applySigma()
-              }
-              if (e.key === 'Escape') {
-                setSigmaText(String(sigma))
-                setSigmaError('')
-              }
-            }}
-          />
-          {sigmaError && <small role="alert">{sigmaError}</small>}
-        </label>
-      </div>
-      <details className="analysis-details probability-assumptions">
-        <summary>이 확률은 무엇을 뜻하나요?</summary>
-        <p>
-          현재 스칼라 방정식의 좌변·우변 차이 F 전체에 하나의 일정한 오차 ε가
-          더해진다고 가정합니다. ε는 평균 0, 표준편차 σ의 정규분포를 따릅니다.
-          표시한 값은 F+ε=0의 근 개수가 현재 탐색 구간에서 유지될 확률의
-          상하한입니다. 미발견 근을 모두 찾았을 확률, 개별 해가 맞을 확률, 각
-          측정값에 독립 오차가 생기는 일반 모형과는 다릅니다.
-        </p>
-        <p>
-          σ는 등식의 단위로 환산한 입력 오차 크기입니다. 실제 측정 오차를 알고
-          있으면 그 값을 사용하세요. 같은 σ라도 등식의 단위나 스케일을 바꾸면
-          다른 오차 모형이 됩니다. 근 개수가 유지되더라도 위치가 크게 움직일 수
-          있으므로 위의 해 변화 증폭률과 함께 해석하세요.
-        </p>
-        {c.completeness?.perturbationUnavailableReason && !pending && (
-          <p>{c.completeness.perturbationUnavailableReason}</p>
-        )}
-        {!gp && !pending && !c.completeness?.perturbationUnavailableReason && (
+        <details className="analysis-details probability-assumptions">
+          <summary>Assumptions · 이 확률을 해석하는 방법</summary>
           <p>
-            현재 식·정의역·검증 예산에서는 확률을 검증하지 못했습니다. 이를 0%나
-            100%로 대신 표시하지 않습니다.
+            현재 스칼라 방정식의 좌변·우변 차이 F 전체에 하나의 일정한 오차 ε가
+            더해진다고 가정합니다. ε는 평균 0, 표준편차 σ의 정규분포를 따릅니다.
+            표시한 값은 F+ε=0의 근 개수가 현재 탐색 구간에서 유지될 확률의
+            상하한입니다. 미발견 근을 모두 찾았을 확률, 개별 해가 맞을 확률, 각
+            측정값에 독립 오차가 생기는 일반 모형과는 다릅니다.
           </p>
-        )}
-        {freshGp && !freshGp.criticalPointsCertified && (
           <p>
-            원래 함수의 모든 임계점과 경계 높이를 검증해야 이 확률을 산정할 수
-            있습니다.
+            Regression의 95% Confidence Interval과도 구별하세요. Confidence
+            Interval은 여러 관측값으로 추정한 계수의 불확실성을 나타내고,
+            여기서는 한 방정식 전체에 같은 오차가 더해질 때 근의 개수가
+            유지되는지를 다룹니다. 두 숫자를 서로의 정확도 점수처럼 비교할 수
+            없습니다.
           </p>
-        )}
-        {freshGp?.twoSidedSafetyMarginBounds && (
           <p>
-            근 개수를 바꾸지 않는 양방향 등식 오차 여유: [
-            {number(freshGp.twoSidedSafetyMarginBounds.lo)},{' '}
-            {number(freshGp.twoSidedSafetyMarginBounds.hi)}]. 이 값이 0인
-            접점에서는 작은 오차로도 근이 생성·소멸할 수 있습니다.
+            σ는 등식의 단위로 환산한 입력 오차 크기입니다. 실제 측정 오차를 알고
+            있으면 그 값을 사용하세요. 같은 σ라도 등식의 단위나 스케일을 바꾸면
+            다른 오차 모형이 됩니다. 근 개수가 유지되더라도 위치가 크게 움직일
+            수 있으므로 위의 해 변화 증폭률과 함께 해석하세요.
           </p>
-        )}
-        {freshGp?.twoSidedSafetyProbabilityBounds && (
-          <p>
-            위 안전 여유 안에 오차가 머무를 확률:{' '}
-            {probabilityBoundsText(freshGp.twoSidedSafetyProbabilityBounds)}.
-            안전 여유 밖에서도 근 개수가 같아질 수 있으므로 주 지표와 서로 다를
-            수 있습니다.
-          </p>
-        )}
+          {c.completeness?.perturbationUnavailableReason && !pending && (
+            <p>{c.completeness.perturbationUnavailableReason}</p>
+          )}
+          {!gp &&
+            !pending &&
+            !c.completeness?.perturbationUnavailableReason && (
+              <p>
+                현재 식·정의역·검증 예산에서는 확률을 검증하지 못했습니다. 이를
+                0%나 100%로 대신 표시하지 않습니다.
+              </p>
+            )}
+          {freshGp && !freshGp.criticalPointsCertified && (
+            <p>
+              원래 함수의 모든 임계점과 경계 높이를 검증해야 이 확률을 산정할 수
+              있습니다.
+            </p>
+          )}
+          {freshGp?.twoSidedSafetyMarginBounds && (
+            <p>
+              근 개수를 바꾸지 않는 양방향 등식 오차 여유: [
+              {number(freshGp.twoSidedSafetyMarginBounds.lo)},{' '}
+              {number(freshGp.twoSidedSafetyMarginBounds.hi)}]. 이 값이 0인
+              접점에서는 작은 오차로도 근이 생성·소멸할 수 있습니다.
+            </p>
+          )}
+          {freshGp?.twoSidedSafetyProbabilityBounds && (
+            <p>
+              위 안전 여유 안에 오차가 머무를 확률:{' '}
+              {probabilityBoundsText(freshGp.twoSidedSafetyProbabilityBounds)}.
+              안전 여유 밖에서도 근 개수가 같아질 수 있으므로 주 지표와 서로
+              다를 수 있습니다.
+            </p>
+          )}
+        </details>
       </details>
 
       {c.unresolved.length > 0 && (
@@ -238,9 +254,9 @@ export default function CertificationReport({
             <table>
               <thead>
                 <tr>
-                  <th>시작</th>
-                  <th>끝</th>
-                  <th>남은 검증</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody>

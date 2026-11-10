@@ -1,5 +1,5 @@
 import type { ScientificModule } from '../engine/scientific/types'
-import { ArrowRight, Code2, FileText, Home, Activity } from 'lucide-react'
+import { ArrowRight, Code2, FileText, Activity } from 'lucide-react'
 import './WorkspaceNavigation.css'
 
 export type WorkspaceScreen = 'home' | 'model' | 'simulation' | 'report'
@@ -200,9 +200,9 @@ export function LandingModules({
 }
 
 const screens = [
-  { screen: 'model', name: '수식·파라미터', icon: Code2 },
-  { screen: 'simulation', name: '시뮬레이션', icon: Activity },
-  { screen: 'report', name: '해석 리포트', icon: FileText },
+  { screen: 'model', name: 'Model & Data', icon: Code2 },
+  { screen: 'simulation', name: 'Simulation', icon: Activity },
+  { screen: 'report', name: 'Report', icon: FileText },
 ] as const
 
 export function WorkspaceNavigation({
@@ -214,16 +214,6 @@ export function WorkspaceNavigation({
 }) {
   return (
     <nav className="workspace-navigation" aria-label="Equation Solver 화면">
-      <button
-        type="button"
-        className="workspace-home-button"
-        aria-label="모듈 홈"
-        onClick={() => onNavigate('home')}
-      >
-        <Home size={16} aria-hidden="true" />
-        <span>모듈 홈</span>
-      </button>
-      <span className="workspace-nav-divider" aria-hidden="true" />
       <div className="workspace-screen-links">
         {screens.map(({ screen: target, name, icon: Icon }, index) => (
           <button

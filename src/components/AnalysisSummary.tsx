@@ -5,12 +5,7 @@ import {
   reportDiagnostics,
   searchConclusion,
 } from '../engine/report-diagnostics'
-import {
-  branchEventLabel,
-  eventLocation,
-  uniqueBranchEvents,
-} from '../engine/branch-events'
-import { rootStructureLabel, tangencyOrderLabel } from '../engine/tangency'
+import { eventLocation, uniqueBranchEvents } from '../engine/branch-events'
 import CertificationReport from './CertificationReport'
 import { currentCertificate, certifiedConclusion } from './certification-view'
 import './AnalysisSummary.css'
@@ -74,6 +69,24 @@ export default function AnalysisSummary({
           : undefined
       : undefined
   const linear = result.kind !== 'nonlinear'
+  const root = result.rootStructure
+  const rootKind = linear
+    ? 'Unique Solution'
+    : result.variables.length > 1
+      ? d.rank === result.variables.length
+        ? `Regular System · Rank ${d.rank}/${result.variables.length}`
+        : d.rank === undefined
+          ? 'System Solution · Rank not evaluated'
+          : `Singular System · Rank ${d.rank}/${result.variables.length}`
+      : root?.kind === 'multiple'
+        ? `Multiple Root · Order ${root.order ?? '?'}`
+        : root?.kind === 'boundary'
+          ? 'Boundary Root'
+          : root?.kind === 'nonsmooth'
+            ? 'Nonsmooth Root'
+            : root?.kind === 'simple'
+              ? 'Simple Root'
+              : 'Root · Order not classified'
   return (
     <section
       className="analysis-summary"
@@ -85,9 +98,7 @@ export default function AnalysisSummary({
           className="analysis-root-kind"
           data-kind={result.rootStructure?.kind ?? 'simple'}
         >
-          {linear
-            ? '● 유일해'
-            : `${result.rootStructure?.kind === 'multiple' ? '◆' : '●'} ${result.variables.length > 1 ? (d.rank === result.variables.length ? `일반 연립해 · 랭크 ${d.rank}/${result.variables.length}` : d.rank === undefined ? '연립해 · 랭크 미산정' : `특이 연립해 · 랭크 ${d.rank}/${result.variables.length}`) : rootStructureLabel(result.rootStructure)}`}
+          {root?.kind === 'multiple' ? '◆' : '●'} {rootKind}
         </span>
         <h3>
           {pending
@@ -106,94 +117,129 @@ export default function AnalysisSummary({
           </p>
         )}
       </div>
-      <div className="quality-grid">
-        <article
-          data-quality={d.errorBound !== undefined ? 'verified' : 'measured'}
-        >
-          <span>
-            {d.errorBound !== undefined
-              ? '해의 절대 오차 상한'
-              : '해 보정량 · 국소 추정'}
-          </span>
-          <strong>
-            {d.errorBound !== undefined ? '≤ ' : '≈ '}
-            {d.errorBound !== undefined
-              ? boundNumber(d.errorBound)
-              : diagnosticNumber(
-                  d.correction ? Math.max(...d.correction) : undefined,
-                )}
-          </strong>
-          <small>
-            {d.errorBound !== undefined
-              ? '구간 연산으로 해를 감싼 범위에서 계산'
-              : d.powerResponse
-                ? '중근: 선형 보정 대신 아래 비선형 반응 확인'
-                : '원래 등식과 역행렬로 계산한 마지막 보정 크기'}
-          </small>
-          <details className="metric-help">
-            <summary>이 수치 읽는 법</summary>
-            <p>
-              {d.errorBound !== undefined
-                ? '표시한 해와 수학적 해 사이의 거리가 이 값 이하라는 뜻입니다. 입력한 식과 파라미터를 고정한 계산 오차이며, 측정값의 오차까지 포함하지는 않습니다. 예를 들어 0.0001 이하라면 해의 마지막 소수 자릿수를 그 수준에서 판단할 수 있습니다.'
-                : '현재 계산값에 남아 있는 등식 오차를 줄이려면 해를 얼마나 더 움직여야 하는지 추정한 값입니다. 작을수록 식을 잘 만족하지만, 엄밀한 오차 상한이나 정확한 소수 자릿수 보장은 아닙니다. 특히 평탄한 중근 근처에서는 아래 민감도와 함께 확인하세요.'}
-            </p>
-          </details>
-        </article>
-        <article>
-          <span>등식 오차 → 해 변화 증폭률</span>
-          <strong>
-            {d.powerResponse
-              ? `δ¹⁄${d.powerResponse.order}`
-              : d.amplification === undefined
-                ? '산정 조건 확인'
-                : `${diagnosticNumber(d.amplification)} ×`}
-          </strong>
-          <small>
-            {d.powerResponse
-              ? `${d.powerResponse.order}중근의 비선형 민감도 · 아래 입력으로 예측`
-              : '각 등식에 같은 절대 오차를 넣었을 때 · 현재 단위 기준'}
-          </small>
-          <details className="metric-help">
-            <summary>이 수치 읽는 법</summary>
-            <p>
-              등식의 우변에 생긴 작은 절대 오차가 해의 절대 변화로 얼마나 커질지
-              나타냅니다. 예를 들어 0.736896×라면 등식 오차 0.0003에 대해 해
-              변화는 약 0.0002211로 예상합니다. 값이 클수록 같은 오차에 더
-              민감하며, 단위를 바꾸면 숫자도 달라집니다. 중근은 작은 오차에도 해
-              개수가 달라질 수 있어 별도의 비선형 크기로 표시합니다.
-            </p>
-          </details>
-        </article>
-        <article
-          data-quality={
-            c?.complete && c.allRootsRepresented ? 'verified' : 'measured'
-          }
-        >
-          <span>{linear ? '방정식 독립성' : '탐색 구간 검증률'}</span>
-          <strong>
-            {linear
-              ? `${d.rank ?? '—'} / ${result.values.length}`
-              : c
-                ? coveragePercent(search)
-                : '미실행'}
-          </strong>
-          <small>
-            {linear
-              ? '수치 랭크 / 미지수 수'
-              : c
-                ? `유일근 구간 ${c.uniqueRootCount}개 · 미결정 구간 ${c.unresolved.length}개`
-                : (search?.certificationUnavailable ??
-                  '단일 변수 자동 탐색에서 구간 검증 지원')}
-          </small>
-          <details className="metric-help">
-            <summary>이 수치 읽는 법</summary>
-            <p>
-              {linear
-                ? '미지수 개수와 랭크가 같으면 독립적인 조건이 충분한 선형계입니다. 랭크가 부족하면 해가 없거나 무한히 많을 수 있어 추가 조건을 확인해야 합니다.'
-                : '현재 파라미터와 표시한 미지수 범위에서, 근의 존재·부재가 판정된 길이의 비율입니다. 100%라도 미결정 구간이 남았는지와 결과 목록의 일치 여부를 함께 확인해야 합니다. 전체 실수 영역이나 파라미터 변화 전체를 검증한 값도, 모든 근을 찾았을 확률도 아닙니다. 맨 위의 전체 근 확인 여부가 최종 판정입니다.'}
-            </p>
-          </details>
-        </article>
+      <div className="quality-grid analysis-table-scroll">
+        <table className="quality-table">
+          <caption className="visually-hidden">
+            Accuracy, Sensitivity and Verification
+          </caption>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Value</th>
+              <th>Interpretation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              data-quality={
+                d.errorBound !== undefined ? 'verified' : 'measured'
+              }
+            >
+              <th scope="row">
+                {d.errorBound !== undefined
+                  ? 'Absolute Error Bound'
+                  : 'Last Correction'}
+              </th>
+              <td className="quality-value">
+                {d.errorBound !== undefined ? '≤ ' : '≈ '}
+                {d.errorBound !== undefined
+                  ? boundNumber(d.errorBound)
+                  : diagnosticNumber(
+                      d.correction ? Math.max(...d.correction) : undefined,
+                    )}
+              </td>
+              <td>
+                <span>
+                  {d.errorBound !== undefined
+                    ? '입력한 모델에서 확인한 위치 오차의 상한'
+                    : d.powerResponse
+                      ? '중근에서는 아래의 비선형 변화 크기를 확인하세요.'
+                      : '현재 해에 남은 수치 보정량의 국소 추정'}
+                </span>
+                <details className="metric-help">
+                  <summary>이 수치 읽는 법</summary>
+                  <p>
+                    {d.errorBound !== undefined
+                      ? '표시한 해와 수학적 해 사이의 거리가 이 값 이하라는 뜻입니다. 예를 들어 ≤ 0.0001이면 해의 위치가 표시한 숫자에서 최대 0.0001만큼 떨어져 있을 수 있습니다. 입력한 식과 파라미터를 고정한 계산 오차이며, 측정값의 오차까지 포함하지는 않습니다. 작은 값일수록 해의 위치를 좁게 확인했다는 뜻입니다.'
+                      : '현재 계산값에 남아 있는 등식 오차를 줄이려면 해를 얼마나 더 움직여야 하는지 추정한 값입니다. 작을수록 식을 잘 만족하지만, 엄밀한 오차 상한이나 정확한 소수 자릿수 보장은 아닙니다. 특히 평탄한 중근 근처에서는 아래 Sensitivity와 함께 확인하세요.'}
+                  </p>
+                </details>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">
+                {d.powerResponse
+                  ? 'Nonlinear Sensitivity'
+                  : 'Absolute Sensitivity'}
+              </th>
+              <td className="quality-value">
+                {d.powerResponse
+                  ? `δ¹⁄${d.powerResponse.order}`
+                  : d.amplification === undefined
+                    ? '—'
+                    : `${diagnosticNumber(d.amplification)} ×`}
+              </td>
+              <td>
+                <span>
+                  {d.powerResponse
+                    ? `${d.powerResponse.order}중근: 입력 오차와 해 변화가 비례하지 않습니다.`
+                    : '등식에 생긴 작은 절대 오차가 해의 변화로 전달되는 크기'}
+                </span>
+                <details className="metric-help">
+                  <summary>이 수치 읽는 법</summary>
+                  <p>
+                    등식의 우변에 생긴 작은 절대 오차가 해의 절대 변화로 얼마나
+                    커질지 나타냅니다. 예를 들어 0.736896×라면 등식 오차
+                    0.0003에 대해 해 변화는 약 0.0002211로 예상합니다. 값이
+                    클수록 같은 오차에 더 민감합니다. 단위를 바꾸면 숫자도
+                    달라지므로 서로 다른 단위의 문제끼리 숫자만 비교하지 마세요.
+                    이 값은 계산 성공률이나 정답일 확률이 아닙니다.
+                  </p>
+                  <p>
+                    Absolute Error Bound는 입력을 고정했을 때의 계산 위치
+                    오차입니다. Sensitivity는 입력 자체가 바뀔 때 해가 얼마나
+                    움직이는지를 예상합니다. Multiple Root에서는 작은 오차에
+                    근이 새로 생기거나 없어질 수 있어 선형 배율 대신 비선형 반응
+                    차수를 표시합니다. 아래 Input Error Scenario에서 실제 변화
+                    크기를 살펴볼 수 있습니다.
+                  </p>
+                </details>
+              </td>
+            </tr>
+            <tr
+              data-quality={
+                c?.complete && c.allRootsRepresented ? 'verified' : 'measured'
+              }
+            >
+              <th scope="row">{linear ? 'Rank' : 'Verified Coverage'}</th>
+              <td className="quality-value">
+                {linear
+                  ? `${d.rank ?? '—'} / ${result.values.length}`
+                  : c
+                    ? coveragePercent(search)
+                    : '—'}
+              </td>
+              <td>
+                <span>
+                  {linear
+                    ? '독립적인 조건 수 / 미지수 수'
+                    : c
+                      ? `${c.uniqueRootCount} Root Interval · ${c.unresolved.length} Unresolved`
+                      : (search?.certificationUnavailable ??
+                        '지원하는 단일 변수 자동 탐색에서 계산합니다.')}
+                </span>
+                <details className="metric-help">
+                  <summary>이 수치 읽는 법</summary>
+                  <p>
+                    {linear
+                      ? '미지수 개수와 Rank가 같으면 독립적인 조건이 충분한 선형계입니다. 예를 들어 Rank 3 / 3이면 세 미지수를 정할 독립적인 조건 세 개가 있습니다. 같은 조건을 반복해 입력하면 Rank는 늘어나지 않습니다. Rank가 부족하면 해가 없거나 무한히 많을 수 있어 추가 조건을 확인해야 합니다.'
+                      : '현재 파라미터와 표시한 미지수 범위에서, 근의 존재·부재가 판정된 길이의 비율입니다. 예를 들어 99.9%이면 나머지 좁은 구간에 추가 근이 있을 가능성을 아직 배제하지 못했다는 뜻입니다. 100%로 반올림되어도 Unresolved가 남았는지와 결과 목록의 일치 여부를 함께 확인해야 합니다. 전체 실수 영역이나 파라미터 변화 전체를 검증한 값도, 모든 근을 찾았을 확률도 아닙니다. 맨 위의 전체 근 확인 여부가 최종 판정입니다.'}
+                  </p>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       {!linear && (
         <CertificationReport
@@ -204,41 +250,44 @@ export default function AnalysisSummary({
           truncated={search?.truncated}
         />
       )}
-      <div className="sensitivity-scenario">
-        <div>
-          <h4>입력 오차가 이만큼이면?</h4>
-          <details className="metric-help">
-            <summary>어떤 오차를 입력하나요?</summary>
-            <p>
-              각 등식의 우변이 흔들릴 수 있는 절대 크기를 입력합니다. 측정
-              오차를 알고 있다면 현재 등식의 단위로 환산해 넣으세요. 아래 결과는
-              해 성분 중 가장 큰 변화 크기의 예측으로, 파라미터 슬라이더의
-              이동량이나 확률이 아닙니다. 큰 오차·접점 근처에서는 선형 근사가
-              맞지 않을 수 있으므로 실제 식을 바꿔 다시 계산해야 합니다.
-            </p>
-          </details>
+      <details className="analysis-details sensitivity-detail">
+        <summary>
+          Input Error Scenario · 입력이 흔들리면 해는 얼마나 달라질까요?
+        </summary>
+        <div className="sensitivity-scenario">
+          <div>
+            <h4>Input Error Scenario</h4>
+            <details className="metric-help">
+              <summary>어떤 오차를 입력하나요?</summary>
+              <p>
+                각 등식의 우변이 흔들릴 수 있는 절대 크기를 입력합니다. 측정
+                오차를 알고 있다면 현재 등식의 단위로 환산해 넣으세요. 아래
+                결과는 해 성분 중 가장 큰 변화 크기의 예측으로, 파라미터
+                슬라이더의 이동량이나 확률이 아닙니다. 큰 오차·접점 근처에서는
+                선형 근사가 맞지 않을 수 있으므로 실제 식을 바꿔 다시 계산해야
+                합니다.
+              </p>
+            </details>
+          </div>
+          <label>
+            Equation Offset δ
+            <input
+              aria-label="가정한 등식 오차"
+              type="number"
+              min="0"
+              step="any"
+              value={perturbation}
+              onChange={(e) => setPerturbation(e.target.value)}
+            />
+          </label>
+          <div className="scenario-result">
+            <span>Estimated Solution Change</span>
+            <strong>{diagnosticNumber(response)}</strong>
+          </div>
         </div>
-        <label>
-          가정한 등식 오차 δ
-          <input
-            aria-label="가정한 등식 오차"
-            type="number"
-            min="0"
-            step="any"
-            value={perturbation}
-            onChange={(e) => setPerturbation(e.target.value)}
-          />
-        </label>
-        <div className="scenario-result">
-          <span>
-            최대 해 변화{' '}
-            {d.powerResponse ? '크기 추정' : linear ? '선형 예측' : '국소 예측'}
-          </span>
-          <strong>{diagnosticNumber(response)}</strong>
-        </div>
-      </div>
+      </details>
       <details className="analysis-details">
-        <summary>정확도·민감도 지표의 의미와 계산 근거</summary>
+        <summary>Accuracy & Sensitivity · 계산 근거</summary>
         {d.enclosure && (
           <p>
             선택한 해의 포함 구간: [{d.enclosure.lo.toPrecision(17)},{' '}
@@ -276,7 +325,7 @@ export default function AnalysisSummary({
       </details>
       {d.parameterSensitivity.length > 0 && (
         <details className="analysis-details">
-          <summary>파라미터별 영향 · dx/dp</summary>
+          <summary>Parameter Sensitivity · dx/dp</summary>
           <p>
             현재 해에서 −J⁻¹∂F/∂p를 계산했습니다. 파라미터 1단위 증가에 대한
             국소 해 변화입니다.
@@ -285,9 +334,9 @@ export default function AnalysisSummary({
             <table>
               <thead>
                 <tr>
-                  <th>파라미터</th>
+                  <th>Parameter</th>
                   {result.variables.map((v) => (
-                    <th key={v}>{v} 변화율</th>
+                    <th key={v}>d{v}/dp</th>
                   ))}
                 </tr>
               </thead>
@@ -308,7 +357,7 @@ export default function AnalysisSummary({
       {critical.length > 0 && (
         <div className="report-critical">
           <h4>
-            곡선에서 확인한 특별한 지점 <span>{critical.length}</span>
+            Branch Events <span>{critical.length}</span>
           </h4>
           <p>
             현재 해의 기준 곡선에 대한 접점·중근·추적 경계입니다. 현재
@@ -328,9 +377,25 @@ export default function AnalysisSummary({
                           : '◆'
                       : '△'}
                   </span>{' '}
-                  {branchEventLabel(ev)}
+                  {ev.tangency?.verified
+                    ? ev.tangency.bifurcationOrder === 'boundary'
+                      ? 'Boundary Contact'
+                      : ev.tangency.geometry === 'degenerate'
+                        ? 'Degenerate Contact'
+                        : ev.tangency.bifurcationOrder % 2
+                          ? 'Inflection Crossing'
+                          : 'Root Merge'
+                    : ev.kind === 'merge'
+                      ? 'Possible Root Merge'
+                      : 'Tracking Boundary'}
                   {ev.tangency?.verified && (
-                    <small>{tangencyOrderLabel(ev.tangency)}</small>
+                    <small>
+                      {ev.tangency.bifurcationOrder === 'boundary'
+                        ? ev.tangency.multiplicity
+                          ? `Order ${ev.tangency.multiplicity}`
+                          : 'Boundary'
+                        : `Order ${ev.tangency.bifurcationOrder}`}
+                    </small>
                   )}{' '}
                   · {sweepName} ≈ {diagnosticNumber(at.parameter)}
                 </summary>

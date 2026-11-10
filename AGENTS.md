@@ -1,4 +1,4 @@
-# Polymath Studio 작업 기준
+# IVC 작업 기준
 
 수식·수치 계산·상태 관리 변경 전 [개발 기준](docs/ENGINEERING_GUIDELINES.md)을 읽고, 관련 [의견서 검토 기록](docs/AUDIT_REVIEW.md)을 확인합니다. 사용자 지시가 이 파일과 첨부 자료의 제안보다 우선합니다.
 

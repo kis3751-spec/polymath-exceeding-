@@ -10,7 +10,7 @@ async function open(page: Page, name: string) {
   await expect(page.locator('.scientific-workspace')).toBeVisible()
 }
 async function simulation(page: Page) {
-  await nav(page, '시뮬레이션').click()
+  await nav(page, 'Simulation').click()
   await expect(page.locator('.scientific-results')).toHaveAttribute(
     'aria-busy',
     'false',
@@ -18,10 +18,8 @@ async function simulation(page: Page) {
   await expect(page.locator('.science-error')).toHaveCount(0)
 }
 async function report(page: Page) {
-  await nav(page, '해석 리포트').click()
-  await expect(
-    page.locator('.science-report .science-metric-grid'),
-  ).toBeVisible()
+  await nav(page, 'Report').click()
+  await expect(page.locator('.science-report .science-verdict')).toBeVisible()
 }
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear())
@@ -38,7 +36,7 @@ test('ODE playback, phase switching, continuous parameter changes and CSV keep w
   await page
     .locator('.scientific-chart-stage svg')
     .hover({ position: { x: 180, y: 170 } })
-  await page.getByRole('button', { name: '위상 그래프', exact: true }).click()
+  await page.getByRole('button', { name: 'Phase Plot', exact: true }).click()
   await expect(page.locator('.scientific-chart-stage path')).toHaveCount(1)
   await page
     .getByRole('button', { name: '시간 변화 재생', exact: true })
@@ -66,7 +64,7 @@ test('ODE playback, phase switching, continuous parameter changes and CSV keep w
     'aria-busy',
     'false',
   )
-  await page.screenshot({ path: '/tmp/polymath-v4-ode.png', fullPage: true })
+  await page.screenshot({ path: '/tmp/ivc-ode.png', fullPage: true })
   await page.locator('.science-data>summary').click()
   await expect(page.locator('.science-table-scroll tbody tr')).toHaveCount(100)
   await page.getByRole('button', { name: '다음 100행', exact: true }).click()
@@ -75,25 +73,26 @@ test('ODE playback, phase switching, continuous parameter changes and CSV keep w
   const file = await d
   const text = await readFile((await file.path())!, 'utf8')
   expect(text.split(/\r?\n/).length).toBeGreaterThan(200)
-  await nav(page, '모델·데이터').click()
+  await nav(page, 'Model & Data').click()
   await page
     .getByRole('textbox', { name: '과학 계산 모델 입력', exact: true })
     .fill('d(y)/d(t)=-y\ny(0)=1\nt|0:5')
   await page
-    .getByRole('button', { name: '계산·시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Compute & Simulate', exact: true })
     .click()
   await expect(page.locator('.scientific-results')).toHaveAttribute(
     'aria-busy',
     'false',
   )
   await expect(
-    page.getByRole('button', { name: '위상 그래프', exact: true }),
+    page.getByRole('button', { name: 'Phase Plot', exact: true }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole('img', { name: 't 시각화', exact: true }),
+    page.getByRole('img', { name: 'X: t, Y: State Value', exact: true }),
   ).toBeVisible()
   await report(page)
-  await expect(page.locator('.science-verdict')).toContainText('계산 완료')
+  await expect(page.locator('.science-verdict')).toContainText('Completed')
+  await expect(page.locator('.ivc-state-table')).toContainText('Final Value')
   expect(errors).toEqual([])
 })
 
@@ -105,32 +104,33 @@ test('linear polynomial and multilinear fitting produce usable reports and valid
   await report(page)
   await expect(page.locator('.science-report')).toContainText('R²')
   const pending = page.waitForEvent('download')
-  await page.getByRole('button', { name: '리포트 저장', exact: true }).click()
+  await page.getByRole('button', { name: 'Save Report', exact: true }).click()
   const file = await pending
   const text = await readFile((await file.path())!, 'utf8')
   expect(text).toContain('| 지표 | 값 | 해석 |\n| --- | --- | --- |\n|')
-  await nav(page, '모델·데이터').click()
+  await nav(page, 'Model & Data').click()
   await page
     .getByRole('combobox', { name: '과학 계산 예제', exact: true })
     .selectOption('1')
   await page
-    .getByRole('button', { name: '계산·시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Compute & Simulate', exact: true })
     .click()
   await expect(page.locator('.scientific-results')).toHaveAttribute(
     'aria-busy',
     'false',
   )
   await report(page)
-  await expect(page.locator('.science-formula')).toContainText('^2')
+  await expect(page.locator('.regression-model')).toContainText('^2')
+  await expect(page.locator('.regression-coefficients')).toContainText('95% CI')
   await page
-    .getByRole('combobox', { name: '회귀 모델', exact: true })
+    .getByRole('combobox', { name: 'Regression Module', exact: true })
     .selectOption('multilinear')
   await expect(page.locator('.scientific-header strong')).toHaveText(
     'Multilinear Regression',
   )
   await simulation(page)
   await report(page)
-  await expect(page.locator('.science-verdict')).toContainText('계산 완료')
+  await expect(page.locator('.science-verdict')).toContainText('Completed')
 })
 
 test('nonlinear fitting reports convergence, coefficients and separates data errors', async ({
@@ -139,14 +139,14 @@ test('nonlinear fitting reports convergence, coefficients and separates data err
   await open(page, 'Nonlinear Fitting')
   await simulation(page)
   await expect(page.locator('.scientific-chart-stage path')).toHaveCount(1)
-  await page.getByRole('button', { name: '오차', exact: true }).click()
+  await page.getByRole('button', { name: 'Error', exact: true }).click()
   await expect(page.locator('.science-chart-legend')).toContainText(
     '데이터 오차',
   )
   await report(page)
-  await expect(page.locator('.science-verdict')).toContainText('수렴')
+  await expect(page.locator('.science-verdict')).toContainText('Converged')
   const values = await page
-    .locator('.science-data tbody tr')
+    .locator('.regression-coefficients tbody tr')
     .evaluateAll((rows) =>
       Object.fromEntries(
         rows.map((r) => [
@@ -164,27 +164,29 @@ test('integration has separate cumulative view, supports method selection and re
 }) => {
   await open(page, 'Discrete Integration')
   await simulation(page)
-  await page.getByRole('button', { name: '누적 적분', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Cumulative Integral', exact: true })
+    .click()
   await expect(page.locator('.science-chart-legend')).toContainText('누적')
   await report(page)
-  await expect(page.locator('.science-report')).toContainText('적분')
-  await nav(page, '모델·데이터').click()
+  await expect(page.locator('.science-report .ivc-integral')).toBeVisible()
+  await nav(page, 'Model & Data').click()
   await page
     .getByRole('combobox', { name: '이산 적분 보간 방법', exact: true })
     .selectOption('ccs')
   await page
-    .getByRole('button', { name: '계산·시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Compute & Simulate', exact: true })
     .click()
   await expect(page.locator('.scientific-results')).toHaveAttribute(
     'aria-busy',
     'false',
   )
-  await nav(page, '모델·데이터').click()
+  await nav(page, 'Model & Data').click()
   await page
     .getByRole('textbox', { name: '과학 계산 모델 입력', exact: true })
     .fill('[\nx y\n0 0\n1 1\n2 4\n]\nintegrate y(x) -1 2 100 lin')
   await page
-    .getByRole('button', { name: '계산·시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Compute & Simulate', exact: true })
     .click()
   await expect(page.getByRole('alert')).toContainText(/범위|외삽/)
   await page.locator('.science-data > summary').click()
@@ -201,7 +203,7 @@ test('constrained optimization and LSQ fitting work from the same module with se
     .getByRole('textbox', { name: '과학 계산 모델 입력', exact: true })
     .fill('min: (x-2)^2+(y-1)^2\nx+y=1\nx|0 -5 5\ny|0 -5 5')
   await page
-    .getByRole('button', { name: '계산·시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Compute & Simulate', exact: true })
     .click()
   await expect(page.locator('.scientific-results')).toHaveAttribute(
     'aria-busy',
@@ -209,25 +211,27 @@ test('constrained optimization and LSQ fitting work from the same module with se
   )
   await report(page)
   const values = await page
-    .locator('.science-data tbody tr')
+    .locator(
+      '.science-report .ivc-output-table:not(.ivc-metrics-table) tbody tr',
+    )
     .evaluateAll((rows) =>
       Object.fromEntries(
         rows.map((r) => [
           r.querySelector('th')!.textContent,
-          Number(r.querySelector('td')!.textContent),
+          Number(r.querySelector('.ivc-result-value')!.textContent),
         ]),
       ),
     )
   expect(values.x).toBeCloseTo(1, 4)
   expect(values.y).toBeCloseTo(0, 4)
   await page
-    .getByRole('combobox', { name: '최적화 방식', exact: true })
+    .getByRole('combobox', { name: 'Optimization Module', exact: true })
     .selectOption('lsq')
   await simulation(page)
   await expect(page.locator('.science-chart-legend')).not.toContainText(
     '목적함수',
   )
-  await page.getByRole('button', { name: '수렴 이력', exact: true }).click()
+  await page.getByRole('button', { name: 'Convergence', exact: true }).click()
   await expect(page.locator('.science-chart-legend')).toContainText('목적함수')
   await report(page)
   await expect(page.locator('.science-report')).toContainText('RMSE')
@@ -244,7 +248,7 @@ test('mobile scientific workspace and usage guide fit the viewport, project impo
       () => document.documentElement.scrollWidth > innerWidth + 1,
     ),
   ).toBe(false)
-  await page.getByRole('button', { name: '사용법', exact: true }).click()
+  await page.getByRole('button', { name: 'User Guide', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   expect(
     await page.evaluate(
@@ -252,7 +256,7 @@ test('mobile scientific workspace and usage guide fit the viewport, project impo
     ),
   ).toBe(false)
   await page
-    .getByRole('button', { name: '과학 계산 사용법 닫기', exact: true })
+    .getByRole('button', { name: 'Close User Guide', exact: true })
     .click()
   await page.locator('.scientific-header input[type=file]').setInputFiles({
     name: 'bad.json',
@@ -295,13 +299,14 @@ test('equation report recalculates validated Gaussian bounds with the selected s
     .click()
   await page
     .locator('.workspace-navigation')
-    .getByRole('button', { name: '해석 리포트', exact: true })
+    .getByRole('button', { name: 'Report', exact: true })
     .click()
   const view = page.getByRole('region', {
     name: '탐색 검증과 입력 오차',
     exact: true,
   })
   await expect(view).toBeVisible()
+  await view.locator('.gaussian-model > summary').click()
   const probability = view.locator('.probability-value')
   await expect(probability).toContainText('68.268')
   await view
@@ -312,7 +317,7 @@ test('equation report recalculates validated Gaussian bounds with the selected s
     .press('Enter')
   await expect(probability).toContainText('38.292')
   await page.screenshot({
-    path: '/tmp/polymath-v4-probability-report.png',
+    path: '/tmp/ivc-probability-report.png',
     fullPage: true,
   })
 })
@@ -343,7 +348,7 @@ test('verified absence still has an input-noise report and exports its certifica
     .click()
   await page
     .locator('.workspace-navigation')
-    .getByRole('button', { name: '해석 리포트', exact: true })
+    .getByRole('button', { name: 'Report', exact: true })
     .click()
   await expect(
     page.getByText('이 범위에는 실근이 없습니다.', { exact: true }),
@@ -352,10 +357,11 @@ test('verified absence still has an input-noise report and exports its certifica
     name: '탐색 검증과 입력 오차',
     exact: true,
   })
+  await view.locator('.gaussian-model > summary').click()
   await expect(view.locator('.probability-value')).toContainText('83.179')
   const pending = page.waitForEvent('download')
   await page
-    .getByRole('button', { name: '검증 리포트 저장', exact: true })
+    .getByRole('button', { name: 'Save Verification Report', exact: true })
     .click()
   const file = await pending
   const text = await readFile((await file.path())!, 'utf8')

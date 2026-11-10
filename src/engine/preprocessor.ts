@@ -303,7 +303,7 @@ export function preprocessModelSource(
     }
     sides.push(text.slice(start))
     if (sides.length > 2) {
-      throw new ModelError('한 줄에는 등호를 하나만 사용하세요.', lineNo)
+      throw new ModelError('등식의 등호 연결을 확인하세요.', lineNo)
     }
 
     if (sides.length === 2) {

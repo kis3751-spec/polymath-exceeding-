@@ -40,7 +40,7 @@ async function open(page: Page, manual = false) {
     .click()
   await page
     .locator('.workspace-navigation')
-    .getByRole('button', { name: '시뮬레이션', exact: true })
+    .getByRole('button', { name: 'Simulation', exact: true })
     .click()
 }
 
@@ -141,9 +141,9 @@ test('report metrics explain their practical meaning and distinguish condition n
   await expect(page.locator('.default-overview .sc-curve')).toHaveCount(3)
   await page
     .locator('.workspace-navigation')
-    .getByRole('button', { name: '해석 리포트', exact: true })
+    .getByRole('button', { name: 'Report', exact: true })
     .click()
-  const cards = page.locator('.quality-grid article')
+  const cards = page.locator('.quality-table > tbody > tr')
   await expect(cards).toHaveCount(3)
   await cards.nth(1).getByText('이 수치 읽는 법', { exact: true }).click()
   await expect(

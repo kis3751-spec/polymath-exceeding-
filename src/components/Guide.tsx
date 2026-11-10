@@ -139,9 +139,7 @@ export default function Guide({
                 <span className="guide-step">02</span>
                 <div>
                   <h3>
-                    {nonlinear
-                      ? '방정식을 그대로 입력하세요'
-                      : '한 줄에 방정식 하나'}
+                    {nonlinear ? '방정식을 그대로 입력하세요' : 'Equations'}
                   </h3>
                   {nonlinear ? (
                     <>
@@ -194,7 +192,7 @@ export default function Guide({
                     <>
                       <h3>여러 해를 목록에서 선택하세요</h3>
                       <p>
-                        연립식은 한 줄씩 적거나 쉼표·세미콜론으로 나눕니다.
+                        연립식은 줄바꿈, 쉼표, 세미콜론으로 구분할 수 있습니다.
                         미지수 수와 독립적인 식 수를 맞추면 여러 시작점을
                         자동으로 시도합니다. 시뮬레이션 화면의 발견한 해
                         목록에서 해를 선택하고, 시뮬레이션 추가로 여러 창을 열어

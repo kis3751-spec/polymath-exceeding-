@@ -31,6 +31,24 @@ export type ScientificMetric = {
   value: number | string
   detail: string
 }
+export type ScientificCoefficient = {
+  name: string
+  estimate: number
+  standardError?: number
+  confidence95?: { lower: number; upper: number; halfWidth: number }
+  fixed?: boolean
+  note?: string
+}
+export type RegressionDiagnostics = {
+  model: string
+  sampleCount: number
+  parameterCount: number
+  degreesOfFreedom: number
+  rank?: number
+  origin: boolean
+  confidenceMethod: 'linear-normal' | 'nonlinear-local'
+  confidenceUnavailableReason?: string
+}
 export type ScientificResult = {
   module: ScientificModule
   method: string
@@ -46,4 +64,18 @@ export type ScientificResult = {
   evaluations?: number
   durationMs: number
   formula?: string
+  coefficients?: ScientificCoefficient[]
+  regression?: RegressionDiagnostics
+  comparison?: {
+    observed: number[]
+    predicted: number[]
+    dependent: string
+  }
+  integration?: {
+    from: number
+    to: number
+    independent: string
+    dependent: string
+    value: number
+  }
 }
