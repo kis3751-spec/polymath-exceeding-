@@ -269,14 +269,31 @@ async function checkSharing() {
     if (!session || session.user.id !== id) return
     $('#sharing-origin').value = data.origin
     $('#sharing-state').textContent = {
-      ready: 'Ready',
+      ready: 'Server check passed',
       local: 'Local only',
-      blocked: 'Blocked',
-      mismatch: 'Wrong server',
-      unavailable: 'Unavailable',
+      partial: 'API connected',
+      blocked: 'External check blocked',
+      mismatch: 'Address mismatch',
+      unverified: 'Check incomplete',
+      unavailable: 'Check unavailable',
     }[data.state]
     $('#sharing-panel').dataset.state = data.state
     $('#sharing-message').textContent = data.message
+    const list = $('#sharing-checks')
+    list.replaceChildren()
+    const descriptions = {
+      http: 'HTTP 응답 실패 또는 리디렉션',
+      instance: '파일의 서버 ID가 상태 API와 다름 · 캐시 또는 전달 경로 확인',
+      mime: '파일 유형이 예상과 다름',
+      content: '예상한 페이지·파일 내용을 확인하지 못함',
+      connection: '연결 실패 또는 검사 시간 초과',
+    }
+    for (const check of data.checks ?? []) {
+      const item = document.createElement('li')
+      item.textContent = `${check.path} · ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? '확인됨' : (descriptions[check.issue] ?? '검사 미완료')}${check.note === 'instance-header-missing' ? ' · 서버 ID 헤더 없음(단독 실패 사유 아님)' : ''}`
+      list.append(item)
+    }
+    $('#sharing-diagnostics').hidden = !list.children.length
   } catch (e) {
     $('#sharing-state').textContent = 'Check failed'
     feedback(e.message, true)

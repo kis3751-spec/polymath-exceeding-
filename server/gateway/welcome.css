@@ -628,6 +628,8 @@ footer {
   border-color: #6d998b;
 }
 .sharing-card[data-state='blocked'],
+.sharing-card[data-state='partial'],
+.sharing-card[data-state='unverified'],
 .sharing-card[data-state='unavailable'],
 .sharing-card[data-state='mismatch'] {
   border-color: #b99171;

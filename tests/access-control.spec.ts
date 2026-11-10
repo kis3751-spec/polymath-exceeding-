@@ -350,3 +350,85 @@ test('proxy JSON without a validated session cannot be treated as a successful l
   await expect(page).toHaveURL('/')
   await expect(page.locator('.module-grid')).toHaveCount(0)
 })
+
+test('page diagnostic failure cannot block owner invitation, member activation or account reset', async ({
+  page,
+  browser,
+}) => {
+  await page.route('**/ivc-auth/admin/sharing', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        state: 'partial',
+        reachable: false,
+        origin: new URL(route.request().url()).origin,
+        message:
+          '현재 IVC 상태 API에 연결했습니다. 페이지 검사는 완료하지 못했지만 초대 발급은 가능합니다.',
+        checks: [
+          { path: '/ivc-auth/status', status: 200, ok: true },
+          { path: '/', status: 200, ok: false, issue: 'content' },
+        ],
+      }),
+    }),
+  )
+  await logIn(page)
+  await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+  await expect(page.locator('#sharing-state')).toHaveText('API connected')
+  await page.getByText('View diagnostic details', { exact: true }).click()
+  await expect(page.locator('#sharing-checks')).toContainText('예상한 페이지')
+  await expect(page.locator('#sharing-checks')).toContainText('HTTP 200')
+  await page
+    .locator('#admin-panel')
+    .screenshot({ path: '/tmp/ivc-advisory-sharing.png' })
+  const form = page.locator('#invite-user-form'),
+    email = 'diagnostic-member@example.test'
+  await form.getByLabel('Allowed Email').fill(email)
+  await form.getByLabel('Admin Password').fill(owner.password)
+  await form.getByRole('button', { name: 'Create invitation' }).click()
+  await expect(page.locator('#invitation-code')).toHaveValue(/^[\w-]{43}$/)
+  const original = await page.locator('#invitation-code').inputValue()
+  const context = await browser.newContext({
+    baseURL: new URL(page.url()).origin,
+    storageState: { cookies: [], origins: [] },
+    ignoreHTTPSErrors: true,
+  })
+  try {
+    const member = await context.newPage()
+    async function activate(password: string) {
+      await member.goto(await page.locator('#invitation-link').inputValue())
+      const activation = member.locator('#invite-form')
+      await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
+        email,
+      )
+      await activation
+        .getByLabel('New Password', { exact: true })
+        .fill(password)
+      await activation
+        .getByLabel('Confirm Password', { exact: true })
+        .fill(password)
+      await activation.getByRole('button', { name: 'Activate account' }).click()
+      await expect(member.locator('.module-grid')).toBeVisible()
+      expect((await context.request.get('/solver.wasm')).status()).toBe(200)
+      expect(
+        (await context.request.get('/ivc-auth/admin/users')).status(),
+      ).toBe(403)
+    }
+    await activate('Advisory-member-password 27!')
+    await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: `Reset ${email}`, exact: true }),
+    ).toBeVisible()
+    await form.getByLabel('Admin Password').fill(owner.password)
+    page.once('dialog', (dialog) => dialog.accept())
+    await page
+      .getByRole('button', { name: `Reset ${email}`, exact: true })
+      .click()
+    await expect(page.locator('#invitation-code')).not.toHaveValue(original)
+    expect((await context.request.get('/ivc-auth/session')).status()).toBe(401)
+    await activate('Reset-advisory-password 28!')
+    await expect(page.locator('#sharing-state')).toHaveText('API connected')
+  } finally {
+    await context.close()
+  }
+})

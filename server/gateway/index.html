@@ -233,6 +233,14 @@
             ><button id="check-sharing" type="button">Check connection</button>
           </div>
           <p id="sharing-message" role="status"></p>
+          <small
+            >연결 검사는 참고 진단입니다. 초대 발급·계정 재설정은 관리자 권한과
+            비밀번호 재확인으로 보호됩니다.</small
+          >
+          <details id="sharing-diagnostics" hidden>
+            <summary>View diagnostic details</summary>
+            <ul id="sharing-checks"></ul>
+          </details>
           <label>Site address<input id="sharing-origin" readonly /></label>
           <details>
             <summary>다른 사람과 공유하는 방법</summary>

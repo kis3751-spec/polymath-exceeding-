@@ -491,7 +491,7 @@ test('owner list reports invitation expiry and revocation but never passwords, c
       !text.includes('hash'),
   )
 })
-test('Codespaces invitation issuance fails closed when GitHub blocks anonymous access', async () => {
+test('connection diagnostics never gate owner invitation and reset authorization', async () => {
   let opened = false
   const blocked = await start({
     codespaces: true,
@@ -516,9 +516,77 @@ test('Codespaces invitation issuance fails closed when GitHub blocks anonymous a
       auth.cookie,
       auth.csrf,
     )
-    assert.equal(invite.status, 409)
-    assert.equal((await invite.json()).code, 'SHARING_UNAVAILABLE')
-    assert.equal(blocked.store.byEmail('blocked@example.test'), undefined)
+    assert.equal(invite.status, 201)
+    const token = (await invite.json()).code
+    const activation = await blocked.request('/accept-invite', {
+      token,
+      email: 'blocked@example.test',
+      password: memberPassword,
+    })
+    assert.equal(activation.status, 200)
+    const memberCookie = cookieFrom(activation, '__Host-ivc-session')
+    const memberSession = await (
+      await blocked.request('/session', null, memberCookie)
+    ).json()
+    assert.equal(
+      (
+        await blocked.request(
+          '/admin/invite',
+          {
+            email: 'unauthorized@example.test',
+            currentPassword: memberPassword,
+          },
+          memberCookie,
+          memberSession.csrf,
+        )
+      ).status,
+      403,
+    )
+    assert.equal(
+      (
+        await blocked.request('/admin/invite', {
+          email: 'anonymous@example.test',
+          currentPassword: owner.password,
+        })
+      ).status,
+      401,
+    )
+    assert.equal(
+      (
+        await blocked.request(
+          '/admin/invite',
+          { email: 'bad-csrf@example.test', currentPassword: owner.password },
+          auth.cookie,
+          'wrong-token',
+        )
+      ).status,
+      403,
+    )
+    assert.equal(
+      (
+        await blocked.request(
+          '/admin/invite',
+          {
+            email: 'bad-stepup@example.test',
+            currentPassword: 'wrong password',
+          },
+          auth.cookie,
+          auth.csrf,
+        )
+      ).status,
+      403,
+    )
+    const reset = await blocked.request(
+      '/admin/reset',
+      { id: memberSession.user.id, currentPassword: owner.password },
+      auth.cookie,
+      auth.csrf,
+    )
+    assert.equal(reset.status, 201)
+    assert.equal(
+      (await blocked.request('/session', null, memberCookie)).status,
+      401,
+    )
     opened = true
     const recheck = await (
       await blocked.request('/admin/sharing', null, auth.cookie)
@@ -529,7 +597,7 @@ test('Codespaces invitation issuance fails closed when GitHub blocks anonymous a
     await blocked.close()
   }
 })
-test('Codespaces anonymous probe matches the running server before allowing invitations', async () => {
+test('Codespaces connection diagnostics report the running server independently of invitations', async () => {
   const ready = await start({ codespaces: true })
   try {
     const auth = await ownerSession(ready)
@@ -581,7 +649,7 @@ test('sharing probe never follows redirects, sends credentials or accepts stale 
         async () => new Response('<html>login</html>'),
       )
     ).state,
-    'mismatch',
+    'unverified',
   )
   assert.equal(
     (
@@ -661,6 +729,15 @@ test('Codespaces sharing command checks a protected server before changing port 
     ),
     /Public 설정을 적용하지 못했습니다/,
   )
+  const partial = await shareCodespaces(env, run, async (input) => {
+    const url = new URL(input)
+    if (url.pathname === '/solver.wasm')
+      return new Response('', { status: 401 })
+    if (url.protocol === 'https:' && url.pathname === '/')
+      return new Response('', { status: 404 })
+    return publicResponse(input, status.instance)
+  })
+  assert.equal(partial, 'https://fixture-code-space-5180.app.github.dev')
 })
 
 test('a concurrent reset after activation commits cannot issue a new valid session for the pending account', async () => {
@@ -824,7 +901,7 @@ test('status API success cannot hide a 404 page, missing login module or foreign
           ? new Response('', { status: 404 })
           : publicResponse(input, 'file-instance'),
     )
-    assert.equal(result.state, 'blocked', path)
+    assert.equal(result.state, 'partial', path)
     assert.equal(result.reachable, false)
     assert.equal(result.path, path)
     assert.equal(result.status, 404)
@@ -849,7 +926,7 @@ test('status API success cannot hide a 404 page, missing login module or foreign
         )
       },
     )
-    assert.equal(result.state, 'mismatch', mode)
+    assert.equal(result.state, 'partial', mode)
     assert.equal(result.reachable, false)
   }
 })
@@ -871,6 +948,42 @@ test('all gateway requests share one timeout and do not follow redirects from lo
       return publicResponse(input, 'shared-deadline')
     },
   )
-  assert.equal(result.state, 'blocked')
+  assert.equal(result.state, 'partial')
   assert.equal(result.path, '/welcome.js')
+})
+
+test('proxy stripping optional instance headers does not report a different server', async () => {
+  const result = await probePublicAccess(
+    origin,
+    'proxy-instance',
+    async (input) => {
+      const response = publicResponse(input, 'proxy-instance')
+      if (new URL(input).pathname !== '/ivc-auth/status')
+        response.headers.delete('x-ivc-instance')
+      return response
+    },
+  )
+  assert.equal(result.state, 'ready')
+  assert.ok(
+    result.checks
+      .slice(1)
+      .every((check) => check.ok && check.note === 'instance-header-missing'),
+  )
+})
+test('an owner can issue invitations without invoking an unavailable outbound probe', async () => {
+  let probes = 0
+  const unavailable = await start({
+    codespaces: true,
+    fetchSharing: async () => {
+      probes++
+      throw Error('offline')
+    },
+  })
+  try {
+    const auth = await ownerSession(unavailable)
+    await issue('no-outbound@example.test', unavailable, auth)
+    assert.equal(probes, 0)
+  } finally {
+    await unavailable.close()
+  }
 })

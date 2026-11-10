@@ -353,13 +353,8 @@ export async function createAccessServer(input) {
           if (path === '/api/admin/invite' || path === '/api/admin/reset') {
             if (path === '/api/admin/invite' && !validEmail(email))
               return fail(400, '올바른 이메일을 입력하세요.')
-            // GitHub's private port gate runs before IVC. Do not issue unusable Codespaces links.
-            if (cfg.codespaces && !(await sharing()).reachable)
-              return fail(
-                409,
-                '다른 사용자에게 공유할 수 없는 주소입니다. Sharing에서 포트를 Public으로 바꾼 뒤 Check connection을 누르세요.',
-                'SHARING_UNAVAILABLE',
-              )
+            // Connectivity is advisory, not authorization. A server-side probe
+            // cannot decide whether another person's browser can connect.
             const fresh = readSession(req)
             if (
               !fresh ||

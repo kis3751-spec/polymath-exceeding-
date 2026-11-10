@@ -22,7 +22,10 @@ server.listen(port, cfg.host, () => {
           console.log(
             `IVC public check: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
           )
-        if (report.local.state === 'ready' && !report.external?.reachable)
+        if (
+          report.local.state === 'ready' &&
+          ['blocked', 'unavailable'].includes(report.external?.state)
+        )
           console.log(
             `로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 ${port}을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.`,
           )

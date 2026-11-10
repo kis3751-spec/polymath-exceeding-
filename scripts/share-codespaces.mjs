@@ -58,7 +58,9 @@ export async function shareCodespaces(
       `GitHub에서 Public 설정을 적용하지 못했습니다. Ports → ${port} → Port Visibility → Public으로 변경하세요. 조직 정책이 제한하면 상시 HTTPS 서버에 배포해야 합니다.`,
     )
   const probe = await probePublicAccess(cfg.origin, status.instance, fetchImpl)
-  if (!probe.reachable)
+  if (probe.state === 'partial')
+    console.warn(`페이지 확인 미완료: ${probe.message}`)
+  else if (!probe.reachable)
     throw Error(
       probe.message +
         ' 설정 반영 후 Manage Access → Check connection으로 다시 확인하세요.',
@@ -72,7 +74,7 @@ if (
   try {
     const origin = await shareCodespaces()
     console.log(
-      `공유 연결 확인: ${origin}\nGitHub 로그인 없이 IVC 소개 화면에 도달합니다. Manage Access에서 초대 링크·코드를 만드세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
+      `포트 Public 설정 적용: ${origin}\nManage Access에서 초대 링크·코드를 만들고 상대방 브라우저에서 접속을 확인하세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
     )
   } catch (error) {
     console.error(error.message)

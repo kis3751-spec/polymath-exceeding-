@@ -72,7 +72,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       data = JSON.parse(await readBounded(response, 16384))
     } catch {
       return {
-        state: 'mismatch',
+        state: 'unverified',
         reachable: false,
         path: '/ivc-auth/status',
         checks,
@@ -80,7 +80,16 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
           '공유 주소가 IVC 상태 응답을 반환하지 않습니다. 다른 서버나 프록시 응답인지 확인하세요.',
       }
     }
-    if (data?.service !== 'IVC' || data.instance !== instance)
+    if (data?.service !== 'IVC' || typeof data.instance !== 'string')
+      return {
+        state: 'unverified',
+        reachable: false,
+        path: '/ivc-auth/status',
+        checks,
+        message:
+          '서버 연결 검사 응답에서 IVC 정보를 확인하지 못했습니다. 이 결과는 관리자 초대 발급을 차단하지 않습니다.',
+      }
+    if (data.instance !== instance)
       return {
         state: 'mismatch',
         reachable: false,
@@ -130,15 +139,22 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
           }
         }
         const text = await readBounded(r, 65536)
-        const ok =
-          r.headers.get('x-ivc-instance') === instance &&
-          target.mime.test(r.headers.get('content-type') ?? '') &&
-          target.content(text)
+        const identity = r.headers.get('x-ivc-instance')
+        const issue =
+          identity && identity !== instance
+            ? 'instance'
+            : !target.mime.test(r.headers.get('content-type') ?? '')
+              ? 'mime'
+              : !target.content(text)
+                ? 'content'
+                : undefined
+        const ok = !issue
         return {
           path: target.path,
           status: r.status,
           ok,
-          ...(ok ? {} : { issue: 'content' }),
+          ...(issue ? { issue } : {}),
+          ...(!identity ? { note: 'instance-header-missing' } : {}),
         }
       }),
     )
@@ -152,13 +168,13 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
     }
     const failed = checks.find((check) => !check.ok)
     if (failed) {
-      if (failed.issue === 'http') return blocked(failed.path, failed.status)
       return {
-        state: failed.issue === 'connection' ? 'unavailable' : 'mismatch',
+        state: 'partial',
         reachable: false,
         path: failed.path,
+        ...(failed.status ? { status: failed.status } : {}),
         checks,
-        message: `상태 API는 정상이지만 ${failed.path}의 현재 IVC 파일을 확인하지 못했습니다. 소개 화면·로그인 파일이 정상이라고 판정하지 않았습니다.`,
+        message: `현재 IVC 상태 API에 연결했습니다. ${failed.path} 페이지·파일 검사는 완료하지 못했지만, 관리자 초대 발급과 계정 재설정은 사용할 수 있습니다. 아래 상세 결과를 참고하고 상대방 브라우저에서 초대 링크를 확인하세요.`,
       }
     }
     return {

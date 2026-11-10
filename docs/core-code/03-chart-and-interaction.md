@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `797e5f50ece7cb25a2102ace3b1fb1070955c45673a8d5390c758498d50a90b5`
+소스 묶음 SHA-256: `8055f73dd4b9445ce669eaa7b3251ce42ab0833d82ad71189ba47115ab711406`
 
 ## 다른 코드 묶음
 
@@ -297,7 +297,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/index.html
 
-원본: [server/gateway/index.html](../../server/gateway/index.html) · 364줄 · SHA-256: `6db317e6db8aa8c71deb5e075640811fa6380ec5eaa69c5a3c2bbd33633b7689`
+원본: [server/gateway/index.html](../../server/gateway/index.html) · 372줄 · SHA-256: `2866d11855d486998941786dc39ac5927f5f99cf7cc892b8b0924f9464fcaa12`
 
 ```text
 <!doctype html>
@@ -535,6 +535,14 @@ export default function AccountSession({ children }: { children: ReactNode }) {
             ><button id="check-sharing" type="button">Check connection</button>
           </div>
           <p id="sharing-message" role="status"></p>
+          <small
+            >연결 검사는 참고 진단입니다. 초대 발급·계정 재설정은 관리자 권한과
+            비밀번호 재확인으로 보호됩니다.</small
+          >
+          <details id="sharing-diagnostics" hidden>
+            <summary>View diagnostic details</summary>
+            <ul id="sharing-checks"></ul>
+          </details>
           <label>Site address<input id="sharing-origin" readonly /></label>
           <details>
             <summary>다른 사람과 공유하는 방법</summary>
@@ -670,7 +678,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 407줄 · SHA-256: `c2be9655141e49d0bf83e286d830202a344bd155d82b5c08fd3a6ebd60c9b156`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 424줄 · SHA-256: `5d263717b85b7c6a43c70d7ab0481b9c0e6b6c94f7ae6c9797796c70bf0e980f`
 
 ```text
 import { responseData } from '/response.js'
@@ -944,14 +952,31 @@ async function checkSharing() {
     if (!session || session.user.id !== id) return
     $('#sharing-origin').value = data.origin
     $('#sharing-state').textContent = {
-      ready: 'Ready',
+      ready: 'Server check passed',
       local: 'Local only',
-      blocked: 'Blocked',
-      mismatch: 'Wrong server',
-      unavailable: 'Unavailable',
+      partial: 'API connected',
+      blocked: 'External check blocked',
+      mismatch: 'Address mismatch',
+      unverified: 'Check incomplete',
+      unavailable: 'Check unavailable',
     }[data.state]
     $('#sharing-panel').dataset.state = data.state
     $('#sharing-message').textContent = data.message
+    const list = $('#sharing-checks')
+    list.replaceChildren()
+    const descriptions = {
+      http: 'HTTP 응답 실패 또는 리디렉션',
+      instance: '파일의 서버 ID가 상태 API와 다름 · 캐시 또는 전달 경로 확인',
+      mime: '파일 유형이 예상과 다름',
+      content: '예상한 페이지·파일 내용을 확인하지 못함',
+      connection: '연결 실패 또는 검사 시간 초과',
+    }
+    for (const check of data.checks ?? []) {
+      const item = document.createElement('li')
+      item.textContent = `${check.path} · ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? '확인됨' : (descriptions[check.issue] ?? '검사 미완료')}${check.note === 'instance-header-missing' ? ' · 서버 ID 헤더 없음(단독 실패 사유 아님)' : ''}`
+      list.append(item)
+    }
+    $('#sharing-diagnostics').hidden = !list.children.length
   } catch (e) {
     $('#sharing-state').textContent = 'Check failed'
     feedback(e.message, true)
@@ -1132,7 +1157,7 @@ export async function responseData(response, path) {
 
 ## server/gateway/welcome.css
 
-원본: [server/gateway/welcome.css](../../server/gateway/welcome.css) · 643줄 · SHA-256: `aa2b4a2486535af1b02e5ce9b71b1ada3be137f84ab5789f90fe3c3275d1dda1`
+원본: [server/gateway/welcome.css](../../server/gateway/welcome.css) · 645줄 · SHA-256: `1f6624bb9d53577a1b80bb526515e270ad7d856083ec97fb5f094bc5bb3c0b5f`
 
 ```css
 :root {
@@ -1765,6 +1790,8 @@ footer {
   border-color: #6d998b;
 }
 .sharing-card[data-state='blocked'],
+.sharing-card[data-state='partial'],
+.sharing-card[data-state='unverified'],
 .sharing-card[data-state='unavailable'],
 .sharing-card[data-state='mismatch'] {
   border-color: #b99171;

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `867b34938ca46b57390fa6a4fbf23a49e9f32d48391eacf09af73e4dd985b6ee`
+소스 묶음 SHA-256: `770e86fb84c052932807b465942485cd53706215b84b0a1db010635d4ae7bd92`
 
 ## 다른 코드 묶음
 
@@ -1152,7 +1152,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 530줄 · SHA-256: `373f7309ef93bd689853ed695696e35e42a96da3dfd7367ddad9a5271d9cd0e9`
+원본: [server/app.mjs](../../server/app.mjs) · 525줄 · SHA-256: `161e4793630cb99e0dc1e6d1ca557362f3f20a22826d212ffeaf30d282231087`
 
 ```javascript
 import { createServer } from 'node:http'
@@ -1510,13 +1510,8 @@ export async function createAccessServer(input) {
           if (path === '/api/admin/invite' || path === '/api/admin/reset') {
             if (path === '/api/admin/invite' && !validEmail(email))
               return fail(400, '올바른 이메일을 입력하세요.')
-            // GitHub's private port gate runs before IVC. Do not issue unusable Codespaces links.
-            if (cfg.codespaces && !(await sharing()).reachable)
-              return fail(
-                409,
-                '다른 사용자에게 공유할 수 없는 주소입니다. Sharing에서 포트를 Public으로 바꾼 뒤 Check connection을 누르세요.',
-                'SHARING_UNAVAILABLE',
-              )
+            // Connectivity is advisory, not authorization. A server-side probe
+            // cannot decide whether another person's browser can connect.
             const fresh = readSession(req)
             if (
               !fresh ||
@@ -1691,7 +1686,7 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 41줄 · SHA-256: `27f48f2ba21f9cc633bf037ab8e6452db209c06ab897e4e0bba1548bdcca0aa5`
+원본: [server/start.mjs](../../server/start.mjs) · 44줄 · SHA-256: `f13d8b4b9887b8b8208b9cad27de0467b2c27f3dcecb81998816d9e256b6369b`
 
 ```javascript
 import { runtimeConfig, runtimePort } from './runtime-config.mjs'
@@ -1718,7 +1713,10 @@ server.listen(port, cfg.host, () => {
           console.log(
             `IVC public check: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
           )
-        if (report.local.state === 'ready' && !report.external?.reachable)
+        if (
+          report.local.state === 'ready' &&
+          ['blocked', 'unavailable'].includes(report.external?.state)
+        )
           console.log(
             `로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 ${port}을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.`,
           )
@@ -1827,7 +1825,7 @@ export function proxyRewrittenOrigin(req, cfg) {
 
 ## server/sharing.mjs
 
-원본: [server/sharing.mjs](../../server/sharing.mjs) · 180줄 · SHA-256: `0f475e1f5ac404a2f8697f6b70c886891aec06b0a5b9ceeee3aed8b0de706140`
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 196줄 · SHA-256: `44f2d53ea1c3148cf6f2ced6de9bf3859621548a471eabf14e11bae28386f1ed`
 
 ```javascript
 import { isIP } from 'node:net'
@@ -1904,7 +1902,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       data = JSON.parse(await readBounded(response, 16384))
     } catch {
       return {
-        state: 'mismatch',
+        state: 'unverified',
         reachable: false,
         path: '/ivc-auth/status',
         checks,
@@ -1912,7 +1910,16 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
           '공유 주소가 IVC 상태 응답을 반환하지 않습니다. 다른 서버나 프록시 응답인지 확인하세요.',
       }
     }
-    if (data?.service !== 'IVC' || data.instance !== instance)
+    if (data?.service !== 'IVC' || typeof data.instance !== 'string')
+      return {
+        state: 'unverified',
+        reachable: false,
+        path: '/ivc-auth/status',
+        checks,
+        message:
+          '서버 연결 검사 응답에서 IVC 정보를 확인하지 못했습니다. 이 결과는 관리자 초대 발급을 차단하지 않습니다.',
+      }
+    if (data.instance !== instance)
       return {
         state: 'mismatch',
         reachable: false,
@@ -1962,15 +1969,22 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
           }
         }
         const text = await readBounded(r, 65536)
-        const ok =
-          r.headers.get('x-ivc-instance') === instance &&
-          target.mime.test(r.headers.get('content-type') ?? '') &&
-          target.content(text)
+        const identity = r.headers.get('x-ivc-instance')
+        const issue =
+          identity && identity !== instance
+            ? 'instance'
+            : !target.mime.test(r.headers.get('content-type') ?? '')
+              ? 'mime'
+              : !target.content(text)
+                ? 'content'
+                : undefined
+        const ok = !issue
         return {
           path: target.path,
           status: r.status,
           ok,
-          ...(ok ? {} : { issue: 'content' }),
+          ...(issue ? { issue } : {}),
+          ...(!identity ? { note: 'instance-header-missing' } : {}),
         }
       }),
     )
@@ -1984,13 +1998,13 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
     }
     const failed = checks.find((check) => !check.ok)
     if (failed) {
-      if (failed.issue === 'http') return blocked(failed.path, failed.status)
       return {
-        state: failed.issue === 'connection' ? 'unavailable' : 'mismatch',
+        state: 'partial',
         reachable: false,
         path: failed.path,
+        ...(failed.status ? { status: failed.status } : {}),
         checks,
-        message: `상태 API는 정상이지만 ${failed.path}의 현재 IVC 파일을 확인하지 못했습니다. 소개 화면·로그인 파일이 정상이라고 판정하지 않았습니다.`,
+        message: `현재 IVC 상태 API에 연결했습니다. ${failed.path} 페이지·파일 검사는 완료하지 못했지만, 관리자 초대 발급과 계정 재설정은 사용할 수 있습니다. 아래 상세 결과를 참고하고 상대방 브라우저에서 초대 링크를 확인하세요.`,
       }
     }
     return {
@@ -2016,7 +2030,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
 
 ## scripts/share-codespaces.mjs
 
-원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 81줄 · SHA-256: `5da9c2dccf67fed7dd5512143cec8c6fe08cc444592529aa05cac8e7316bb857`
+원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 83줄 · SHA-256: `64491dee7c031005711cdad78d04cb5d2cece896598625c589c16f2cd72065a6`
 
 ```javascript
 import { spawnSync } from 'node:child_process'
@@ -2079,7 +2093,9 @@ export async function shareCodespaces(
       `GitHub에서 Public 설정을 적용하지 못했습니다. Ports → ${port} → Port Visibility → Public으로 변경하세요. 조직 정책이 제한하면 상시 HTTPS 서버에 배포해야 합니다.`,
     )
   const probe = await probePublicAccess(cfg.origin, status.instance, fetchImpl)
-  if (!probe.reachable)
+  if (probe.state === 'partial')
+    console.warn(`페이지 확인 미완료: ${probe.message}`)
+  else if (!probe.reachable)
     throw Error(
       probe.message +
         ' 설정 반영 후 Manage Access → Check connection으로 다시 확인하세요.',
@@ -2093,7 +2109,7 @@ if (
   try {
     const origin = await shareCodespaces()
     console.log(
-      `공유 연결 확인: ${origin}\nGitHub 로그인 없이 IVC 소개 화면에 도달합니다. Manage Access에서 초대 링크·코드를 만드세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
+      `포트 Public 설정 적용: ${origin}\nManage Access에서 초대 링크·코드를 만들고 상대방 브라우저에서 접속을 확인하세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
     )
   } catch (error) {
     console.error(error.message)
@@ -2106,7 +2122,7 @@ if (
 
 ## scripts/diagnose-codespaces.mjs
 
-원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 107줄 · SHA-256: `c6f33635c6e0b08b0383b1b51b4bdf5afa6e18021e55548ff059f415517d9cd0`
+원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 113줄 · SHA-256: `e44281c46cd14856e7fce06966377fc13cb0629fc2734f5c25f96870feb74c0d`
 
 ```javascript
 import { pathToFileURL } from 'node:url'
@@ -2203,11 +2219,17 @@ if (
       console.log(
         `Public: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
       )
-    if (report.local.state === 'ready' && report.external?.state !== 'ready')
+    if (
+      report.local.state === 'ready' &&
+      ['blocked', 'unavailable'].includes(report.external?.state)
+    )
       console.log(
         `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
-    if (report.local.state !== 'ready' || report.external?.state !== 'ready')
+    if (
+      report.local.state !== 'ready' ||
+      !['ready', 'partial'].includes(report.external?.state)
+    )
       process.exitCode = 1
   } catch {
     console.error(

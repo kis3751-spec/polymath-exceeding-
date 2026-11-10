@@ -92,11 +92,17 @@ if (
       console.log(
         `Public: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
       )
-    if (report.local.state === 'ready' && report.external?.state !== 'ready')
+    if (
+      report.local.state === 'ready' &&
+      ['blocked', 'unavailable'].includes(report.external?.state)
+    )
       console.log(
         `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
-    if (report.local.state !== 'ready' || report.external?.state !== 'ready')
+    if (
+      report.local.state !== 'ready' ||
+      !['ready', 'partial'].includes(report.external?.state)
+    )
       process.exitCode = 1
   } catch {
     console.error(
