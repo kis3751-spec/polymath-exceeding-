@@ -1,0 +1,56 @@
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 7px 25px;
+  background: #eaf0ef;
+  border-bottom: 1px solid #d1dcda;
+  color: #506c68;
+  font:
+    11px/1.6 system-ui,
+    sans-serif;
+}
+.account-bar a,
+.account-bar button {
+  font: inherit;
+  color: #305f59;
+}
+.account-bar button {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.account-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 55vw;
+}
+.account-lock {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: #f4f6f2;
+  color: #375c56;
+  gap: 15px;
+  text-align: center;
+}
+.account-lock strong {
+  font:
+    italic 40px Georgia,
+    serif;
+}
+.account-lock p {
+  font:
+    14px/1.9 system-ui,
+    sans-serif;
+  max-width: 60ch;
+}
+.account-lock a {
+  font-size: 13px;
+  text-decoration: underline;
+}

@@ -12,7 +12,7 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `3f79f951013e5a208ed4f4c7853f0e4bde2d3b366ced30fb47193f8e7526d536`
+소스 묶음 SHA-256: `8aee3bbe010b45e0749fd1f748419a9a7de624c54adba6de490a397a3a831b2c`
 
 ## 다른 코드 묶음
 
@@ -3745,9 +3745,10 @@ self.onmessage = async ({
 
 ## src/components/ScientificWorkspace.tsx
 
-원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,225줄 · SHA-256: `da828e9701b18dca7e05bda4811328580afe667c919285bf7c67c0cf7d6911d5`
+원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,227줄 · SHA-256: `bf778ec79d18e50cad90eddae5237330d1b6d98dbd769072d1a4e13b892ef16c`
 
 ```tsx
+import { accountStorageKey } from '../account-storage'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
@@ -3786,7 +3787,8 @@ type Props = {
   onHome: () => void
   onModuleChange?: (module: ScientificModule) => void
 }
-const storageKey = (m: string) => `polymath-scientific-${m}-v1`
+const storageKey = (m: string) =>
+  accountStorageKey(`polymath-scientific-${m}-v1`)
 const format = (x: number) =>
   !Number.isFinite(x)
     ? 'N/A'

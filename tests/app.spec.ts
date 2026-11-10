@@ -266,7 +266,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
       },
       { key: STORAGE_KEY, project: MIXING_PROJECT },
     )
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await ready(page)
   })
@@ -963,7 +963,7 @@ test.describe('Linear regressions with a saved legacy model', () => {
 
 test.describe('Equation Solver workspace', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
   })
 
@@ -2282,7 +2282,7 @@ const INTERACTIVE_PROJECT = {
 
 test.describe('Calm screens and stable interactive charts', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
   })
 
   test('the first screen contains only module choices and separates workspaces without a sidebar', async ({
@@ -2601,7 +2601,7 @@ test.describe('Audit regressions for current results and persistence', () => {
     page,
   }) => {
     await observeSolver(page)
-    await page.goto('/')
+    await page.goto('/calculator')
     await loadFixture(page, INTERACTIVE_PROJECT)
     await expect
       .poll(() =>
@@ -2658,7 +2658,7 @@ test.describe('Audit regressions for current results and persistence', () => {
   test('an immediate reload flushes the latest edits before the idle autosave runs', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await loadFixture(page, INTERACTIVE_PROJECT)
     await page.getByRole('spinbutton', { name: 'p 값', exact: true }).fill('5')
     await page
@@ -2685,7 +2685,7 @@ test.describe('Audit regressions for current results and persistence', () => {
   test('spaced residual notation displays the actual equation count and still solves', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       mode: 'nonlinear',
@@ -2706,7 +2706,7 @@ test.describe('V2 function algebra and merged simulation sets', () => {
   test('named function constraints solve in Linear and Nonlinear', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     const source = 'f1(x)=2x+4\nf2(x)=-3x+7\nf1(x)-f2(x)=0'
     await page.getByRole('textbox', { name: '방정식 입력' }).fill(source)
@@ -2723,7 +2723,7 @@ test.describe('V2 function algebra and merged simulation sets', () => {
   test('continuous parameters, sample dots and independent merged sets persist', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       mode: 'nonlinear',
@@ -2785,7 +2785,7 @@ test.describe('V2 function algebra and merged simulation sets', () => {
   test('fold-near current values remain on the graph and boundaries are visible', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       mode: 'nonlinear',
@@ -2830,7 +2830,7 @@ test.describe('V3 tangency diagnostics and reference manual', () => {
   test('the reference manual exposes actual functions and domain rules', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await page.getByRole('button', { name: '사용 가이드', exact: true }).click()
     await expect(
       page.getByText('함수·문법 공식집', { exact: true }),
@@ -2842,7 +2842,7 @@ test.describe('V3 tangency diagnostics and reference manual', () => {
   test('cubic contact is annotated and stays fixed while sliding', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       mode: 'nonlinear',
@@ -2875,7 +2875,7 @@ test.describe('Readable manual and scientific showcase', () => {
       page,
     }) => {
       await page.setViewportSize({ width, height: 900 })
-      await page.goto('/')
+      await page.goto('/calculator')
       await page
         .getByRole('button', { name: '사용 가이드', exact: true })
         .click()
@@ -2926,7 +2926,7 @@ test.describe('Readable manual and scientific showcase', () => {
     { title: 'van der Waals 등온선', count: 3, parameter: 'P', next: '0.8' },
   ])
     test(`loads ${ex.title} with annotated merged curves`, async ({ page }) => {
-      await page.goto('/')
+      await page.goto('/calculator')
       await navigate(page, '수식·파라미터')
       await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
       await openExample(page, ex.title)
@@ -2978,7 +2978,7 @@ test.describe('Calculation audit through the actual editor and Worker', () => {
   test('pasted dimensional van der Waals constants preserve all three roots', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     const editor = page.getByRole('textbox', { name: '방정식 입력' })
@@ -3016,7 +3016,7 @@ test.describe('Calculation audit through the actual editor and Worker', () => {
   test('chained equalities solve identically in Linear and Nonlinear screens', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page
       .getByRole('textbox', { name: '방정식 입력' })
@@ -3039,7 +3039,7 @@ test.describe('Calculation audit through the actual editor and Worker', () => {
       page,
     }) => {
       await page.setViewportSize({ width, height: 1000 })
-      await page.goto('/')
+      await page.goto('/calculator')
       await navigate(page, '수식·파라미터')
       const editor = page.getByRole('textbox', { name: '방정식 입력' })
       const source = [
@@ -3095,7 +3095,7 @@ test.describe('Calculation audit through the actual editor and Worker', () => {
   test('distinct nearby roots can both be pinned instead of sharing one result', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     await page
@@ -3120,7 +3120,7 @@ test.describe('Calculation audit through the actual editor and Worker', () => {
   test('manual NLE0 evaluates a comma-separated statement list', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       mode: 'nonlinear',
@@ -3145,7 +3145,7 @@ test.describe('Bounded windows and independent variable boxes', () => {
   test('limits a high-frequency window and moves its center without widening it', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     await page
@@ -3181,7 +3181,7 @@ test.describe('Bounded windows and independent variable boxes', () => {
   test('independent bounds survive JSON export and reload and invalidate old discovery', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     await page
@@ -3219,7 +3219,7 @@ test.describe('Bounded windows and independent variable boxes', () => {
   test('a sixth power is one root and floor displays an interval representative', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     await page.getByRole('textbox', { name: '방정식 입력' }).fill('(x-2)^6=0')
@@ -3239,7 +3239,7 @@ test.describe('Bounded windows and independent variable boxes', () => {
 
 test.describe('Interval verification', () => {
   async function start(page: Page, source: string) {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     await page.getByRole('textbox', { name: '방정식 입력' }).fill(source)
@@ -3346,7 +3346,7 @@ test.describe('Plain equations and consistent merge messages', () => {
   test('manual equations use ordinary equalities and scalar initial guesses throughout the UI', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
     await setSearchMode(page, 'manual')
@@ -3373,7 +3373,7 @@ test.describe('Plain equations and consistent merge messages', () => {
     '몰체적을 계산하는 van der Waals',
   ])
     test(`shows one short message per fold in ${title}`, async ({ page }) => {
-      await page.goto('/')
+      await page.goto('/calculator')
       await navigate(page, '수식·파라미터')
       await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
       await openExample(page, title)
@@ -3422,7 +3422,7 @@ test.describe('Stable scroll and useful analysis reports', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 650 })
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, model)
     await showSimulation(page)
@@ -3485,7 +3485,7 @@ test.describe('Stable scroll and useful analysis reports', () => {
   test('reports certified error bounds and interactive sensitivity without fake probabilities', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       ...model,
@@ -3531,7 +3531,7 @@ test.describe('Stable scroll and useful analysis reports', () => {
   test('sixth-order contacts have a distinct marker, order badge and matching report', async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto('/calculator')
     await navigate(page, '수식·파라미터')
     await importProject(page, {
       ...model,
@@ -3557,7 +3557,7 @@ test.describe('Stable scroll and useful analysis reports', () => {
 test('curated example menu and corrected cancellation work through the Worker', async ({
   page,
 }) => {
-  await page.goto('/')
+  await page.goto('/calculator')
   await navigate(page, '수식·파라미터')
   await page.getByRole('tab', { name: 'Nonlinear', exact: true }).click()
   await page.getByRole('button', { name: '예제 불러오기' }).click()

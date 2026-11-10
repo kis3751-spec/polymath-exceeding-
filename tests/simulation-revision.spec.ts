@@ -34,7 +34,7 @@ async function open(page: Page, manual = false) {
       sweepName: 'p',
     },
   )
-  await page.goto('/')
+  await page.goto('/calculator')
   await page
     .getByRole('button', { name: 'Equation Solver 열기', exact: true })
     .click()

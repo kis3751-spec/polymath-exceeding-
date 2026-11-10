@@ -5,7 +5,7 @@ const nav = (page: Page, text: string) =>
     .locator('.scientific-navigation')
     .getByRole('button', { name: new RegExp(text) })
 async function open(page: Page, name: string) {
-  await page.goto('/')
+  await page.goto('/calculator')
   await page.getByRole('button', { name: `${name} 열기`, exact: true }).click()
   await expect(page.locator('.scientific-workspace')).toBeVisible()
 }
@@ -293,7 +293,7 @@ test('equation report recalculates validated Gaussian bounds with the selected s
       }),
     ),
   )
-  await page.goto('/')
+  await page.goto('/calculator')
   await page
     .getByRole('button', { name: 'Equation Solver 열기', exact: true })
     .click()
@@ -342,7 +342,7 @@ test('verified absence still has an input-noise report and exports its certifica
       }),
     ),
   )
-  await page.goto('/')
+  await page.goto('/calculator')
   await page
     .getByRole('button', { name: 'Equation Solver 열기', exact: true })
     .click()

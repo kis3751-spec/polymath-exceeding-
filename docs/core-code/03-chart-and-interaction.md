@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `06097fe1d6945b83707bf440a7f3103470eade935df097a201b6098082cd9dc3`
+소스 묶음 SHA-256: `44baa30e1c349782b378f117d70b69830322ba43dfd19752cba3c8600b93ce68`
 
 ## 다른 코드 묶음
 
@@ -28,52 +28,1395 @@
 ## 포함한 원본
 
 - [src/main.tsx](#source-1) · [저장소 원본](../../src/main.tsx)
-- [src/components/chart-domain.ts](#source-2) · [저장소 원본](../../src/components/chart-domain.ts)
-- [src/components/chart-interaction.ts](#source-3) · [저장소 원본](../../src/components/chart-interaction.ts)
-- [src/components/EquationReference.tsx](#source-4) · [저장소 원본](../../src/components/EquationReference.tsx)
-- [src/components/ExampleWalkthrough.tsx](#source-5) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
-- [src/components/AnalysisSummary.tsx](#source-6) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
-- [src/components/AnalysisSummary.css](#source-7) · [저장소 원본](../../src/components/AnalysisSummary.css)
-- [src/components/CertificationReport.tsx](#source-8) · [저장소 원본](../../src/components/CertificationReport.tsx)
-- [src/components/certification-view.ts](#source-9) · [저장소 원본](../../src/components/certification-view.ts)
-- [src/components/Guide.tsx](#source-10) · [저장소 원본](../../src/components/Guide.tsx)
-- [src/components/Guide.css](#source-11) · [저장소 원본](../../src/components/Guide.css)
-- [src/components/ModuleGuide.tsx](#source-12) · [저장소 원본](../../src/components/ModuleGuide.tsx)
-- [src/components/ModuleGuide.css](#source-13) · [저장소 원본](../../src/components/ModuleGuide.css)
-- [src/components/guide-content.ts](#source-14) · [저장소 원본](../../src/components/guide-content.ts)
-- [src/components/SolutionChart.tsx](#source-15) · [저장소 원본](../../src/components/SolutionChart.tsx)
-- [src/components/SolutionChart.css](#source-16) · [저장소 원본](../../src/components/SolutionChart.css)
-- [src/components/SimulationPanelView.tsx](#source-17) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/MergedSimulationSetView.tsx](#source-18) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
-- [src/components/SimulationPanelView.css](#source-19) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-20) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-21) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-22) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-23) · [저장소 원본](../../src/workspace-screens.css)
-- [src/ivc.css](#source-24) · [저장소 원본](../../src/ivc.css)
+- [src/components/AccountSession.tsx](#source-2) · [저장소 원본](../../src/components/AccountSession.tsx)
+- [src/components/AccountSession.css](#source-3) · [저장소 원본](../../src/components/AccountSession.css)
+- [server/gateway/index.html](#source-4) · [저장소 원본](../../server/gateway/index.html)
+- [server/gateway/welcome.js](#source-5) · [저장소 원본](../../server/gateway/welcome.js)
+- [server/gateway/welcome.css](#source-6) · [저장소 원본](../../server/gateway/welcome.css)
+- [src/components/chart-domain.ts](#source-7) · [저장소 원본](../../src/components/chart-domain.ts)
+- [src/components/chart-interaction.ts](#source-8) · [저장소 원본](../../src/components/chart-interaction.ts)
+- [src/components/EquationReference.tsx](#source-9) · [저장소 원본](../../src/components/EquationReference.tsx)
+- [src/components/ExampleWalkthrough.tsx](#source-10) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
+- [src/components/AnalysisSummary.tsx](#source-11) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
+- [src/components/AnalysisSummary.css](#source-12) · [저장소 원본](../../src/components/AnalysisSummary.css)
+- [src/components/CertificationReport.tsx](#source-13) · [저장소 원본](../../src/components/CertificationReport.tsx)
+- [src/components/certification-view.ts](#source-14) · [저장소 원본](../../src/components/certification-view.ts)
+- [src/components/Guide.tsx](#source-15) · [저장소 원본](../../src/components/Guide.tsx)
+- [src/components/Guide.css](#source-16) · [저장소 원본](../../src/components/Guide.css)
+- [src/components/ModuleGuide.tsx](#source-17) · [저장소 원본](../../src/components/ModuleGuide.tsx)
+- [src/components/ModuleGuide.css](#source-18) · [저장소 원본](../../src/components/ModuleGuide.css)
+- [src/components/guide-content.ts](#source-19) · [저장소 원본](../../src/components/guide-content.ts)
+- [src/components/SolutionChart.tsx](#source-20) · [저장소 원본](../../src/components/SolutionChart.tsx)
+- [src/components/SolutionChart.css](#source-21) · [저장소 원본](../../src/components/SolutionChart.css)
+- [src/components/SimulationPanelView.tsx](#source-22) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
+- [src/components/MergedSimulationSetView.tsx](#source-23) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-24) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-25) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-26) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-27) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-28) · [저장소 원본](../../src/workspace-screens.css)
+- [src/ivc.css](#source-29) · [저장소 원본](../../src/ivc.css)
 
 <a id="source-1"></a>
 
 ## src/main.tsx
 
-원본: [src/main.tsx](../../src/main.tsx) · 12줄 · SHA-256: `00d7340a9af12ab44f30f8c3bebd1d4037c774ec3d9bf3566c5b479ea2a75350`
+원본: [src/main.tsx](../../src/main.tsx) · 15줄 · SHA-256: `88239fc32cdb9a7c733dfcccde347bd6d1e365e545e9269b6df2164dfb5af7db`
 
 ```tsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import AccountSession from './components/AccountSession'
 import './styles.css'
 import './workspace-screens.css'
 import './ivc.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AccountSession>
+      <App />
+    </AccountSession>
   </React.StrictMode>,
 )
 ```
 
 <a id="source-2"></a>
+
+## src/components/AccountSession.tsx
+
+원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 137줄 · SHA-256: `c30bd1ac24336ae8027d992be5da69d84ec11974b65cce3cf4377ae034e16a51`
+
+```tsx
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { selectAccountStorage } from '../account-storage'
+import './AccountSession.css'
+type Session = {
+  user: { id: string; email: string; role: 'owner' | 'member' }
+  csrf: string
+}
+export default function AccountSession({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null),
+    [error, setError] = useState('')
+  const current = useRef<Session | null>(null),
+    lastActivity = useRef(Date.now()),
+    version = useRef(0)
+  useEffect(() => {
+    let alive = true
+    async function check() {
+      const request = ++version.current
+      try {
+        const response = await fetch('/api/session', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers:
+            Date.now() - lastActivity.current < 25_000
+              ? { 'X-IVC-Active': '1' }
+              : {},
+        })
+        if (!alive || request !== version.current) return
+        if (response.status === 401) {
+          setSession(null)
+          location.replace('/?expired=1')
+          return
+        }
+        if (!response.ok) throw Error('서버 연결을 확인할 수 없습니다.')
+        const data = (await response.json()) as Session
+        if (!alive || request !== version.current) return
+        if (!data.user?.id || !data.csrf)
+          throw Error('인증 확인에 실패했습니다.')
+        if (current.current && current.current.user.id !== data.user.id) {
+          setSession(null)
+          location.replace('/calculator')
+          return
+        }
+        selectAccountStorage(data.user)
+        current.current = data
+        setSession(data)
+        setError('')
+      } catch {
+        if (alive && request === version.current) {
+          setSession(null)
+          setError(
+            '세션을 확인할 수 없어 작업 화면을 잠갔습니다. 연결을 확인하고 다시 접속하세요.',
+          )
+        }
+      }
+    }
+    const activity = () => {
+      lastActivity.current = Date.now()
+    }
+    const focus = () => {
+      activity()
+      void check()
+    }
+    const channel = new BroadcastChannel('ivc-session')
+    channel.onmessage = () => {
+      version.current++
+      setSession(null)
+      location.replace('/')
+    }
+    const pageshow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setSession(null)
+        location.reload()
+      }
+    }
+    window.addEventListener('pointerdown', activity)
+    window.addEventListener('keydown', activity)
+    window.addEventListener('focus', focus)
+    window.addEventListener('pageshow', pageshow)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') void check()
+    }, 20_000)
+    void check()
+    return () => {
+      alive = false
+      version.current++
+      clearInterval(interval)
+      channel.close()
+      window.removeEventListener('pointerdown', activity)
+      window.removeEventListener('keydown', activity)
+      window.removeEventListener('focus', focus)
+      window.removeEventListener('pageshow', pageshow)
+    }
+  }, [])
+  async function logout() {
+    if (!session) return
+    version.current++
+    setSession(null)
+    try {
+      const response = await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': session.csrf,
+        },
+        body: '{}',
+      })
+      if (!response.ok) throw Error('logout')
+      new BroadcastChannel('ivc-session').postMessage('logout')
+      location.replace('/')
+    } catch {
+      setError(
+        '서버 로그아웃을 확인하지 못했습니다. 연결 후 다시 로그인해 로그아웃하세요.',
+      )
+    }
+  }
+  if (!session)
+    return (
+      <div className="account-lock" role="status">
+        <strong>IVC</strong>
+        <p>{error || '사용 권한을 확인하고 있습니다.'}</p>
+        {error && <a href="/">Log in again</a>}
+      </div>
+    )
+  return (
+    <>
+      <div className="account-bar">
+        <span>{session.user.email}</span>
+        <a href={session.user.role === 'owner' ? '/?manage=1' : '/?account=1'}>
+          {session.user.role === 'owner' ? 'Manage Access' : 'Account'}
+        </a>
+        <button onClick={() => void logout()}>Log out</button>
+      </div>
+      {children}
+    </>
+  )
+}
+```
+
+<a id="source-3"></a>
+
+## src/components/AccountSession.css
+
+원본: [src/components/AccountSession.css](../../src/components/AccountSession.css) · 56줄 · SHA-256: `fd1b00564b4703dcdda19f77582317cd82eeb96dc942ecdeb47a38e932c504fe`
+
+```css
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 7px 25px;
+  background: #eaf0ef;
+  border-bottom: 1px solid #d1dcda;
+  color: #506c68;
+  font:
+    11px/1.6 system-ui,
+    sans-serif;
+}
+.account-bar a,
+.account-bar button {
+  font: inherit;
+  color: #305f59;
+}
+.account-bar button {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.account-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 55vw;
+}
+.account-lock {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: #f4f6f2;
+  color: #375c56;
+  gap: 15px;
+  text-align: center;
+}
+.account-lock strong {
+  font:
+    italic 40px Georgia,
+    serif;
+}
+.account-lock p {
+  font:
+    14px/1.9 system-ui,
+    sans-serif;
+  max-width: 60ch;
+}
+.account-lock a {
+  font-size: 13px;
+  text-decoration: underline;
+}
+```
+
+<a id="source-4"></a>
+
+## server/gateway/index.html
+
+원본: [server/gateway/index.html](../../server/gateway/index.html) · 289줄 · SHA-256: `414bfdbc596831b135087e0ef825ee4ae64d68e4c9c02452576c5203b02ca849`
+
+```text
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#122f39" />
+    <meta
+      name="description"
+      content="식을 움직여 관계를 발견하는 수학 작업 공간. Interaction Visual Calculator."
+    />
+    <title>IVC — Interaction Visual Calculator</title>
+    <link rel="stylesheet" href="/welcome.css" />
+    <script type="module" src="/welcome.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand" aria-label="IVC Home"
+        ><span class="brand-icon">i<span>v</span>c</span
+        ><span>IVC<small>Interaction Visual Calculator</small></span></a
+      >
+      <nav>
+        <a href="#approach">Our approach</a
+        ><button class="login-trigger subtle">
+          Log in <span aria-hidden="true">↗</span></button
+        ><button id="logout" class="subtle" hidden>Log out</button>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow"
+            ><i></i> A SPACE FOR MATHEMATICAL DISCOVERY</span
+          >
+          <h1>정답에서 시작해,<br /><em>관계까지</em> 이해하다.</h1>
+          <p>
+            하나의 식에 담긴 가능성을 펼쳐 보세요.<br />값을 바꾸고, 변화를
+            관찰하고, 수학이 설명하는 세계를 탐색합니다.
+          </p>
+          <div class="hero-actions">
+            <button class="primary login-trigger">
+              Log in to IVC <span aria-hidden="true">↗</span></button
+            ><a href="#approach"
+              >계산을 넘어 탐색으로 <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <div class="workspace-entry" hidden>
+            <a class="primary" href="/calculator"
+              >Open Workspace <span aria-hidden="true">↗</span></a
+            ><button id="manage-access" hidden>Manage Access</button
+            ><span id="signed-in"></span>
+          </div>
+          <span class="access-note">초대받은 사용자를 위한 수학 작업 공간</span>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="visual-label">
+            <span>EXPLORATION 001</span><span>F(x, p) = 0</span>
+          </div>
+          <svg class="relationship" viewBox="0 0 560 460">
+            <defs>
+              <pattern
+                id="grid"
+                width="46"
+                height="46"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M46 0H0V46"
+                  fill="none"
+                  stroke="#dce6e3"
+                  stroke-width="1"
+                />
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="560" height="460" fill="url(#grid)" />
+            <path class="plot-axis" d="M30 230H530 M280 30V430" />
+            <path class="ghost-curve" d="M30 390C170 390 320 230 530 50" />
+            <path
+              class="main-curve"
+              d="M40 380C230 370 400 290 310 230S200 95 520 55"
+            />
+            <path class="second-curve" d="M45 100C250 80 290 370 520 360" />
+            <circle class="traveler" r="7" />
+            <circle class="fixed-point" cx="310" cy="230" r="7" />
+            <text x="530" y="253">p</text>
+            <text x="258" y="36">x</text>
+          </svg>
+          <div class="visual-readout">
+            <span><i></i> A parameter moves.</span
+            ><strong>A relationship unfolds.</strong>
+          </div>
+          <div class="float-formula">x³ − x = p</div>
+        </div>
+      </section>
+      <section id="approach" class="approach">
+        <div class="section-intro">
+          <span class="eyebrow">THINK IN RELATIONSHIPS</span>
+          <h2>계산은 정확하게.<br />이해는 직관적으로.</h2>
+        </div>
+        <div class="principles">
+          <article>
+            <span>01 / DEFINE</span>
+            <h3>질문을 수식으로</h3>
+            <p>
+              방정식, 미분방정식, 실험 데이터.<br />당신이 풀고 싶은 문제에서
+              출발합니다.
+            </p>
+          </article>
+          <article>
+            <span>02 / INTERACT</span>
+            <h3>변화를 직접 관찰하기</h3>
+            <p>
+              파라미터를 움직이며 여러 해와 모델의 변화를 같은 그래프에서
+              비교합니다.
+            </p>
+          </article>
+          <article>
+            <span>03 / UNDERSTAND</span>
+            <h3>답의 의미까지 읽기</h3>
+            <p>
+              결과와 검증의 근거를 함께 살피고, 모듈별 교재로 새로운 개념을
+              배웁니다.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section
+        class="access-card"
+        id="access-panel"
+        hidden
+        aria-labelledby="login-title"
+      >
+        <div>
+          <span class="eyebrow">YOUR WORKSPACE AWAITS</span>
+          <h2 id="login-title">Log in</h2>
+          <p id="login-description">관리자가 허용한 계정으로 로그인하세요.</p>
+        </div>
+        <form id="login-form">
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254" /></label
+          ><label
+            >Password<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              maxlength="128" /></label
+          ><button class="primary" type="submit">
+            Log in <span aria-hidden="true">↗</span>
+          </button>
+        </form>
+      </section>
+      <section id="invite-panel" class="access-card" hidden>
+        <div>
+          <span class="eyebrow">A NEW PERSPECTIVE STARTS HERE</span>
+          <h2>Accept invitation</h2>
+          <p>
+            초대받은 이메일과 새 비밀번호를 입력하세요. 초대 링크는 한 번만
+            사용할 수 있습니다.
+          </p>
+        </div>
+        <form id="invite-form">
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              maxlength="254"
+              required /></label
+          ><label
+            >New Password<input
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="128"
+              required /></label
+          ><label
+            >Confirm Password<input
+              name="confirm"
+              type="password"
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="128"
+              required /></label
+          ><small>12~128자. 다른 서비스와 다른 비밀번호를 사용하세요.</small
+          ><button class="primary">Activate account</button>
+        </form>
+      </section>
+      <section id="admin-panel" class="admin-panel" hidden>
+        <div class="admin-title">
+          <div>
+            <span class="eyebrow">OWNER CONSOLE</span>
+            <h2>Manage Access</h2>
+            <p>
+              최고 관리자만 계정을 초대하거나 접근 권한을 회수할 수 있습니다.
+            </p>
+          </div>
+          <button id="refresh-users">Refresh</button>
+        </div>
+        <form id="invite-user-form" class="invite-user-form">
+          <label
+            >Allowed Email<input
+              name="email"
+              type="email"
+              maxlength="254"
+              required /></label
+          ><label
+            >Admin Password<input
+              name="currentPassword"
+              type="password"
+              autocomplete="current-password"
+              maxlength="128"
+              required /></label
+          ><button class="primary">Create invitation</button>
+        </form>
+        <div id="invitation-result" hidden>
+          <label
+            >One-time invitation link<input
+              readonly
+              id="invitation-link" /></label
+          ><button id="copy-invitation">Copy link</button>
+          <p>
+            48시간 안에 사용할 수 있습니다. 해당 이메일 사용자에게 안전한 경로로
+            직접 전달하세요. 링크를 가진 사람이 계정을 활성화할 수 있습니다.
+          </p>
+        </div>
+        <div class="user-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Access</th>
+              </tr>
+            </thead>
+            <tbody id="user-list"></tbody>
+          </table>
+        </div>
+        <p class="admin-note">
+          권한을 회수하면 로그인 중인 세션과 미사용 초대도 폐기됩니다. 재허용할
+          때는 새 초대를 만드세요.
+        </p>
+      </section>
+      <section id="password-panel" class="access-card" hidden>
+        <div>
+          <h2>Change Password</h2>
+          <p>비밀번호를 변경하면 모든 기기에서 로그아웃됩니다.</p>
+        </div>
+        <form id="password-form">
+          <label
+            >Current Password<input
+              type="password"
+              name="currentPassword"
+              autocomplete="current-password"
+              required
+              maxlength="128" /></label
+          ><label
+            >New Password<input
+              type="password"
+              name="newPassword"
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="128" /></label
+          ><label
+            >Confirm Password<input
+              type="password"
+              name="confirm"
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="128" /></label
+          ><button class="primary">Change password</button>
+        </form>
+      </section>
+      <div id="feedback" role="status" aria-live="polite" hidden></div>
+    </main>
+    <footer>
+      <span>IVC · Interaction Visual Calculator</span
+      ><span>Explore the change. Understand the why.</span>
+    </footer>
+  </body>
+</html>
+```
+
+<a id="source-5"></a>
+
+## server/gateway/welcome.js
+
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 208줄 · SHA-256: `d630f76ce7711ef5362c24c92512de91965945c7e8bf4d8c413a04fafe5911ec`
+
+```text
+let session = null,
+  invitation = null
+const $ = (selector) => document.querySelector(selector)
+function feedback(message, error = false) {
+  const el = $('#feedback')
+  el.textContent = message
+  el.classList.toggle('error', error)
+  el.hidden = false
+}
+async function api(path, body) {
+  const response = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: body
+      ? {
+          'Content-Type': 'application/json',
+          ...(session ? { 'X-CSRF-Token': session.csrf } : {}),
+        }
+      : {},
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
+  const data = await response.json()
+  if (!response.ok) throw Error(data.error ?? '요청에 실패했습니다.')
+  return data
+}
+function scrollToPanel(id) {
+  $(id).hidden = false
+  $(id).scrollIntoView({
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'instant'
+      : 'smooth',
+    block: 'start',
+  })
+  $(id).querySelector('input')?.focus({ preventScroll: true })
+}
+for (const button of document.querySelectorAll('.login-trigger'))
+  button.addEventListener('click', () => scrollToPanel('#access-panel'))
+function busy(form, value) {
+  for (const button of form.querySelectorAll('button')) button.disabled = value
+}
+function submit(id, work) {
+  $(id).addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    busy(form, true)
+    try {
+      await work(Object.fromEntries(new FormData(form)), form)
+    } catch (error) {
+      feedback(error.message, true)
+    } finally {
+      busy(form, false)
+    }
+  })
+}
+submit('#login-form', async (body) => {
+  await api('/api/login', body)
+  location.assign('/calculator')
+})
+submit('#invite-form', async (body, form) => {
+  if (body.password !== body.confirm)
+    throw Error('비밀번호가 일치하지 않습니다.')
+  await api('/api/accept-invite', {
+    token: invitation,
+    email: body.email,
+    password: body.password,
+  })
+  invitation = null
+  form.reset()
+  $('#invite-panel').hidden = true
+  feedback('계정이 활성화되었습니다. 새 비밀번호로 로그인하세요.')
+  scrollToPanel('#access-panel')
+})
+async function loadUsers() {
+  const data = await api('/api/admin/users')
+  const list = $('#user-list')
+  list.replaceChildren()
+  for (const user of data.users) {
+    const row = document.createElement('tr')
+    for (const text of [
+      user.email,
+      user.role === 'owner' ? 'Super Admin' : 'Member',
+      !user.active ? 'Revoked' : user.activated ? 'Allowed' : 'Invited',
+    ]) {
+      const td = document.createElement('td')
+      td.textContent = text
+      row.append(td)
+    }
+    const action = document.createElement('td')
+    if (user.role !== 'owner' && user.active) {
+      const button = document.createElement('button')
+      button.textContent = 'Revoke access'
+      button.setAttribute('aria-label', `Revoke ${user.email}`)
+      button.addEventListener('click', async () => {
+        const input = $('#invite-user-form input[name=currentPassword]')
+        if (!input.value) {
+          input.focus()
+          return feedback(
+            'Admin Password에 현재 비밀번호를 입력한 뒤 회수하세요.',
+            true,
+          )
+        }
+        if (!confirm(`${user.email}의 접근 권한과 기존 세션을 회수할까요?`))
+          return
+        button.disabled = true
+        try {
+          await api('/api/admin/revoke', {
+            id: user.id,
+            currentPassword: input.value,
+          })
+          input.value = ''
+          await loadUsers()
+          feedback('접근 권한과 세션을 회수했습니다.')
+        } catch (e) {
+          feedback(e.message, true)
+        } finally {
+          button.disabled = false
+        }
+      })
+      action.append(button)
+    } else action.textContent = '—'
+    row.append(action)
+    list.append(row)
+  }
+}
+submit('#invite-user-form', async (body, form) => {
+  const data = await api('/api/admin/invite', body)
+  $('#invitation-link').value = data.url
+  $('#invitation-result').hidden = false
+  form.querySelector('[name=currentPassword]').value = ''
+  await loadUsers()
+  feedback('48시간 유효한 일회용 초대를 만들었습니다.')
+})
+$('#refresh-users').addEventListener('click', () =>
+  loadUsers().catch((e) => feedback(e.message, true)),
+)
+$('#copy-invitation').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('#invitation-link').value)
+    feedback('초대 링크를 복사했습니다.')
+  } catch {
+    $('#invitation-link').select()
+    feedback('링크를 선택했습니다. 복사해서 안전하게 전달하세요.')
+  }
+})
+$('#manage-access').addEventListener('click', () => {
+  scrollToPanel('#admin-panel')
+  loadUsers().catch((e) => feedback(e.message, true))
+})
+submit('#password-form', async (body, form) => {
+  if (body.newPassword !== body.confirm)
+    throw Error('비밀번호가 일치하지 않습니다.')
+  await api('/api/change-password', body)
+  form.reset()
+  location.replace('/?changed=1')
+})
+$('#logout').addEventListener('click', async () => {
+  try {
+    await api('/api/logout', {})
+    new BroadcastChannel('ivc-session').postMessage('logout')
+    location.replace('/')
+  } catch (e) {
+    feedback(e.message, true)
+  }
+})
+async function initialize() {
+  const hash = new URLSearchParams(location.hash.slice(1))
+  invitation = hash.get('invite')
+  if (invitation) {
+    history.replaceState(null, '', '/')
+    scrollToPanel('#invite-panel')
+  }
+  try {
+    session = await api('/api/session')
+  } catch {
+    session = null
+  }
+  if (session) {
+    for (const el of document.querySelectorAll(
+      '.login-trigger,.hero-actions,.access-note',
+    ))
+      el.hidden = true
+    $('.workspace-entry').hidden = false
+    $('#signed-in').textContent = session.user.email
+    $('#logout').hidden = false
+    $('#password-panel').hidden = false
+    if (new URLSearchParams(location.search).has('account'))
+      scrollToPanel('#password-panel')
+    if (session.user.role === 'owner') {
+      $('#manage-access').hidden = false
+      if (new URLSearchParams(location.search).has('manage')) {
+        scrollToPanel('#admin-panel')
+        await loadUsers()
+      }
+    }
+  } else if (new URLSearchParams(location.search).has('changed')) {
+    feedback('비밀번호를 변경했습니다. 다시 로그인하세요.')
+    scrollToPanel('#access-panel')
+  } else if (new URLSearchParams(location.search).has('expired')) {
+    feedback(
+      '세션이 만료되었거나 접근 권한이 변경되었습니다. 다시 로그인하세요.',
+    )
+    scrollToPanel('#access-panel')
+  }
+}
+initialize().catch(() =>
+  feedback('서버에 연결하지 못했습니다. 잠시 후 새로고침하세요.', true),
+)
+```
+
+<a id="source-6"></a>
+
+## server/gateway/welcome.css
+
+원본: [server/gateway/welcome.css](../../server/gateway/welcome.css) · 600줄 · SHA-256: `9c70190180c4f4774d836c9c59db268cbdb80d2da99aea746f426156bd353985`
+
+```css
+:root {
+  font-family: Inter, Pretendard, 'Noto Sans KR', system-ui, sans-serif;
+  color: #183b43;
+  background: #f6f7f2;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  border: 1px solid #c7d7d2;
+  border-radius: 6px;
+  color: #234b50;
+  background: transparent;
+  padding: 11px 17px;
+  font-size: 13px;
+}
+button:hover {
+  background: #e9efea;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #82b5a9;
+  outline-offset: 4px;
+}
+[hidden] {
+  display: none !important;
+}
+.site-header {
+  height: 100px;
+  max-width: 1440px;
+  margin: auto;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #dce4dd;
+  gap: 20px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: 1px;
+}
+.brand-icon {
+  font:
+    italic 34px Georgia,
+    serif;
+  letter-spacing: -6px;
+  width: 48px;
+  color: #225c56;
+}
+.brand-icon span {
+  color: #839e66;
+}
+.brand small {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.7px;
+  margin-top: 4px;
+  color: #6d837d;
+}
+nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  font-size: 13px;
+}
+nav > a {
+  color: #667e77;
+}
+.subtle {
+  border: none;
+}
+.hero {
+  max-width: 1440px;
+  padding: 90px 5% 80px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+  line-height: 1.8;
+  font-weight: 650;
+  color: #627f70;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.eyebrow i {
+  width: 6px;
+  height: 6px;
+  background: #689c80;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #689c8016;
+}
+h1 {
+  font-size: clamp(34px, 3.7vw, 56px);
+  line-height: 1.42;
+  letter-spacing: -2.4px;
+  font-weight: 620;
+  margin: 28px 0;
+}
+h1 em {
+  font-style: normal;
+  color: #387365;
+  position: relative;
+}
+h1 em:after {
+  content: '';
+  height: 5px;
+  background: #c6d8b6;
+  position: absolute;
+  bottom: 1px;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  transform: rotate(-2deg);
+}
+.hero-copy > p {
+  color: #657d76;
+  line-height: 2;
+  font-size: 15px;
+  margin: 24px 0 32px;
+}
+.hero-actions,
+.workspace-entry {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: #245b53;
+  color: #fff;
+  border: 1px solid #245b53;
+  border-radius: 5px;
+  padding: 14px 22px;
+  font-size: 13px;
+  min-height: 46px;
+}
+.primary:hover {
+  background: #1b4842;
+}
+.hero-actions > a {
+  font-size: 12px;
+  color: #6e8478;
+}
+.access-note {
+  display: block;
+  font-size: 11px;
+  color: #839288;
+  margin-top: 24px;
+}
+.hero-visual {
+  position: relative;
+  border: 1px solid #d1dfd5;
+  border-radius: 18px;
+  background: linear-gradient(140deg, #eef3e8, #f7f8f2);
+  padding: 22px;
+  box-shadow: 0 25px 65px #304c3a08;
+  transform: rotate(1.5deg);
+}
+.visual-label {
+  display: flex;
+  justify-content: space-between;
+  font:
+    10px ui-monospace,
+    monospace;
+  letter-spacing: 1.5px;
+  color: #829388;
+}
+.relationship {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+.plot-axis {
+  stroke: #b4c9c0;
+  stroke-width: 1.5;
+  fill: none;
+}
+.ghost-curve {
+  stroke: #d0dcbf;
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 5 7;
+}
+.main-curve {
+  stroke: #3a7a6c;
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+}
+.second-curve {
+  stroke: #acb47a;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+}
+.relationship text {
+  fill: #8ca093;
+  font:
+    italic 15px Georgia,
+    serif;
+}
+.traveler {
+  fill: #245b53;
+  stroke: #fff;
+  stroke-width: 4;
+  offset-path: path('M40 380C230 370 400 290 310 230S200 95 520 55');
+  animation: explore 15s ease-in-out infinite alternate;
+}
+.fixed-point {
+  fill: #f6f7f2;
+  stroke: #3a7a6c;
+  stroke-width: 2;
+}
+.visual-readout {
+  border-top: 1px solid #d7e1d3;
+  padding: 17px 6px 3px;
+  display: grid;
+  gap: 8px;
+  font-size: 11px;
+  color: #7c8c7f;
+}
+.visual-readout strong {
+  color: #496d5d;
+  font-size: 13px;
+  font-weight: 500;
+}
+.visual-readout i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  background: #74956c;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+.float-formula {
+  position: absolute;
+  right: -18px;
+  bottom: 110px;
+  background: #fffdf7;
+  border: 1px solid #dfdfd0;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px #4b5f3710;
+  padding: 14px 23px;
+  font:
+    italic 21px Georgia,
+    serif;
+  color: #718260;
+  transform: rotate(-5deg);
+}
+.approach {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 55px 5% 70px;
+  border-top: 1px solid #dce4dd;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 50px;
+}
+.section-intro h2 {
+  font-size: 24px;
+  font-weight: 550;
+  line-height: 1.7;
+  letter-spacing: -0.8px;
+  margin: 14px 0;
+}
+.principles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+  padding-top: 5px;
+}
+.principles article > span {
+  font:
+    10px ui-monospace,
+    monospace;
+  letter-spacing: 1px;
+  color: #8a9a8d;
+}
+.principles h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 20px;
+}
+.principles p {
+  font-size: 12px;
+  color: #718478;
+  line-height: 1.95;
+}
+.access-card,
+.admin-panel {
+  max-width: 1160px;
+  margin: 20px auto 60px;
+  border: 1px solid #cedcd3;
+  background: #fff;
+  border-radius: 12px;
+  padding: 38px;
+  scroll-margin-top: 25px;
+}
+.access-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+}
+.access-card h2,
+.admin-title h2 {
+  margin: 12px 0;
+  font-size: 26px;
+  letter-spacing: -0.5px;
+}
+.access-card p,
+.admin-title p,
+.admin-note {
+  color: #6d8078;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.access-card form {
+  display: grid;
+  gap: 18px;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #59746b;
+}
+input {
+  width: 100%;
+  min-width: 0;
+  background: #fafbf9;
+  border: 1px solid #cddbd4;
+  border-radius: 5px;
+  padding: 12px 14px;
+  color: #25463e;
+  font-size: 14px;
+}
+small {
+  font-size: 11px;
+  color: #7f8e83;
+}
+.access-card .primary {
+  margin-top: 3px;
+}
+.workspace-entry > span {
+  font-size: 11px;
+  color: #6c8176;
+}
+.admin-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 25px;
+}
+.invite-user-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 18px;
+  align-items: end;
+  margin: 25px 0;
+}
+.user-table {
+  overflow: auto;
+  margin-top: 25px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+th,
+td {
+  border-bottom: 1px solid #dee6de;
+  padding: 13px 10px;
+}
+th {
+  background: #f4f7f2;
+  color: #597266;
+  font-weight: 550;
+}
+td {
+  color: #49675b;
+}
+td button {
+  padding: 7px 11px;
+  font-size: 12px;
+  color: #935d45;
+}
+.badge {
+  font:
+    11px ui-monospace,
+    monospace;
+}
+.admin-note {
+  font-size: 12px;
+}
+#invitation-result {
+  padding: 20px;
+  background: #f2f7ef;
+  border: 1px solid #dce6d4;
+  border-radius: 6px;
+}
+#invitation-result p {
+  font-size: 12px;
+  color: #6a8068;
+  line-height: 1.8;
+}
+#invitation-result button {
+  margin-top: 10px;
+}
+#feedback {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  z-index: 10;
+  background: #264f48;
+  color: #fff;
+  border: 1px solid #476d63;
+  padding: 14px 22px;
+  border-radius: 7px;
+  font-size: 13px;
+  line-height: 1.8;
+  box-shadow: 0 5px 25px #213c3320;
+}
+#feedback.error {
+  background: #713c34;
+  border-color: #99584c;
+}
+footer {
+  max-width: 1440px;
+  margin: auto;
+  border-top: 1px solid #dce4dd;
+  padding: 25px 5% 35px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 10px;
+  color: #859287;
+  letter-spacing: 0.5px;
+}
+@keyframes explore {
+  0%,
+  5% {
+    offset-distance: 0%;
+  }
+  95%,
+  100% {
+    offset-distance: 100%;
+  }
+}
+@media (max-width: 1000px) {
+  .hero {
+    gap: 28px;
+    padding-top: 65px;
+  }
+  .approach {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .access-card,
+  .admin-panel {
+    margin-inline: 5%;
+  }
+  .hero-visual {
+    padding: 16px;
+  }
+  .brand small {
+    font-size: 8px;
+  }
+  .hero-copy > p {
+    font-size: 13px;
+  }
+}
+@media (max-width: 680px) {
+  .site-header {
+    height: 80px;
+  }
+  .site-header nav > a {
+    display: none;
+  }
+  .brand {
+    font-size: 18px;
+  }
+  .brand small {
+    letter-spacing: 0.5px;
+  }
+  .hero {
+    grid-template-columns: 1fr;
+    padding-block: 45px;
+    gap: 38px;
+  }
+  h1 {
+    font-size: 38px;
+    letter-spacing: -1.8px;
+  }
+  .hero-visual {
+    max-width: 480px;
+    width: 100%;
+    margin: auto;
+    transform: none;
+  }
+  .float-formula {
+    right: 8px;
+    bottom: 80px;
+  }
+  .principles {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .principles article {
+    border-top: 1px solid #dde5d9;
+    padding-top: 18px;
+  }
+  .principles h3 {
+    margin-top: 10px;
+  }
+  .access-card {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 24px;
+  }
+  .admin-panel {
+    padding: 22px;
+  }
+  .invite-user-form {
+    grid-template-columns: 1fr;
+  }
+  .admin-title {
+    align-items: start;
+  }
+  .approach {
+    padding-block: 35px;
+  }
+  .hero-actions {
+    gap: 16px;
+  }
+  footer {
+    flex-direction: column;
+    gap: 9px;
+  }
+  .user-table th,
+  .user-table td {
+    font-size: 12px;
+    padding: 10px 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .traveler {
+    animation: none;
+    offset-distance: 55%;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+```
+
+<a id="source-7"></a>
 
 ## src/components/chart-domain.ts
 
@@ -167,7 +1510,7 @@ export function fittedDomain(values: readonly number[]): ChartDomain {
 }
 ```
 
-<a id="source-3"></a>
+<a id="source-8"></a>
 
 ## src/components/chart-interaction.ts
 
@@ -292,7 +1635,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 }
 ```
 
-<a id="source-4"></a>
+<a id="source-9"></a>
 
 ## src/components/EquationReference.tsx
 
@@ -487,7 +1830,7 @@ export default function EquationReference() {
 }
 ```
 
-<a id="source-5"></a>
+<a id="source-10"></a>
 
 ## src/components/ExampleWalkthrough.tsx
 
@@ -528,7 +1871,7 @@ export default function ExampleWalkthrough({
 }
 ```
 
-<a id="source-6"></a>
+<a id="source-11"></a>
 
 ## src/components/AnalysisSummary.tsx
 
@@ -960,7 +2303,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-12"></a>
 
 ## src/components/AnalysisSummary.css
 
@@ -1350,7 +2693,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-13"></a>
 
 ## src/components/CertificationReport.tsx
 
@@ -1636,7 +2979,7 @@ export default function CertificationReport({
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-14"></a>
 
 ## src/components/certification-view.ts
 
@@ -1754,7 +3097,7 @@ export function certificateSegments(c: RootCertificate): CertificateSegment[] {
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-15"></a>
 
 ## src/components/Guide.tsx
 
@@ -2215,7 +3558,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-16"></a>
 
 ## src/components/Guide.css
 
@@ -2593,7 +3936,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-17"></a>
 
 ## src/components/ModuleGuide.tsx
 
@@ -2949,7 +4292,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-18"></a>
 
 ## src/components/ModuleGuide.css
 
@@ -3388,7 +4731,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-19"></a>
 
 ## src/components/guide-content.ts
 
@@ -4810,7 +6153,7 @@ export function renderTextbookMarkdown(): string {
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-20"></a>
 
 ## src/components/SolutionChart.tsx
 
@@ -5976,7 +7319,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-21"></a>
 
 ## src/components/SolutionChart.css
 
@@ -6327,7 +7670,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-22"></a>
 
 ## src/components/SimulationPanelView.tsx
 
@@ -6674,7 +8017,7 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-23"></a>
 
 ## src/components/MergedSimulationSetView.tsx
 
@@ -7043,7 +8386,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-24"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -7322,7 +8665,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-25"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
@@ -7567,7 +8910,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-26"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -7942,7 +9285,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-27"></a>
 
 ## src/styles.css
 
@@ -11742,7 +13085,7 @@ h2 {
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-28"></a>
 
 ## src/workspace-screens.css
 
@@ -12161,11 +13504,11 @@ h2 {
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-29"></a>
 
 ## src/ivc.css
 
-원본: [src/ivc.css](../../src/ivc.css) · 883줄 · SHA-256: `2dda0e3d92729572ef866d49a1bc5c7da93a6794ff660063af559d04694cce82`
+원본: [src/ivc.css](../../src/ivc.css) · 899줄 · SHA-256: `44d31e4f11a469949ce71143adad4f8d12623934deef6e68081ab8fbc625bc75`
 
 ```css
 /* IVC: one quiet, readable workspace across every numerical module. */
@@ -13050,5 +14393,21 @@ body .scientific-workspace input[type='number'] {
   color: #425f82;
   border-color: #cfd8e4;
   background: #f8fafc;
+}
+
+/* Preserve plot space after adding the authenticated account strip. */
+.simulation-focused .ivc-toolbar {
+  min-height: 44px;
+  padding-block: 2px;
+}
+.simulation-focused .workspace-navigation .workspace-screen-button {
+  min-height: 30px;
+  padding-block: 4px;
+}
+.simulation-focused .results-heading {
+  padding-block: 2px;
+}
+.simulation-focused .merge-actions .secondary-button {
+  padding-block: 3px;
 }
 ```

@@ -881,3 +881,19 @@ body .scientific-workspace input[type='number'] {
   border-color: #cfd8e4;
   background: #f8fafc;
 }
+
+/* Preserve plot space after adding the authenticated account strip. */
+.simulation-focused .ivc-toolbar {
+  min-height: 44px;
+  padding-block: 2px;
+}
+.simulation-focused .workspace-navigation .workspace-screen-button {
+  min-height: 30px;
+  padding-block: 4px;
+}
+.simulation-focused .results-heading {
+  padding-block: 2px;
+}
+.simulation-focused .merge-actions .secondary-button {
+  padding-block: 3px;
+}

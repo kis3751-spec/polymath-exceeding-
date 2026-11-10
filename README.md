@@ -2,25 +2,22 @@
 
 공학 수식을 직접 입력하고 파라미터를 움직이며 해의 변화를 탐색하는 브라우저 계산기입니다. **Equation Solver**의 선형·비선형 방정식에 더해 **미분방정식, 선형·다항·다중·비선형 회귀, 이산 적분, 제약·LSQ 최적화**를 제공합니다.
 
-## 실행하기
+## 실행하기와 비공개 공유
 
-Node.js 22 이상과 npm을 권장합니다. 저장소 디렉터리에서 실행하세요.
+Node.js **24 이상**이 필요합니다. 기존 개발 서버를 Ctrl+C로 종료하고 실행하세요.
 
 ```sh
+git pull --ff-only origin codex/leq-studio
 npm ci
-npm run build:wasm
-npm run dev
+npm run auth:setup
+npm run dev -- --port 5173
 ```
 
-Vite가 표시하는 주소로 접속합니다. Codespaces에서는 실행 중인 서버를 `Ctrl+C`로 종료하고 업데이트하세요. `npm run dev`가 실행 중인 터미널은 서버 입력을 받으므로, Git 명령은 서버를 중단하거나 새 터미널에서 입력합니다.
+`auth:setup`은 서버에서 처음 한 번 실행합니다. 기본 최고 관리자 이메일은 `eerrtteerrt12@gmail.com`이며 비밀번호는 숨김 입력으로 설정합니다. 이미 설정했다면 이 단계를 건너뜁니다. DB와 비밀번호는 Git에 포함하지 않으므로 새 Codespace·새 서버에서는 별도 초기화가 필요합니다.
 
-```sh
- git pull --ff-only origin codex/leq-studio
- npm ci
- npm run dev -- --port 5173 --strictPort
-```
+처음에는 IVC 소개 화면이 열립니다. **Log in to IVC**로 로그인하면 계산기로 전환됩니다. 최고 관리자는 **Manage Access**에서 허용 계정을 초대·회수하며, 일반 사용자는 초대 링크로만 계정을 활성화할 수 있습니다. 같은 모델을 공유하려면 Save Project로 만든 JSON을 별도로 전달합니다.
 
-Git이 로컬 변경 때문에 업데이트를 중단하면 해당 변경을 보관한 뒤 업데이트해야 합니다. 배포용 정적 파일은 `npm run build`로 `dist/`에 생성하고 `npm run preview`로 확인합니다. `build`는 WASM 재컴파일, TypeScript 검사, Vite 빌드를 포함합니다. 별도 Python·백엔드·API 키는 필요하지 않습니다.
+`npm run dev`와 `npm run preview` 모두 보호 서버를 사용합니다. 개발 명령은 빌드 후 서버를 시작하므로 소스 수정 후 다시 실행하세요. 운영은 `npm run build` 후 HTTPS 원점을 설정하고 `npm start`로 실행합니다. **dist만 정적 호스팅에 올리면 로그인 보안이 적용되지 않습니다.** 영구 DB·HTTPS·프록시·Codespaces 공유 설정과 보안 경계는 [Access Control & Deployment](docs/ACCESS_CONTROL.md)에 상세히 설명했습니다.
 
 모듈별 입력부터 결과 해석까지는 [IVC User Textbook](docs/IVC_USER_TEXTBOOK.md)에 정리했습니다. 화면의 **User Guide**에서도 각 모듈의 교재를 독립 탭으로 읽을 수 있습니다.
 

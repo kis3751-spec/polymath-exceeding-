@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#122f39" />
+    <meta
+      name="description"
+      content="식을 움직여 관계를 발견하는 수학 작업 공간. Interaction Visual Calculator."
+    />
+    <title>IVC — Interaction Visual Calculator</title>
+    <link rel="stylesheet" href="/welcome.css" />
+    <script type="module" src="/welcome.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand" aria-label="IVC Home"
+        ><span class="brand-icon">i<span>v</span>c</span
+        ><span>IVC<small>Interaction Visual Calculator</small></span></a
+      >
+      <nav>
+        <a href="#approach">Our approach</a
+        ><button class="login-trigger subtle">
+          Log in <span aria-hidden="true">↗</span></button
+        ><button id="logout" class="subtle" hidden>Log out</button>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow"
+            ><i></i> A SPACE FOR MATHEMATICAL DISCOVERY</span
+          >
+          <h1>정답에서 시작해,<br /><em>관계까지</em> 이해하다.</h1>
+          <p>
+            하나의 식에 담긴 가능성을 펼쳐 보세요.<br />값을 바꾸고, 변화를
+            관찰하고, 수학이 설명하는 세계를 탐색합니다.
+          </p>
+          <div class="hero-actions">
+            <button class="primary login-trigger">
+              Log in to IVC <span aria-hidden="true">↗</span></button
+            ><a href="#approach"
+              >계산을 넘어 탐색으로 <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <div class="workspace-entry" hidden>
+            <a class="primary" href="/calculator"
+              >Open Workspace <span aria-hidden="true">↗</span></a
+            ><button id="manage-access" hidden>Manage Access</button
+            ><span id="signed-in"></span>
+          </div>
+          <span class="access-note">초대받은 사용자를 위한 수학 작업 공간</span>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="visual-label">
+            <span>EXPLORATION 001</span><span>F(x, p) = 0</span>
+          </div>
+          <svg class="relationship" viewBox="0 0 560 460">
+            <defs>
+              <pattern
+                id="grid"
+                width="46"
+                height="46"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M46 0H0V46"
+                  fill="none"
+                  stroke="#dce6e3"
+                  stroke-width="1"
+                />
+              </pattern>
+            </defs>
+            <rect x="0" y="0" width="560" height="460" fill="url(#grid)" />
+            <path class="plot-axis" d="M30 230H530 M280 30V430" />
+            <path class="ghost-curve" d="M30 390C170 390 320 230 530 50" />
+            <path
+              class="main-curve"
+              d="M40 380C230 370 400 290 310 230S200 95 520 55"
+            />
+            <path class="second-curve" d="M45 100C250 80 290 370 520 360" />
+            <circle class="traveler" r="7" />
+            <circle class="fixed-point" cx="310" cy="230" r="7" />
+            <text x="530" y="253">p</text>
+            <text x="258" y="36">x</text>
+          </svg>
+          <div class="visual-readout">
+            <span><i></i> A parameter moves.</span
+            ><strong>A relationship unfolds.</strong>
+          </div>
+          <div class="float-formula">x³ − x = p</div>
+        </div>
+      </section>
+      <section id="approach" class="approach">
+        <div class="section-intro">
+          <span class="eyebrow">THINK IN RELATIONSHIPS</span>
+          <h2>계산은 정확하게.<br />이해는 직관적으로.</h2>
+        </div>
+        <div class="principles">
+          <article>
+            <span>01 / DEFINE</span>
+            <h3>질문을 수식으로</h3>
+            <p>
+              방정식, 미분방정식, 실험 데이터.<br />당신이 풀고 싶은 문제에서
+              출발합니다.
+            </p>
+          </article>
+          <article>
+            <span>02 / INTERACT</span>
+            <h3>변화를 직접 관찰하기</h3>
+            <p>
+              파라미터를 움직이며 여러 해와 모델의 변화를 같은 그래프에서
+              비교합니다.
+            </p>
+          </article>
+          <article>
+            <span>03 / UNDERSTAND</span>
+            <h3>답의 의미까지 읽기</h3>
+            <p>
+              결과와 검증의 근거를 함께 살피고, 모듈별 교재로 새로운 개념을
+              배웁니다.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section
+        class="access-card"
+        id="access-panel"
+        hidden
+        aria-labelledby="login-title"
+      >
+        <div>
+          <span class="eyebrow">YOUR WORKSPACE AWAITS</span>
+          <h2 id="login-title">Log in</h2>
+          <p id="login-description">관리자가 허용한 계정으로 로그인하세요.</p>
+        </div>
+        <form id="login-form">
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254" /></label
+          ><label
+            >Password<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              maxlength="128" /></label
+          ><button class="primary" type="submit">
+            Log in <span aria-hidden="true">↗</span>
+          </button>
+        </form>
+      </section>
+      <section id="invite-panel" class="access-card" hidden>
+        <div>
+          <span class="eyebrow">A NEW PERSPECTIVE STARTS HERE</span>
+          <h2>Accept invitation</h2>
+          <p>
+            초대받은 이메일과 새 비밀번호를 입력하세요. 초대 링크는 한 번만
+            사용할 수 있습니다.
+          </p>
+        </div>
+        <form id="invite-form">
+          <label
+            >Email<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              maxlength="254"
+              required /></label
+          ><label
+            >New Password<input
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="128"
+              required /></label
+          ><label
+            >Confirm Password<input
+              name="confirm"
+              type="password"
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="128"
+              required /></label
+          ><small>12~128자. 다른 서비스와 다른 비밀번호를 사용하세요.</small
+          ><button class="primary">Activate account</button>
+        </form>
+      </section>
+      <section id="admin-panel" class="admin-panel" hidden>
+        <div class="admin-title">
+          <div>
+            <span class="eyebrow">OWNER CONSOLE</span>
+            <h2>Manage Access</h2>
+            <p>
+              최고 관리자만 계정을 초대하거나 접근 권한을 회수할 수 있습니다.
+            </p>
+          </div>
+          <button id="refresh-users">Refresh</button>
+        </div>
+        <form id="invite-user-form" class="invite-user-form">
+          <label
+            >Allowed Email<input
+              name="email"
+              type="email"
+              maxlength="254"
+              required /></label
+          ><label
+            >Admin Password<input
+              name="currentPassword"
+              type="password"
+              autocomplete="current-password"
+              maxlength="128"
+              required /></label
+          ><button class="primary">Create invitation</button>
+        </form>
+        <div id="invitation-result" hidden>
+          <label
+            >One-time invitation link<input
+              readonly
+              id="invitation-link" /></label
+          ><button id="copy-invitation">Copy link</button>
+          <p>
+            48시간 안에 사용할 수 있습니다. 해당 이메일 사용자에게 안전한 경로로
+            직접 전달하세요. 링크를 가진 사람이 계정을 활성화할 수 있습니다.
+          </p>
+        </div>
+        <div class="user-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Access</th>
+              </tr>
+            </thead>
+            <tbody id="user-list"></tbody>
+          </table>
+        </div>
+        <p class="admin-note">
+          권한을 회수하면 로그인 중인 세션과 미사용 초대도 폐기됩니다. 재허용할
+          때는 새 초대를 만드세요.
+        </p>
+      </section>
+      <section id="password-panel" class="access-card" hidden>
+        <div>
+          <h2>Change Password</h2>
+          <p>비밀번호를 변경하면 모든 기기에서 로그아웃됩니다.</p>
+        </div>
+        <form id="password-form">
+          <label
+            >Current Password<input
+              type="password"
+              name="currentPassword"
+              autocomplete="current-password"
+              required
+              maxlength="128" /></label
+          ><label
+            >New Password<input
+              type="password"
+              name="newPassword"
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="128" /></label
+          ><label
+            >Confirm Password<input
+              type="password"
+              name="confirm"
+              autocomplete="new-password"
+              required
+              minlength="12"
+              maxlength="128" /></label
+          ><button class="primary">Change password</button>
+        </form>
+      </section>
+      <div id="feedback" role="status" aria-live="polite" hidden></div>
+    </main>
+    <footer>
+      <span>IVC · Interaction Visual Calculator</span
+      ><span>Explore the change. Understand the why.</span>
+    </footer>
+  </body>
+</html>

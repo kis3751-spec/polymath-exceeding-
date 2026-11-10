@@ -4,3 +4,11 @@ dist/
 test-results/
 playwright-report/
 .DS_Store
+
+# Server authentication data and deployment secrets
+.ivc-data/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*

@@ -1,3 +1,4 @@
+import { accountStorageKey } from '../account-storage'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
@@ -36,7 +37,8 @@ type Props = {
   onHome: () => void
   onModuleChange?: (module: ScientificModule) => void
 }
-const storageKey = (m: string) => `polymath-scientific-${m}-v1`
+const storageKey = (m: string) =>
+  accountStorageKey(`polymath-scientific-${m}-v1`)
 const format = (x: number) =>
   !Number.isFinite(x)
     ? 'N/A'

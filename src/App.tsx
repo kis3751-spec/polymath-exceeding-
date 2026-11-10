@@ -1,3 +1,4 @@
+import { accountStorageKey } from './account-storage'
 import CertificationReport from './components/CertificationReport'
 import { currentCertificate } from './components/certification-view'
 import type { ScientificModule } from './engine/scientific/types'
@@ -232,7 +233,9 @@ function isProject(value: unknown): value is Project {
 }
 function initialProject(): Project {
   try {
-    const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+    const p = JSON.parse(
+      localStorage.getItem(accountStorageKey(STORAGE_KEY)) || 'null',
+    )
     if (isProject(p)) return equationProject(p)
   } catch {
     /* A clean model is usable if storage is unavailable. */
@@ -541,7 +544,7 @@ export default function App() {
     revision,
     workerReady,
   ])
-  useProjectPersistence(project, STORAGE_KEY, setStorageOk)
+  useProjectPersistence(project, accountStorageKey(STORAGE_KEY), setStorageOk)
   const variableKey = result?.variables.join('|') || ''
   useEffect(() => {
     setVisibleVariables(variableKey ? variableKey.split('|') : [])
@@ -688,7 +691,9 @@ export default function App() {
     if (!next) {
       try {
         const saved = JSON.parse(
-          localStorage.getItem(`${STORAGE_KEY}-${nextMode}`) || 'null',
+          localStorage.getItem(
+            `${accountStorageKey(STORAGE_KEY)}-${nextMode}`,
+          ) || 'null',
         )
         if (isProject(saved) && (saved.mode ?? 'linear') === nextMode)
           next = equationProject(saved)

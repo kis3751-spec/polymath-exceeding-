@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `19c3dfea01d6294c05e7ed99ea1dc772aec439877791d39aacbfddfcb919eb1d`
+소스 묶음 SHA-256: `60a436db104db1d689335d78d30a4f69b9d580529e3be05eac6dce28c705c3a2`
 
 ## 다른 코드 묶음
 
@@ -31,17 +31,23 @@
 - [src/showcase-examples.ts](#source-4) · [저장소 원본](../../src/showcase-examples.ts)
 - [src/solver-input.ts](#source-5) · [저장소 원본](../../src/solver-input.ts)
 - [src/use-project-persistence.ts](#source-6) · [저장소 원본](../../src/use-project-persistence.ts)
-- [src/equation-count.ts](#source-7) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-8) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-9) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-10) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-11) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-12) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-13) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-14) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-15) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-16) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-17) · [저장소 원본](../../src/App.tsx)
+- [src/account-storage.ts](#source-7) · [저장소 원본](../../src/account-storage.ts)
+- [server/store.mjs](#source-8) · [저장소 원본](../../server/store.mjs)
+- [server/app.mjs](#source-9) · [저장소 원본](../../server/app.mjs)
+- [server/start.mjs](#source-10) · [저장소 원본](../../server/start.mjs)
+- [server/setup.mjs](#source-11) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-12) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-13) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-14) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-15) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-16) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-17) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-18) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-19) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-20) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-21) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-22) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-23) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -737,6 +743,811 @@ export function useProjectPersistence(
 
 <a id="source-7"></a>
 
+## src/account-storage.ts
+
+원본: [src/account-storage.ts](../../src/account-storage.ts) · 21줄 · SHA-256: `dd5120fc9a3b62da6788715d202c5da83c8fbb8a3dae895ac1cbeb3106964764`
+
+```typescript
+let accountId: string | null = null
+export function selectAccountStorage(user: { id: string; role: string }) {
+  accountId = user.id
+  // Existing calculator projects belong to the owner, never to a new invited member.
+  if (user.role === 'owner') {
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (!/^polymath-(studio-project|scientific-)/.test(key)) continue
+        const target = `ivc-account:${user.id}:${key}`
+        if (localStorage.getItem(target) === null)
+          localStorage.setItem(target, localStorage.getItem(key)!)
+        localStorage.removeItem(key)
+      }
+    } catch {
+      /* Import/Save Project remains available when browser storage is restricted. */
+    }
+  }
+}
+export function accountStorageKey(key: string) {
+  return accountId ? `ivc-account:${accountId}:${key}` : key
+}
+```
+
+<a id="source-8"></a>
+
+## server/store.mjs
+
+원본: [server/store.mjs](../../server/store.mjs) · 298줄 · SHA-256: `4dced51691328a159f6d66a0add7111cc4127009b9fa635834e6ff4778cb76b9`
+
+```javascript
+import { DatabaseSync } from 'node:sqlite'
+import { mkdirSync, chmodSync } from 'node:fs'
+import { dirname } from 'node:path'
+import {
+  randomBytes,
+  randomUUID,
+  scrypt,
+  timingSafeEqual,
+  createHash,
+} from 'node:crypto'
+import { promisify } from 'node:util'
+const rawDerive = promisify(scrypt)
+let activeHashes = 0
+const waiters = []
+async function derive(...args) {
+  if (activeHashes >= 2) {
+    if (waiters.length >= 8) {
+      const error = new Error('Busy')
+      error.code = 'EBUSY'
+      throw error
+    }
+    await new Promise((resolve) => waiters.push(resolve))
+  } else activeHashes++
+  try {
+    return await rawDerive(...args)
+  } finally {
+    const next = waiters.shift()
+    if (next) next()
+    else activeHashes--
+  }
+}
+export const digest = (value) =>
+  createHash('sha256').update(value).digest('hex')
+export const secret = () => randomBytes(32).toString('base64url')
+export const normalizeEmail = (value) =>
+  typeof value === 'string' ? value.trim().toLowerCase() : ''
+export const validEmail = (value) =>
+  value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+export function validPassword(value) {
+  return typeof value === 'string' && value.length >= 12 && value.length <= 128
+}
+export async function hashPassword(password) {
+  const salt = randomBytes(24).toString('hex')
+  const key = await derive(password, salt, 64, {
+    N: 65536,
+    r: 8,
+    p: 1,
+    maxmem: 128 * 1024 * 1024,
+  })
+  return `scrypt$65536$8$1$${salt}$${key.toString('hex')}`
+}
+export async function verifyPassword(password, encoded) {
+  if (
+    typeof password !== 'string' ||
+    password.length > 128 ||
+    typeof encoded !== 'string'
+  )
+    return false
+  const [kind, n, r, p, salt, expected] = encoded.split('$')
+  if (
+    kind !== 'scrypt' ||
+    n !== '65536' ||
+    r !== '8' ||
+    p !== '1' ||
+    !/^[a-f0-9]{48}$/.test(salt ?? '') ||
+    !/^[a-f0-9]{128}$/.test(expected ?? '')
+  )
+    return false
+  const actual = await derive(password, salt, 64, {
+    N: 65536,
+    r: 8,
+    p: 1,
+    maxmem: 128 * 1024 * 1024,
+  })
+  return timingSafeEqual(actual, Buffer.from(expected, 'hex'))
+}
+export class AccessStore {
+  constructor(path, now = () => Date.now()) {
+    if (path !== ':memory:') {
+      mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
+      chmodSync(dirname(path), 0o700)
+    }
+    this.db = new DatabaseSync(path)
+    this.now = now
+    if (path !== ':memory:') chmodSync(path, 0o600)
+    this.db
+      .exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=DELETE; PRAGMA busy_timeout=5000;
+      CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password TEXT, role TEXT NOT NULL CHECK(role IN ('owner','member')), active INTEGER NOT NULL DEFAULT 1, created INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), csrf TEXT NOT NULL, created INTEGER NOT NULL, touched INTEGER NOT NULL, expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS invites (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, time INTEGER NOT NULL, actor TEXT, action TEXT NOT NULL, target TEXT);
+      CREATE INDEX IF NOT EXISTS session_user ON sessions(user_id);`)
+  }
+  query(sql, ...args) {
+    return this.db.prepare(sql).get(...args)
+  }
+  run(sql, ...args) {
+    return this.db.prepare(sql).run(...args)
+  }
+  transaction(fn) {
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      const result = fn()
+      this.db.exec('COMMIT')
+      return result
+    } catch (e) {
+      this.db.exec('ROLLBACK')
+      throw e
+    }
+  }
+  audit(actor, action, target = null) {
+    this.run(
+      'INSERT INTO audit(time,actor,action,target) VALUES(?,?,?,?)',
+      this.now(),
+      actor,
+      action,
+      target,
+    )
+  }
+  async bootstrap(email, password) {
+    email = normalizeEmail(email)
+    if (!validEmail(email) || !validPassword(password))
+      throw Error('유효한 이메일과 12~128자 비밀번호가 필요합니다.')
+    if (this.owner())
+      throw Error(
+        '최고 관리자가 이미 설정되어 있습니다. 초기화로 덮어쓸 수 없습니다.',
+      )
+    const encoded = await hashPassword(password)
+    return this.transaction(() => {
+      if (this.owner()) throw Error('최고 관리자가 이미 설정되어 있습니다.')
+      const id = randomUUID()
+      this.run(
+        'INSERT INTO users VALUES(?,?,?,?,?,?)',
+        id,
+        email,
+        encoded,
+        'owner',
+        1,
+        this.now(),
+      )
+      this.run('INSERT INTO config VALUES(?,?)', 'owner', id)
+      this.audit(id, 'owner.bootstrap', id)
+      return id
+    })
+  }
+  owner() {
+    return this.query("SELECT value FROM config WHERE key='owner'")?.value
+  }
+  isOwner(user) {
+    return (
+      user?.role === 'owner' && user.id === this.owner() && user.active === 1
+    )
+  }
+  user(id) {
+    return this.query('SELECT * FROM users WHERE id=?', id)
+  }
+  byEmail(email) {
+    return this.query(
+      'SELECT * FROM users WHERE email=?',
+      normalizeEmail(email),
+    )
+  }
+  allow(key, max, duration) {
+    const now = this.now()
+    this.run('DELETE FROM limits WHERE expires<=?', now)
+    const row = this.query('SELECT * FROM limits WHERE key=?', key)
+    if (!row || row.expires <= now) {
+      this.run(
+        'INSERT OR REPLACE INTO limits VALUES(?,?,?)',
+        key,
+        1,
+        now + duration,
+      )
+      return true
+    }
+    if (row.count >= max) return false
+    this.run('UPDATE limits SET count=count+1 WHERE key=?', key)
+    return true
+  }
+  session(token, touch = false) {
+    if (!/^[\w-]{43}$/.test(token ?? '')) return null
+    const row = this.query(
+      'SELECT s.*,u.email,u.role,u.active,u.password FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=?',
+      digest(token),
+    )
+    const now = this.now()
+    if (
+      !row ||
+      row.active !== 1 ||
+      row.expires <= now ||
+      row.touched + 30 * 60_000 <= now
+    ) {
+      if (row) this.run('DELETE FROM sessions WHERE hash=?', row.hash)
+      return null
+    }
+    if (touch && now - row.touched > 60_000)
+      this.run('UPDATE sessions SET touched=? WHERE hash=?', now, row.hash)
+    return { ...row, id: row.user_id }
+  }
+  createSession(user) {
+    const token = secret(),
+      csrf = secret(),
+      now = this.now()
+    this.run(
+      'DELETE FROM sessions WHERE expires<=? OR touched<=?',
+      now,
+      now - 30 * 60_000,
+    )
+    this.run(
+      'INSERT INTO sessions VALUES(?,?,?,?,?,?)',
+      digest(token),
+      user.id,
+      csrf,
+      now,
+      now,
+      now + 8 * 3600_000,
+    )
+    return { token, csrf }
+  }
+  invite(email, actor) {
+    return this.transaction(() => {
+      let user = this.byEmail(email)
+      if (user?.role === 'owner')
+        throw Error('최고 관리자 계정은 변경할 수 없습니다.')
+      if (user?.active && user.password) throw Error('이미 허용된 계정입니다.')
+      if (!user) {
+        const id = randomUUID()
+        this.run(
+          'INSERT INTO users VALUES(?,?,?,?,?,?)',
+          id,
+          email,
+          null,
+          'member',
+          1,
+          this.now(),
+        )
+        user = this.user(id)
+      }
+      // Re-enabling requires a new one-use invitation and new password.
+      this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)
+      this.run('DELETE FROM sessions WHERE user_id=?', user.id)
+      this.run('DELETE FROM invites WHERE user_id=?', user.id)
+      const token = secret()
+      this.run(
+        'INSERT INTO invites VALUES(?,?,?)',
+        digest(token),
+        user.id,
+        this.now() + 48 * 3600_000,
+      )
+      this.audit(actor, 'member.invite', user.id)
+      return token
+    })
+  }
+  async accept(token, email, password) {
+    if (!/^[\w-]{43}$/.test(token ?? '') || !validPassword(password))
+      return false
+    const encoded = await hashPassword(password)
+    return this.transaction(() => {
+      const invite = this.query(
+        'SELECT i.*,u.email,u.active,u.role FROM invites i JOIN users u ON u.id=i.user_id WHERE i.hash=?',
+        digest(token),
+      )
+      if (
+        !invite ||
+        invite.expires <= this.now() ||
+        !invite.active ||
+        invite.role !== 'member' ||
+        invite.email !== normalizeEmail(email)
+      )
+        return false
+      this.run(
+        'UPDATE users SET password=? WHERE id=?',
+        encoded,
+        invite.user_id,
+      )
+      this.run('DELETE FROM invites WHERE user_id=?', invite.user_id)
+      this.run('DELETE FROM sessions WHERE user_id=?', invite.user_id)
+      this.audit(invite.user_id, 'member.activate', invite.user_id)
+      return true
+    })
+  }
+  revoke(id, actor) {
+    return this.transaction(() => {
+      const user = this.user(id)
+      if (!user || user.role !== 'member' || id === this.owner()) return false
+      this.run('UPDATE users SET active=0 WHERE id=?', id)
+      this.run('DELETE FROM sessions WHERE user_id=?', id)
+      this.run('DELETE FROM invites WHERE user_id=?', id)
+      this.audit(actor, 'member.revoke', id)
+      return true
+    })
+  }
+  close() {
+    this.db.close()
+  }
+}
+```
+
+<a id="source-9"></a>
+
+## server/app.mjs
+
+원본: [server/app.mjs](../../server/app.mjs) · 325줄 · SHA-256: `6bd67ece94a0919ca67e8e2347050f9f8f54d56277a97a941f2e769d72127d8b`
+
+```javascript
+import { createServer } from 'node:http'
+import { readFile, realpath } from 'node:fs/promises'
+import { resolve, sep, extname } from 'node:path'
+import {
+  AccessStore,
+  digest,
+  normalizeEmail,
+  validEmail,
+  validPassword,
+  hashPassword,
+  verifyPassword,
+} from './store.mjs'
+const gateway = resolve(import.meta.dirname, 'gateway')
+const mime = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.wasm': 'application/wasm',
+  '.json': 'application/json',
+}
+function config(input) {
+  const url = new URL(input.origin)
+  const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash ||
+    !['https:', 'http:'].includes(url.protocol)
+  )
+    throw Error('APP_ORIGIN은 경로 없는 사이트 원점이어야 합니다.')
+  if (url.protocol !== 'https:' && (!local || input.production))
+    throw Error('공유 및 운영에는 HTTPS APP_ORIGIN이 필요합니다.')
+  return { ...input, origin: url.origin, secure: url.protocol === 'https:' }
+}
+export async function createAccessServer(input) {
+  const cfg = config(input),
+    store = input.store ?? new AccessStore(cfg.database)
+  if (!store.owner())
+    throw Error('먼저 npm run auth:setup으로 최고 관리자를 설정하세요.')
+  const dummy = await hashPassword('unused-' + crypto.randomUUID())
+  const cookieName = cfg.secure ? '__Host-ivc-session' : 'ivc-local-session'
+  const cookie = (token, remove = false) =>
+    `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 28800}`
+  function readSession(req) {
+    const values = (req.headers.cookie ?? '')
+      .split(';')
+      .map((x) => x.trim())
+      .filter((x) => x.startsWith(cookieName + '='))
+    return values.length === 1
+      ? store.session(
+          values[0].slice(cookieName.length + 1),
+          req.method === 'POST' || req.headers['x-ivc-active'] === '1',
+        )
+      : null
+  }
+  const server = createServer(async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, private, max-age=0')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('X-Frame-Options', 'DENY')
+    res.setHeader('Referrer-Policy', 'no-referrer')
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=()',
+    )
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+    )
+    if (cfg.secure)
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000')
+    function json(code, value) {
+      res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' })
+      res.end(JSON.stringify(value))
+    }
+    function fail(code, message) {
+      json(code, { error: message })
+    }
+    try {
+      // Exact Host validation does not trust client-supplied Forwarded headers.
+      if (
+        req.headers.host !== new URL(cfg.origin).host &&
+        !(cfg.proxyHost && req.headers.host === cfg.proxyHost)
+      )
+        return fail(421, '접속 주소를 확인하세요.')
+      const raw = req.url ?? '/'
+      if (raw.length > 4096) return fail(414, 'URL이 너무 깁니다.')
+      let path
+      try {
+        path = decodeURIComponent(new URL(raw, cfg.origin).pathname)
+      } catch {
+        return fail(400, '잘못된 경로입니다.')
+      }
+      if (
+        path.includes('\0') ||
+        path.includes('\\') ||
+        path.split('/').includes('..')
+      )
+        return fail(400, '잘못된 경로입니다.')
+      const user = readSession(req)
+      if (!['GET', 'HEAD', 'POST'].includes(req.method))
+        return fail(405, '허용되지 않은 요청입니다.')
+      if (req.method === 'POST') {
+        if (
+          req.headers.origin !== cfg.origin ||
+          req.headers['sec-fetch-site'] === 'cross-site'
+        )
+          return fail(403, '요청 출처를 확인할 수 없습니다.')
+        if (
+          !/^application\/json(?:\s*;.*)?$/i.test(
+            req.headers['content-type'] ?? '',
+          )
+        )
+          return fail(415, 'JSON 요청이 필요합니다.')
+        const chunks = []
+        let size = 0
+        for await (const chunk of req) {
+          size += chunk.length
+          if (size > 8192) {
+            fail(413, '요청이 너무 큽니다.')
+            return
+          }
+          chunks.push(chunk)
+        }
+        let body
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+        } catch {
+          return fail(400, '잘못된 요청입니다.')
+        }
+        if (!body || typeof body !== 'object' || Array.isArray(body))
+          return fail(400, '잘못된 요청입니다.')
+        const ip = req.socket.remoteAddress ?? 'unknown',
+          email = normalizeEmail(body.email)
+        const rate = (key, max = 10) =>
+          store.allow(digest(key), max, 15 * 60_000)
+        if (path === '/api/login') {
+          // A global budget bounds concurrent memory-hard password work; do not trust X-Forwarded-For.
+          if (
+            !rate('login-ip:' + ip, 30) ||
+            !rate('login-email:' + email, 12) ||
+            !rate('login-global', 120)
+          )
+            return fail(429, '로그인 시도가 많습니다. 15분 후 다시 시도하세요.')
+          const candidate = store.byEmail(email)
+          const ok = await verifyPassword(
+            body.password,
+            candidate?.password ?? dummy,
+          )
+          if (!ok || !candidate?.active || !candidate.password) {
+            store.audit(null, 'login.denied')
+            return fail(401, '이메일 또는 비밀번호를 확인하세요.')
+          }
+          // Re-read after asynchronous hashing: a concurrent revocation/password change wins.
+          const current = store.user(candidate.id)
+          if (!current?.active || current.password !== candidate.password)
+            return fail(401, '이메일 또는 비밀번호를 확인하세요.')
+          if (user) store.run('DELETE FROM sessions WHERE hash=?', user.hash)
+          const session = store.createSession(current)
+          res.setHeader('Set-Cookie', cookie(session.token))
+          store.audit(current.id, 'login.success')
+          return json(200, { ok: true })
+        }
+        if (path === '/api/accept-invite') {
+          if (!rate('invite-ip:' + ip, 15) || !rate('invite-global', 60))
+            return fail(429, '시도가 많습니다. 잠시 후 다시 시도하세요.')
+          if (!validEmail(email) || !validPassword(body.password))
+            return fail(400, '이메일과 12~128자 비밀번호를 입력하세요.')
+          const ok = await store.accept(body.token, email, body.password)
+          return ok
+            ? json(200, { ok: true })
+            : fail(
+                400,
+                '초대가 유효하지 않거나 만료되었습니다. 관리자에게 새 초대를 요청하세요.',
+              )
+        }
+        if (!user) return fail(401, '로그인이 필요합니다.')
+        if (req.headers['x-csrf-token'] !== user.csrf)
+          return fail(403, '세션 확인에 실패했습니다. 새로고침하세요.')
+        if (path === '/api/logout') {
+          store.run('DELETE FROM sessions WHERE hash=?', user.hash)
+          res.setHeader('Set-Cookie', cookie('', true))
+          return json(200, { ok: true })
+        }
+        if (path === '/api/change-password' || path.startsWith('/api/admin/')) {
+          if (path.startsWith('/api/admin/') && !store.isOwner(user))
+            return fail(403, '최고 관리자 권한이 필요합니다.')
+          if (!rate('stepup:' + user.id, 10))
+            return fail(429, '확인 시도가 많습니다. 15분 후 다시 시도하세요.')
+          if (!(await verifyPassword(body.currentPassword, user.password)))
+            return fail(403, '현재 비밀번호를 확인하세요.')
+          const current = store.session(
+            (req.headers.cookie ?? '')
+              .split(';')
+              .map((x) => x.trim())
+              .find((x) => x.startsWith(cookieName + '='))
+              ?.slice(cookieName.length + 1),
+          )
+          if (!current || current.password !== user.password)
+            return fail(401, '다시 로그인하세요.')
+          if (path === '/api/change-password') {
+            if (!validPassword(body.newPassword))
+              return fail(400, '새 비밀번호는 12~128자여야 합니다.')
+            const encoded = await hashPassword(body.newPassword)
+            const fresh = store.user(user.id)
+            if (!fresh?.active || fresh.password !== user.password)
+              return fail(401, '다시 로그인하세요.')
+            store.transaction(() => {
+              store.run(
+                'UPDATE users SET password=? WHERE id=?',
+                encoded,
+                user.id,
+              )
+              store.run('DELETE FROM sessions WHERE user_id=?', user.id)
+              store.audit(user.id, 'password.change')
+            })
+            res.setHeader('Set-Cookie', cookie('', true))
+            return json(200, { ok: true })
+          }
+          if (path === '/api/admin/invite') {
+            if (!validEmail(email))
+              return fail(400, '올바른 이메일을 입력하세요.')
+            try {
+              const token = store.invite(email, user.id)
+              return json(201, {
+                url: `${cfg.origin}/#invite=${token}`,
+                expiresHours: 48,
+              })
+            } catch (e) {
+              return fail(409, e.message)
+            }
+          }
+          if (path === '/api/admin/revoke') {
+            if (typeof body.id !== 'string' || !store.revoke(body.id, user.id))
+              return fail(400, '변경할 수 없는 계정입니다.')
+            return json(200, { ok: true })
+          }
+        }
+        return fail(404, '요청을 찾을 수 없습니다.')
+      }
+      if (path === '/api/session')
+        return user
+          ? json(200, {
+              user: {
+                id: user.id,
+                email: user.email,
+                role: store.isOwner(user) ? 'owner' : 'member',
+              },
+              csrf: user.csrf,
+            })
+          : fail(401, '로그인이 필요합니다.')
+      if (path === '/api/admin/users') {
+        if (!user) return fail(401, '로그인이 필요합니다.')
+        if (!store.isOwner(user))
+          return fail(403, '최고 관리자 권한이 필요합니다.')
+        return json(200, {
+          users: store.db
+            .prepare(
+              'SELECT id,email,role,active,created,password IS NOT NULL AS activated FROM users ORDER BY created',
+            )
+            .all(),
+        })
+      }
+      if (path.startsWith('/api/')) return fail(404, '요청을 찾을 수 없습니다.')
+      let root, file
+      if (path === '/' || path === '/index.html') {
+        root = gateway
+        file = 'index.html'
+      } else if (path === '/welcome.css' || path === '/welcome.js') {
+        root = gateway
+        file = path.slice(1)
+      } else {
+        if (!user) {
+          if (path === '/calculator' || path === '/calculator/') {
+            res.writeHead(303, { Location: '/' })
+            return res.end()
+          }
+          return fail(401, '로그인이 필요합니다.')
+        }
+        root = cfg.dist
+        if (path === '/calculator' || path === '/calculator/')
+          file = 'index.html'
+        else if (
+          /^\/assets\/[A-Za-z0-9_.-]+$/.test(path) ||
+          path === '/solver.wasm' ||
+          path === '/favicon.svg'
+        )
+          file = path.slice(1)
+        else return fail(404, '파일을 찾을 수 없습니다.')
+      }
+      const resolved = await realpath(resolve(root, file)),
+        safeRoot = await realpath(root)
+      if (!resolved.startsWith(safeRoot + sep))
+        return fail(403, '허용되지 않은 경로입니다.')
+      const data = await readFile(resolved)
+      res.writeHead(200, {
+        'Content-Type': mime[extname(file)] ?? 'application/octet-stream',
+        'Content-Length': data.length,
+      })
+      res.end(req.method === 'HEAD' ? undefined : data)
+    } catch (e) {
+      if (!res.headersSent)
+        fail(
+          e.code === 'ENOENT' ? 404 : e.code === 'EBUSY' ? 503 : 500,
+          e.code === 'ENOENT'
+            ? '파일을 찾을 수 없습니다.'
+            : e.code === 'EBUSY'
+              ? '요청이 많습니다. 잠시 후 다시 시도하세요.'
+              : '요청 처리에 실패했습니다.',
+        )
+      else res.end()
+      // No request bodies, passwords, invitation URLs or session values in logs.
+      if (e.code !== 'ENOENT')
+        console.error('IVC request failed:', e.code ?? 'internal')
+    }
+  })
+  server.requestTimeout = 15_000
+  server.headersTimeout = 10_000
+  server.keepAliveTimeout = 5000
+  server.maxHeadersCount = 40
+  return { server, store }
+}
+```
+
+<a id="source-10"></a>
+
+## server/start.mjs
+
+원본: [server/start.mjs](../../server/start.mjs) · 39줄 · SHA-256: `e342423be2cf2a7d94c99562f7c8ab5cfc1a298e0078cd60701304fb3831e9ad`
+
+```javascript
+import { resolve } from 'node:path'
+import { createAccessServer } from './app.mjs'
+const args = process.argv.slice(2),
+  at = args.indexOf('--port')
+const port = Number(at >= 0 ? args[at + 1] : (process.env.PORT ?? 5173))
+if (!Number.isInteger(port) || port < 1 || port > 65535)
+  throw Error('유효한 포트가 필요합니다.')
+const codespace = process.env.CODESPACE_NAME,
+  forward = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN
+const origin =
+  process.env.APP_ORIGIN ??
+  (codespace && forward
+    ? `https://${codespace}-${port}.${forward}`
+    : `http://127.0.0.1:${port}`)
+if (process.env.NODE_ENV === 'production' && !process.env.APP_ORIGIN)
+  throw Error('운영 APP_ORIGIN을 명시하세요.')
+if (
+  origin.startsWith('http:') &&
+  !['127.0.0.1', 'localhost', '::1'].includes(process.env.HOST ?? '127.0.0.1')
+)
+  throw Error(
+    'HTTP 개발 서버는 loopback에서만 열 수 있습니다. HTTPS 프록시와 APP_ORIGIN을 설정하세요.',
+  )
+const { server } = await createAccessServer({
+  origin,
+  production: process.env.NODE_ENV === 'production',
+  proxyHost: process.env.IVC_PROXY_HOST,
+  database: resolve(process.env.IVC_DATA_DIR ?? '.ivc-data', 'access.sqlite'),
+  dist: resolve('dist'),
+})
+server.listen(port, process.env.HOST ?? '127.0.0.1', () =>
+  console.log(
+    `IVC secure server: ${origin}\n로그인 후 계산기에 접속할 수 있습니다.`,
+  ),
+)
+server.on('error', (e) => {
+  console.error('IVC server:', e.code)
+  process.exitCode = 1
+})
+```
+
+<a id="source-11"></a>
+
+## server/setup.mjs
+
+원본: [server/setup.mjs](../../server/setup.mjs) · 63줄 · SHA-256: `5bf05e966cf1136ed0c506b7709c60bb15404643ff00bbcfc07a70224c3da8a4`
+
+```javascript
+import { resolve } from 'node:path'
+import { AccessStore } from './store.mjs'
+const email = process.env.IVC_ADMIN_EMAIL ?? 'eerrtteerrt12@gmail.com'
+const store = new AccessStore(
+  resolve(process.env.IVC_DATA_DIR ?? '.ivc-data', 'access.sqlite'),
+)
+if (store.owner()) {
+  console.error(
+    '최고 관리자가 이미 설정되어 있습니다. 기존 계정으로 로그인하세요.',
+  )
+  store.close()
+  process.exit(1)
+}
+let password = process.env.IVC_ADMIN_PASSWORD
+if (!password) {
+  if (!process.stdin.isTTY)
+    throw Error(
+      '터미널에서 실행하거나 IVC_ADMIN_PASSWORD 서버 비밀값을 설정하세요.',
+    )
+  // Raw mode prevents terminal echo and avoids putting credentials in command history.
+  async function readSecret(prompt) {
+    process.stdout.write(prompt)
+    process.stdin.setRawMode(true)
+    process.stdin.resume()
+    let value = ''
+    return new Promise((resolve, reject) => {
+      const onData = (chunk) => {
+        for (const char of chunk.toString()) {
+          if (char === '\u0003') {
+            cleanup()
+            reject(Error('설정을 취소했습니다.'))
+            return
+          }
+          if (char === '\r' || char === '\n') {
+            cleanup()
+            resolve(value)
+            return
+          }
+          if (char === '\u007f' || char === '\b') value = value.slice(0, -1)
+          else if (char >= ' ' && value.length < 128) value += char
+        }
+      }
+      function cleanup() {
+        process.stdin.off('data', onData)
+        process.stdin.setRawMode(false)
+        process.stdin.pause()
+        process.stdout.write('\n')
+      }
+      process.stdin.on('data', onData)
+    })
+  }
+  password = await readSecret(`${email} 최고 관리자 비밀번호 (입력 숨김): `)
+  const confirm = await readSecret('비밀번호 확인: ')
+  if (password !== confirm) throw Error('비밀번호가 일치하지 않습니다.')
+}
+try {
+  await store.bootstrap(email, password)
+  console.log('최고 관리자 설정 완료. 비밀번호 원문은 저장하지 않았습니다.')
+} finally {
+  password = undefined
+  delete process.env.IVC_ADMIN_PASSWORD
+  store.close()
+}
+```
+
+<a id="source-12"></a>
+
+## server/dev.mjs
+
+원본: [server/dev.mjs](../../server/dev.mjs) · 5줄 · SHA-256: `9cf34dab279a7fae9781b6f7ab7cf258746956b6f2741f6e8dabc895cebe52bf`
+
+```javascript
+import { spawnSync } from 'node:child_process'
+// The public development command uses the same access gate as deployment.
+const built = spawnSync('npm', ['run', 'build'], { stdio: 'inherit' })
+if (built.status !== 0) process.exit(built.status ?? 1)
+await import('./start.mjs')
+```
+
+<a id="source-13"></a>
+
 ## src/equation-count.ts
 
 원본: [src/equation-count.ts](../../src/equation-count.ts) · 32줄 · SHA-256: `ce7ae70fb45164fd52d5a716d511e6808db12fd42f88c2c711d2aa6b7733841a`
@@ -776,7 +1587,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-14"></a>
 
 ## src/csv.ts
 
@@ -799,7 +1610,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-15"></a>
 
 ## src/engine/sweep.ts
 
@@ -990,7 +1801,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-16"></a>
 
 ## src/engine/branches.ts
 
@@ -1515,7 +2326,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-17"></a>
 
 ## src/engine/branch-events.ts
 
@@ -1598,7 +2409,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-18"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -2152,7 +2963,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-19"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -2229,7 +3040,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-20"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -2306,7 +3117,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-21"></a>
 
 ## src/engine/default-overview.ts
 
@@ -2432,7 +3243,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-22"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -2848,13 +3659,14 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-23"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,577줄 · SHA-256: `4d2ef40499a2e7b4723c78a55f04192548ecd8591f426e8a35e1bd5e5d3efff1`
+원본: [src/App.tsx](../../src/App.tsx) · 3,582줄 · SHA-256: `c5793567f2aac3676b547ad8160c8e48782bb055e4a65ff87f753c5975370870`
 
 ```tsx
+import { accountStorageKey } from './account-storage'
 import CertificationReport from './components/CertificationReport'
 import { currentCertificate } from './components/certification-view'
 import type { ScientificModule } from './engine/scientific/types'
@@ -3089,7 +3901,9 @@ function isProject(value: unknown): value is Project {
 }
 function initialProject(): Project {
   try {
-    const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+    const p = JSON.parse(
+      localStorage.getItem(accountStorageKey(STORAGE_KEY)) || 'null',
+    )
     if (isProject(p)) return equationProject(p)
   } catch {
     /* A clean model is usable if storage is unavailable. */
@@ -3398,7 +4212,7 @@ export default function App() {
     revision,
     workerReady,
   ])
-  useProjectPersistence(project, STORAGE_KEY, setStorageOk)
+  useProjectPersistence(project, accountStorageKey(STORAGE_KEY), setStorageOk)
   const variableKey = result?.variables.join('|') || ''
   useEffect(() => {
     setVisibleVariables(variableKey ? variableKey.split('|') : [])
@@ -3545,7 +4359,9 @@ export default function App() {
     if (!next) {
       try {
         const saved = JSON.parse(
-          localStorage.getItem(`${STORAGE_KEY}-${nextMode}`) || 'null',
+          localStorage.getItem(
+            `${accountStorageKey(STORAGE_KEY)}-${nextMode}`,
+          ) || 'null',
         )
         if (isProject(saved) && (saved.mode ?? 'linear') === nextMode)
           next = equationProject(saved)

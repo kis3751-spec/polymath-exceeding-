@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 
 async function openModule(page: Page, name: string) {
-  await page.goto('/')
+  await page.goto('/calculator')
   await page.getByRole('button', { name: `${name} 열기`, exact: true }).click()
 }
 async function scienceScreen(page: Page, name: string) {
@@ -24,7 +24,7 @@ test('IVC gives Equation Solver the same compact workflow and readable output', 
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 950 })
-  await page.goto('/')
+  await page.goto('/calculator')
   await expect(page).toHaveTitle('IVC — Interaction Visual Calculator')
   await expect(page.locator('.ivc-brand')).toContainText(
     'Interaction Visual Calculator',

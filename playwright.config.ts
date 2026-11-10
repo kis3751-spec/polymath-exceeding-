@@ -8,11 +8,13 @@ const chromiumExecutable =
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.ts',
+  globalSetup: './tests/auth-global-setup.ts',
   fullyParallel: false,
   workers: 1,
   reporter: 'list',
   use: {
     baseURL: 'http://127.0.0.1:5173',
+    storageState: '/tmp/ivc-test-auth-state.json',
     viewport: { width: 1440, height: 1100 },
     launchOptions: {
       executablePath: chromiumExecutable,
@@ -22,9 +24,9 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'npm run dev -- --port 5173 --strictPort',
+    command: 'node tests/auth-fixture-server.mjs',
     url: 'http://127.0.0.1:5173',
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 30000,
   },
 })

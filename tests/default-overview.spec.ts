@@ -20,7 +20,7 @@ async function open(
       sweepName: p,
     },
   )
-  await page.goto('/')
+  await page.goto('/calculator')
   await page
     .getByRole('button', { name: 'Equation Solver 열기', exact: true })
     .click()
@@ -42,7 +42,9 @@ test('starts with a large merged view while the current parameter has one root',
   const box = (await view.locator('.solution-chart svg').boundingBox())!
   expect(box.width).toBeGreaterThan(1200)
   expect(box.height).toBeGreaterThan(500)
-  expect(box.y).toBeLessThan(450)
+  const accountBarHeight =
+    (await page.locator('.account-bar').boundingBox())?.height ?? 0
+  expect(box.y - accountBarHeight).toBeLessThan(450)
   const paths = await view
     .locator('.sc-curve')
     .evaluateAll((es) => es.map((e) => e.getAttribute('d')))

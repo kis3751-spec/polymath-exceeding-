@@ -4,14 +4,17 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "node server/dev.mjs",
     "build:wasm": "node scripts/build-wasm.mjs",
     "build": "npm run build:wasm && tsc -b && vite build",
-    "preview": "vite preview --host 0.0.0.0",
+    "preview": "node server/start.mjs",
     "docs:core": "node scripts/export-core.mjs",
-    "test": "npm run build:wasm && vitest run",
+    "test": "npm run build:wasm && vitest run && npm run test:auth",
     "test:e2e": "playwright test",
-    "format": "prettier --write src scripts tests *.json *.ts *.md index.html"
+    "format": "prettier --write src scripts tests *.json *.ts *.md index.html",
+    "start": "node server/start.mjs",
+    "auth:setup": "node server/setup.mjs",
+    "test:auth": "node --test tests/auth-server.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -32,6 +35,6 @@
     "wabt": "^1.0.37"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=24.0.0"
   }
 }
