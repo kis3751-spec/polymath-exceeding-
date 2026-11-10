@@ -1,10 +1,16 @@
 import { resolve } from 'node:path'
 
+export const isCodespaces = (env) =>
+  Boolean(env.CODESPACE_NAME && env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN)
+export function runtimePort(env, explicit) {
+  const port = Number(explicit ?? env.PORT ?? (isCodespaces(env) ? 5180 : 5173))
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw Error('유효한 포트가 필요합니다.')
+  return port
+}
 /** Only trusted process configuration selects the public origin/proxy hosts. */
 export function runtimeConfig(env, port) {
-  const codespaces = Boolean(
-    env.CODESPACE_NAME && env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN,
-  )
+  const codespaces = isCodespaces(env)
   const origin =
     env.APP_ORIGIN ??
     (codespaces

@@ -1,17 +1,16 @@
-import { runtimeConfig } from './runtime-config.mjs'
+import { runtimeConfig, runtimePort } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
 import { AUTH_VERSION } from './sharing.mjs'
 import { diagnoseCodespaces } from '../scripts/diagnose-codespaces.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
-const port = Number(at >= 0 ? args[at + 1] : (process.env.PORT ?? 5173))
-if (!Number.isInteger(port) || port < 1 || port > 65535)
-  throw Error('유효한 포트가 필요합니다.')
+if (at >= 0 && !args[at + 1]) throw Error('--port 값이 필요합니다.')
+const port = runtimePort(process.env, at >= 0 ? args[at + 1] : undefined)
 const cfg = runtimeConfig(process.env, port)
 const { server } = await createAccessServer(cfg)
 server.listen(port, cfg.host, () => {
   console.log(
-    `IVC secure server: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? '\nCodespaces Ports: Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 npm run share:codespaces\n404 진단: 새 터미널에서 npm run diagnose:codespaces' : ''}`,
+    `IVC secure server: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
   )
   if (cfg.codespaces)
     void diagnoseCodespaces({ ...process.env, PORT: String(port) })
@@ -25,7 +24,7 @@ server.listen(port, cfg.host, () => {
           )
         if (report.local.state === 'ready' && !report.external?.reachable)
           console.log(
-            '로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 5173을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.',
+            `로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 ${port}을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.`,
           )
       })
       .catch(() =>

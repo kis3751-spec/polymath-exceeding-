@@ -97,6 +97,9 @@ export async function createAccessServer(input) {
       : null
   }
   const server = createServer(async (req, res) => {
+    // Public process identity, not an authentication token. Lets probes reject
+    // stale/proxy HTML and scripts even when the status API is reachable.
+    res.setHeader('X-IVC-Instance', instance)
     res.setHeader('Cache-Control', 'no-store, private, max-age=0')
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('X-Frame-Options', 'DENY')

@@ -10,8 +10,10 @@ Node.js **24 이상**이 필요합니다. 기존 개발 서버를 Ctrl+C로 종�
 git pull --ff-only origin codex/leq-studio
 npm ci
 npm run auth:setup
-npm run dev -- --port 5173
+npm run dev
 ```
+
+Codespaces의 기본 포트는 **5180**, 일반 로컬 실행은 **5173**입니다. Codespaces에서는 **Ports → 5180 → HTTP / Public → Open in Browser**를 사용합니다. `PORT` 또는 `--port`를 지정하면 그 값이 우선하며 공유·진단 명령에도 같은 `PORT` 값을 사용하세요.
 
 `auth:setup`은 서버에서 처음 한 번 실행합니다. 기본 최고 관리자 이메일은 `eerrtteerrt12@gmail.com`이며 비밀번호는 숨김 입력으로 설정합니다. 이미 설정했다면 이 단계를 건너뜁니다. DB와 비밀번호는 Git에 포함하지 않으므로 새 Codespace·새 서버에서는 별도 초기화가 필요합니다.
 
@@ -23,11 +25,11 @@ npm run dev -- --port 5173
 npm run share:codespaces
 ```
 
-이 명령은 보호 서버를 확인한 뒤 해당 포트를 Public으로 바꾸고 GitHub 로그인 없는 접속을 검사합니다. CLI 권한이 없으면 **Ports → 5173 → Port Visibility → Public**으로 설정하세요. 상대방에게 GitHub 계정이 있어도 개인 Codespace의 Private 포트는 열리지 않을 수 있습니다. Public이어도 계산기와 계산 파일에는 IVC 로그인이 필요합니다. 관리자의 **Manage Access → Sharing**에서 연결을 확인하고 초대 링크·코드를 전달하세요. 이메일은 자동 발송되지 않으며, 상대방이 자신의 새 IVC 비밀번호를 정해야 합니다. Codespace가 정지되면 공유 주소도 중단되므로 상시 서비스에는 별도 HTTPS 호스팅이 필요합니다.
+이 명령은 보호 서버를 확인한 뒤 해당 포트를 Public으로 바꾸고 GitHub 로그인 없는 접속을 검사합니다. CLI 권한이 없으면 **Ports → 5180 → Port Visibility → Public**으로 설정하세요. 상대방에게 GitHub 계정이 있어도 개인 Codespace의 Private 포트는 열리지 않을 수 있습니다. Public이어도 계산기와 계산 파일에는 IVC 로그인이 필요합니다. 관리자의 **Manage Access → Sharing**에서 연결을 확인하고 초대 링크·코드를 전달하세요. 이메일은 자동 발송되지 않으며, 상대방이 자신의 새 IVC 비밀번호를 정해야 합니다. Codespace가 정지되면 공유 주소도 중단되므로 상시 서비스에는 별도 HTTPS 호스팅이 필요합니다.
 
 `npm run dev`와 `npm run preview` 모두 보호 서버를 사용합니다. 개발 명령은 빌드 후 서버를 시작하므로 소스 수정 후 다시 실행하세요. 운영은 `npm run build` 후 HTTPS 원점을 설정하고 `npm start`로 실행합니다. **dist만 정적 호스팅에 올리면 로그인 보안이 적용되지 않습니다.** 영구 DB·HTTPS·프록시·Codespaces 공유 설정과 보안 경계는 [Access Control & Deployment](docs/ACCESS_CONTROL.md)에 상세히 설명했습니다.
 
-Public 설정 후에도 404이면 서버 시작 로그의 `IVC local check`와 `IVC public check`를 확인하세요. Codespaces에서는 컨테이너 포트 전달을 위해 기본 수신 주소를 `0.0.0.0`으로 사용하고, 브라우저의 HTTPS 주소와 별개로 **Port Protocol은 HTTP**입니다. `.vscode/settings.json`에도 이 전달 프로토콜을 명시했습니다. 설정 항목은 포트를 자동 공개하지 않습니다. 서버를 켜둔 채 새 터미널에서 `npm run diagnose:codespaces`로 같은 검사를 다시 실행할 수 있습니다. 로컬 검사는 정상이고 공개 주소만 404이면 Ports의 기존 5173 전달을 중지하고 다시 추가한 뒤 HTTP·Public을 설정하고 **Open in Browser**의 현재 주소를 사용하세요.
+Public 설정 후에도 404이면 서버 시작 로그의 `IVC local check`와 `IVC public check`를 확인하세요. Codespaces에서는 컨테이너 포트 전달을 위해 기본 수신 주소를 `0.0.0.0`으로 사용하고, 브라우저의 HTTPS 주소와 별개로 **Port Protocol은 HTTP**입니다. `.vscode/settings.json`에도 이 전달 프로토콜을 명시했습니다. 설정 항목은 포트를 자동 공개하지 않습니다. 서버를 켜둔 채 새 터미널에서 `npm run diagnose:codespaces`로 같은 검사를 다시 실행할 수 있습니다. 로컬 검사는 정상이고 공개 주소만 404이면 현재 실행 중인 포트의 전달을 중지하고 다시 추가한 뒤 HTTP·Public을 설정하고 **Open in Browser**의 현재 주소를 사용하세요.
 
 모듈별 입력부터 결과 해석까지는 [IVC User Textbook](docs/IVC_USER_TEXTBOOK.md)에 정리했습니다. 화면의 **User Guide**에서도 각 모듈의 교재를 독립 탭으로 읽을 수 있습니다.
 
@@ -273,3 +275,5 @@ Nonlinear 자동 탐색의 시뮬레이션은 이제 [기본 병합 그래프](d
 확률 리포트는 `F(x)+ε=0`, `ε~N(0,σ²)`라는 하나의 일정한 등식 오프셋 모형에서 **현재 유한 탐색 범위의 근 개수 유지 확률**을 검증된 범위로 표시합니다. 미발견 근의 포획 확률이나 개별 측정값의 독립 오차 모형과는 다릅니다. σ를 바꾸면 실제 계산과 인증을 다시 수행합니다.
 
 전체 변경·검증 기록은 [4차 통합 결과](docs/V4_SCIENTIFIC_RELEASE.md)에 정리했습니다.
+
+5173 주소에서 브라우저와 InPrivate 모두 404였으나 5180으로 포트를 바꾼 뒤 사용자 브라우저에서 소개·로그인 화면이 열리는 것을 확인했습니다. 그래서 Codespaces 기본 포트를 5180으로 맞췄습니다. 공유 검사도 상태 API만으로 Ready를 판정하던 방식에서 소개 HTML·로그인 JS/CSS·응답 처리 모듈의 HTTP 상태, MIME, 실제 내용과 현재 프로세스 일치까지 확인하도록 보완했습니다. 이 검사는 서버 네트워크에서 실행되며 다른 사용자의 브라우저 접속까지 보장하지 않습니다.

@@ -980,3 +980,23 @@ test('Codespaces listens on the container interface while keeping anonymous file
     await new Promise((r) => application.server.close(r))
   }
 })
+
+test('Codespaces start, share and diagnostics use 5180 by default and retain explicit port overrides', async () => {
+  const { runtimePort, runtimeConfig } = await import(
+    '../server/runtime-config.mjs'
+  )
+  const env = {
+    CODESPACE_NAME: 'default-space',
+    GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+  }
+  assert.equal(runtimePort(env), 5180)
+  assert.equal(
+    runtimeConfig(env, runtimePort(env)).origin,
+    'https://default-space-5180.app.github.dev',
+  )
+  assert.equal(runtimePort({}), 5173)
+  assert.equal(runtimePort({ ...env, PORT: '6000' }), 6000)
+  assert.equal(runtimePort({ ...env, PORT: '6000' }, '5173'), 5173)
+  for (const value of ['', '0', '65536', 'abc', '5173.5'])
+    assert.throws(() => runtimePort(env, value), /포트/)
+})

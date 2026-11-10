@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `e529340885b2020378527f508ef22965e59e69149da6091bad145b82609eef69`
+소스 묶음 SHA-256: `867b34938ca46b57390fa6a4fbf23a49e9f32d48391eacf09af73e4dd985b6ee`
 
 ## 다른 코드 묶음
 
@@ -1152,7 +1152,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 527줄 · SHA-256: `e8c104d5a3a821c494284fdb677058f39981ed902650d3d5e9c84c001119eee0`
+원본: [server/app.mjs](../../server/app.mjs) · 530줄 · SHA-256: `373f7309ef93bd689853ed695696e35e42a96da3dfd7367ddad9a5271d9cd0e9`
 
 ```javascript
 import { createServer } from 'node:http'
@@ -1254,6 +1254,9 @@ export async function createAccessServer(input) {
       : null
   }
   const server = createServer(async (req, res) => {
+    // Public process identity, not an authentication token. Lets probes reject
+    // stale/proxy HTML and scripts even when the status API is reachable.
+    res.setHeader('X-IVC-Instance', instance)
     res.setHeader('Cache-Control', 'no-store, private, max-age=0')
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('X-Frame-Options', 'DENY')
@@ -1688,23 +1691,22 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 42줄 · SHA-256: `2ba19bfb25aa808c231cb293478ef0ea6e86d6cbd8756addf73a9c0db6251900`
+원본: [server/start.mjs](../../server/start.mjs) · 41줄 · SHA-256: `27f48f2ba21f9cc633bf037ab8e6452db209c06ab897e4e0bba1548bdcca0aa5`
 
 ```javascript
-import { runtimeConfig } from './runtime-config.mjs'
+import { runtimeConfig, runtimePort } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
 import { AUTH_VERSION } from './sharing.mjs'
 import { diagnoseCodespaces } from '../scripts/diagnose-codespaces.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
-const port = Number(at >= 0 ? args[at + 1] : (process.env.PORT ?? 5173))
-if (!Number.isInteger(port) || port < 1 || port > 65535)
-  throw Error('유효한 포트가 필요합니다.')
+if (at >= 0 && !args[at + 1]) throw Error('--port 값이 필요합니다.')
+const port = runtimePort(process.env, at >= 0 ? args[at + 1] : undefined)
 const cfg = runtimeConfig(process.env, port)
 const { server } = await createAccessServer(cfg)
 server.listen(port, cfg.host, () => {
   console.log(
-    `IVC secure server: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? '\nCodespaces Ports: Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 npm run share:codespaces\n404 진단: 새 터미널에서 npm run diagnose:codespaces' : ''}`,
+    `IVC secure server: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
   )
   if (cfg.codespaces)
     void diagnoseCodespaces({ ...process.env, PORT: String(port) })
@@ -1718,7 +1720,7 @@ server.listen(port, cfg.host, () => {
           )
         if (report.local.state === 'ready' && !report.external?.reachable)
           console.log(
-            '로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 5173을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.',
+            `로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 ${port}을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.`,
           )
       })
       .catch(() =>
@@ -1739,16 +1741,22 @@ server.on('error', (e) => {
 
 ## server/runtime-config.mjs
 
-원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 71줄 · SHA-256: `e262b77f8991682c049cb7131e9b554b04aa16ffd6bba306cd9aa8b64b08dc12`
+원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 77줄 · SHA-256: `2a20a683dee4f0331db01edc3be0220a3132f75913e82dfc1cd02b3ae021b1e7`
 
 ```javascript
 import { resolve } from 'node:path'
 
+export const isCodespaces = (env) =>
+  Boolean(env.CODESPACE_NAME && env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN)
+export function runtimePort(env, explicit) {
+  const port = Number(explicit ?? env.PORT ?? (isCodespaces(env) ? 5180 : 5173))
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw Error('유효한 포트가 필요합니다.')
+  return port
+}
 /** Only trusted process configuration selects the public origin/proxy hosts. */
 export function runtimeConfig(env, port) {
-  const codespaces = Boolean(
-    env.CODESPACE_NAME && env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN,
-  )
+  const codespaces = isCodespaces(env)
   const origin =
     env.APP_ORIGIN ??
     (codespaces
@@ -1819,7 +1827,7 @@ export function proxyRewrittenOrigin(req, cfg) {
 
 ## server/sharing.mjs
 
-원본: [server/sharing.mjs](../../server/sharing.mjs) · 100줄 · SHA-256: `584751ec2abdeb75d97f8b6f4716123c05706f8fa69c192204f5eece53762db3`
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 180줄 · SHA-256: `0f475e1f5ac404a2f8697f6b70c886891aec06b0a5b9ceeee3aed8b0de706140`
 
 ```javascript
 import { isIP } from 'node:net'
@@ -1835,7 +1843,25 @@ export function localOrigin(origin) {
   )
 }
 
-/** Anonymous probe of the configured origin only; never follow a GitHub login redirect. */
+async function readBounded(response, limit) {
+  const reader = response.body?.getReader(),
+    chunks = []
+  let size = 0
+  if (reader)
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.length
+      if (size > limit) {
+        await reader.cancel()
+        throw Error('response size')
+      }
+      chunks.push(value)
+    }
+  return Buffer.concat(chunks).toString('utf8')
+}
+
+/** Checks from this server's network only; cannot certify another user's route. */
 export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
   if (localOrigin(origin))
     return {
@@ -1844,81 +1870,143 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       message:
         '현재 주소는 이 컴퓨터에서만 열립니다. 다른 사람과 공유하려면 공개 HTTPS 주소가 필요합니다.',
     }
-  try {
-    const response = await fetchImpl(new URL('/ivc-auth/status', origin), {
+  const checks = [],
+    signal = AbortSignal.timeout(6500)
+  const get = (path, accept) =>
+    fetchImpl(new URL(path, origin), {
       redirect: 'manual',
       credentials: 'omit',
       cache: 'no-store',
-      signal: AbortSignal.timeout(6500),
-      headers: { Accept: 'application/json' },
+      signal,
+      headers: { Accept: accept, 'Cache-Control': 'no-cache' },
     })
-    if (response.status >= 300 && response.status < 400) {
-      await response.body?.cancel()
-      return {
-        state: 'blocked',
-        reachable: false,
-        status: response.status,
-        message:
-          '주소가 IVC 대신 다른 로그인 화면으로 이동합니다. Codespaces의 Ports → 5173 → Port Visibility를 Public으로 변경하세요. 다른 GitHub 계정으로 로그인하는 것만으로 Private 포트에 접근할 수는 없습니다.',
-      }
+  function blocked(path, status) {
+    return {
+      state: 'blocked',
+      reachable: false,
+      path,
+      status,
+      checks,
+      message:
+        status >= 300 && status < 400
+          ? `공유 주소의 ${path} 요청이 다른 화면으로 이동합니다. 실행 중인 포트의 Public 설정과 전달 주소를 확인하세요.`
+          : `공유 주소의 ${path} 요청이 HTTP ${status}로 실패했습니다. 포트 전달 · HTTP 프로토콜 · 현재 주소를 확인하세요.`,
     }
+  }
+  try {
+    const response = await get('/ivc-auth/status', 'application/json')
     if (!response.ok) {
       await response.body?.cancel()
-      return {
-        state: 'blocked',
-        reachable: false,
-        status: response.status,
-        message:
-          response.status === 404
-            ? '공유 주소에서 HTTP 404가 반환되었습니다. Public 설정만으로 해결되지 않을 수 있습니다. npm run diagnose:codespaces로 로컬 서버를 확인하고 Ports의 포트 전달 · HTTP 프로토콜 · 현재 주소를 확인하세요.'
-            : `외부에서 IVC에 직접 접속하지 못했습니다(HTTP ${response.status}). 포트 Public 설정, 실행 중인 서버와 공유 주소를 확인하세요.`,
-      }
+      return blocked('/ivc-auth/status', response.status)
     }
-    // Keep intermediary error pages bounded; no credential or response body is logged.
-    const reader = response.body?.getReader()
-    let size = 0
-    const chunks = []
-    if (reader)
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        size += value.length
-        if (size > 16384) {
-          await reader.cancel()
-          throw Error('response size')
-        }
-        chunks.push(value)
-      }
     let data
     try {
-      data = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      data = JSON.parse(await readBounded(response, 16384))
     } catch {
       return {
         state: 'mismatch',
         reachable: false,
+        path: '/ivc-auth/status',
+        checks,
         message:
-          '공유 주소가 IVC 상태 응답을 반환하지 않습니다. GitHub 로그인 화면이나 다른 서버에 연결되는지 확인하세요.',
+          '공유 주소가 IVC 상태 응답을 반환하지 않습니다. 다른 서버나 프록시 응답인지 확인하세요.',
       }
     }
-    if (data.service !== 'IVC' || data.instance !== instance)
+    if (data?.service !== 'IVC' || data.instance !== instance)
       return {
         state: 'mismatch',
         reachable: false,
+        path: '/ivc-auth/status',
+        checks,
         message:
-          '공유 주소가 현재 서버와 다릅니다. APP_ORIGIN과 포트에서 실행 중인 서버를 확인하세요.',
+          '공유 주소가 현재 서버와 다릅니다. APP_ORIGIN과 실행 중인 서버를 확인하세요.',
       }
+    checks.push({ path: '/ivc-auth/status', status: response.status, ok: true })
+    // Verify the actual page and every module needed by the public login form.
+    // One deadline covers all requests; no cookies, redirects or arbitrary URLs.
+    const targets = [
+      {
+        path: '/',
+        mime: /^text\/html\b/i,
+        content: (text) => text.includes('id="login-form"'),
+      },
+      {
+        path: '/welcome.js',
+        mime: /^(?:text|application)\/javascript\b/i,
+        content: (text) => text.includes('responseData'),
+      },
+      {
+        path: '/welcome.css',
+        mime: /^text\/css\b/i,
+        content: (text) => text.trim().length > 0,
+      },
+      {
+        path: '/response.js',
+        mime: /^(?:text|application)\/javascript\b/i,
+        content: (text) => text.includes('responseData'),
+      },
+    ]
+    const outcomes = await Promise.allSettled(
+      targets.map(async (target) => {
+        const r = await get(
+          target.path,
+          target.path === '/' ? 'text/html' : '*/*',
+        )
+        if (!r.ok) {
+          await r.body?.cancel()
+          return {
+            path: target.path,
+            status: r.status,
+            ok: false,
+            issue: 'http',
+          }
+        }
+        const text = await readBounded(r, 65536)
+        const ok =
+          r.headers.get('x-ivc-instance') === instance &&
+          target.mime.test(r.headers.get('content-type') ?? '') &&
+          target.content(text)
+        return {
+          path: target.path,
+          status: r.status,
+          ok,
+          ...(ok ? {} : { issue: 'content' }),
+        }
+      }),
+    )
+    for (let i = 0; i < outcomes.length; i++) {
+      const outcome = outcomes[i]
+      checks.push(
+        outcome.status === 'fulfilled'
+          ? outcome.value
+          : { path: targets[i].path, ok: false, issue: 'connection' },
+      )
+    }
+    const failed = checks.find((check) => !check.ok)
+    if (failed) {
+      if (failed.issue === 'http') return blocked(failed.path, failed.status)
+      return {
+        state: failed.issue === 'connection' ? 'unavailable' : 'mismatch',
+        reachable: false,
+        path: failed.path,
+        checks,
+        message: `상태 API는 정상이지만 ${failed.path}의 현재 IVC 파일을 확인하지 못했습니다. 소개 화면·로그인 파일이 정상이라고 판정하지 않았습니다.`,
+      }
+    }
     return {
       state: 'ready',
       reachable: true,
+      checks,
       message:
-        '로그인하지 않은 외부 요청이 이 IVC 서버까지 도착했습니다. 계산기는 계속 IVC 로그인이 필요합니다.',
+        '서버에서 공유 주소의 상태 API·소개 화면·로그인 파일을 확인했습니다. 다른 사용자의 브라우저·네트워크 접속은 별도 확인이 필요합니다.',
     }
   } catch {
     return {
       state: 'unavailable',
       reachable: false,
+      checks,
       message:
-        '공유 주소 연결을 확인하지 못했습니다. Codespace가 실행 중인지, 포트가 Public인지와 HTTPS 주소를 확인하세요.',
+        '서버에서 공유 주소 연결을 확인하지 못했습니다. Codespace 실행 상태·포트 전달·현재 HTTPS 주소를 확인하세요.',
     }
   }
 }
@@ -1928,12 +2016,12 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
 
 ## scripts/share-codespaces.mjs
 
-원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 83줄 · SHA-256: `f2309ae346142b0d675a702d5d9e2a206c19eef942bfb75375d66aee348915e2`
+원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 81줄 · SHA-256: `5da9c2dccf67fed7dd5512143cec8c6fe08cc444592529aa05cac8e7316bb857`
 
 ```javascript
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
-import { runtimeConfig } from '../server/runtime-config.mjs'
+import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
 import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
 
 /** Explicit operator action; never opens a port automatically at server startup. */
@@ -1942,9 +2030,7 @@ export async function shareCodespaces(
   run = spawnSync,
   fetchImpl = fetch,
 ) {
-  const port = Number(env.PORT ?? 5173)
-  if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw Error('PORT는 유효한 포트 번호여야 합니다.')
+  const port = runtimePort(env)
   const cfg = runtimeConfig(env, port)
   if (!cfg.codespaces)
     throw Error('이 명령은 실행 중인 Codespaces 터미널에서 사용하세요.')
@@ -2020,18 +2106,16 @@ if (
 
 ## scripts/diagnose-codespaces.mjs
 
-원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 109줄 · SHA-256: `4a46f5f916a03218fd92232b44dbc2dc399754ab4490e4dfd14f706294034638`
+원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 107줄 · SHA-256: `c6f33635c6e0b08b0383b1b51b4bdf5afa6e18021e55548ff059f415517d9cd0`
 
 ```javascript
 import { pathToFileURL } from 'node:url'
-import { runtimeConfig } from '../server/runtime-config.mjs'
+import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
 import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
 
 /** Read-only diagnostics; never send cookies or change port visibility. */
 export async function diagnoseCodespaces(env = process.env, fetchImpl = fetch) {
-  const port = Number(env.PORT ?? 5173)
-  if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw Error('PORT를 확인하세요.')
+  const port = runtimePort(env)
   const cfg = runtimeConfig(env, port)
   const url = new URL(cfg.origin)
   if (
@@ -2121,7 +2205,7 @@ if (
       )
     if (report.local.state === 'ready' && report.external?.state !== 'ready')
       console.log(
-        '로컬 서버는 정상입니다. Codespaces Ports에서 5173 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.',
+        `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
     if (report.local.state !== 'ready' || report.external?.state !== 'ready')
       process.exitCode = 1

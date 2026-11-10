@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
-import { runtimeConfig } from '../server/runtime-config.mjs'
+import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
 import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
 
 /** Explicit operator action; never opens a port automatically at server startup. */
@@ -9,9 +9,7 @@ export async function shareCodespaces(
   run = spawnSync,
   fetchImpl = fetch,
 ) {
-  const port = Number(env.PORT ?? 5173)
-  if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw Error('PORT는 유효한 포트 번호여야 합니다.')
+  const port = runtimePort(env)
   const cfg = runtimeConfig(env, port)
   if (!cfg.codespaces)
     throw Error('이 명령은 실행 중인 Codespaces 터미널에서 사용하세요.')

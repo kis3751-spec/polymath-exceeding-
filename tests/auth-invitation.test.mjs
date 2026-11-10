@@ -19,6 +19,34 @@ let fixture,
   ownerCsrf,
   clock = Date.now()
 const origin = 'https://ivc.example.test'
+function publicResponse(input, instance) {
+  const path = new URL(input).pathname
+  const status = path === '/ivc-auth/status'
+  const body = status
+    ? JSON.stringify({
+        service: 'IVC',
+        instance,
+        accessControl: 'invite-only',
+        version: AUTH_VERSION,
+      })
+    : path === '/'
+      ? '<html><form id="login-form"></form></html>'
+      : path.endsWith('.css')
+        ? 'body { color: black }'
+        : 'export function responseData() {}'
+  return new Response(body, {
+    headers: {
+      'X-IVC-Instance': instance,
+      'Content-Type': status
+        ? 'application/json'
+        : path === '/'
+          ? 'text/html'
+          : path.endsWith('.css')
+            ? 'text/css'
+            : 'text/javascript',
+    },
+  })
+}
 async function start(options = {}) {
   const reservation = createServer()
   await new Promise((r) => reservation.listen(0, '127.0.0.1', r))
@@ -35,15 +63,7 @@ async function start(options = {}) {
     ...options,
     fetchSharing:
       options.fetchSharing ??
-      (async () =>
-        new Response(
-          JSON.stringify({
-            service: 'IVC',
-            instance,
-            accessControl: 'invite-only',
-            version: AUTH_VERSION,
-          }),
-        )),
+      (async (input) => publicResponse(input, instance)),
   })
   await new Promise((r) => app.server.listen(port, '127.0.0.1', r))
   async function request(path, body, cookie, csrf, headers = {}) {
@@ -64,6 +84,7 @@ async function start(options = {}) {
   return {
     ...app,
     instance,
+    localOrigin: `http://127.0.0.1:${port}`,
     request,
     async close() {
       app.server.closeAllConnections()
@@ -474,11 +495,9 @@ test('Codespaces invitation issuance fails closed when GitHub blocks anonymous a
   let opened = false
   const blocked = await start({
     codespaces: true,
-    fetchSharing: async () =>
+    fetchSharing: async (input) =>
       opened
-        ? new Response(
-            JSON.stringify({ service: 'IVC', instance: blocked.instance }),
-          )
+        ? publicResponse(input, blocked.instance)
         : new Response(null, {
             status: 302,
             headers: { Location: 'https://github.com/login' },
@@ -604,7 +623,7 @@ test('Codespaces sharing command checks a protected server before changing port 
       'codespace',
       'ports',
       'visibility',
-      '5173:public',
+      '5180:public',
       '--codespace',
       env.CODESPACE_NAME,
     ])
@@ -621,9 +640,9 @@ test('Codespaces sharing command checks a protected server before changing port 
   const origin = await shareCodespaces(env, run, async (url) =>
     new URL(url).pathname === '/solver.wasm'
       ? new Response('private', { status: 401 })
-      : new Response(JSON.stringify(status)),
+      : publicResponse(url, status.instance),
   )
-  assert.equal(origin, 'https://fixture-code-space-5173.app.github.dev')
+  assert.equal(origin, 'https://fixture-code-space-5180.app.github.dev')
   assert.equal(changed, 1)
   changed = 0
   await assert.rejects(
@@ -767,4 +786,91 @@ test('connection diagnosis separates a stopped server, missing gateway, exposed 
     (await diagnoseCodespaces(env, fetchImpl)).local.state,
     'unprotected',
   )
+})
+
+test('public readiness verifies the actual gateway and login dependencies from the same running instance', async () => {
+  const paths = []
+  const result = await probePublicAccess(
+    origin,
+    fixture.instance,
+    async (input, options) => {
+      const path = new URL(input).pathname
+      paths.push(path)
+      assert.equal(options.credentials, 'omit')
+      return fetch(fixture.localOrigin + path, options)
+    },
+  )
+  assert.equal(result.state, 'ready')
+  assert.equal(result.checks.length, 5)
+  assert.ok(result.checks.every((check) => check.ok))
+  assert.deepEqual(
+    paths.sort(),
+    [
+      '/',
+      '/ivc-auth/status',
+      '/response.js',
+      '/welcome.css',
+      '/welcome.js',
+    ].sort(),
+  )
+})
+test('status API success cannot hide a 404 page, missing login module or foreign HTML', async () => {
+  for (const path of ['/', '/welcome.js', '/welcome.css', '/response.js']) {
+    const result = await probePublicAccess(
+      origin,
+      'file-instance',
+      async (input) =>
+        new URL(input).pathname === path
+          ? new Response('', { status: 404 })
+          : publicResponse(input, 'file-instance'),
+    )
+    assert.equal(result.state, 'blocked', path)
+    assert.equal(result.reachable, false)
+    assert.equal(result.path, path)
+    assert.equal(result.status, 404)
+  }
+  for (const mode of ['foreign', 'empty', 'wrong-mime']) {
+    const result = await probePublicAccess(
+      origin,
+      'file-instance',
+      async (input) => {
+        if (new URL(input).pathname !== '/')
+          return publicResponse(input, 'file-instance')
+        return new Response(
+          mode === 'empty' ? '' : '<html><form id="login-form"></form></html>',
+          {
+            headers: {
+              'Content-Type':
+                mode === 'wrong-mime' ? 'application/json' : 'text/html',
+              'X-IVC-Instance':
+                mode === 'foreign' ? 'stale-instance' : 'file-instance',
+            },
+          },
+        )
+      },
+    )
+    assert.equal(result.state, 'mismatch', mode)
+    assert.equal(result.reachable, false)
+  }
+})
+test('all gateway requests share one timeout and do not follow redirects from login files', async () => {
+  let signal
+  const result = await probePublicAccess(
+    origin,
+    'shared-deadline',
+    async (input, options) => {
+      signal ??= options.signal
+      assert.equal(options.signal, signal)
+      assert.equal(options.redirect, 'manual')
+      assert.equal(options.credentials, 'omit')
+      if (new URL(input).pathname === '/welcome.js')
+        return new Response(null, {
+          status: 307,
+          headers: { Location: 'https://other.example.test/' },
+        })
+      return publicResponse(input, 'shared-deadline')
+    },
+  )
+  assert.equal(result.state, 'blocked')
+  assert.equal(result.path, '/welcome.js')
 })

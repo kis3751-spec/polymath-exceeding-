@@ -1,12 +1,10 @@
 import { pathToFileURL } from 'node:url'
-import { runtimeConfig } from '../server/runtime-config.mjs'
+import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
 import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
 
 /** Read-only diagnostics; never send cookies or change port visibility. */
 export async function diagnoseCodespaces(env = process.env, fetchImpl = fetch) {
-  const port = Number(env.PORT ?? 5173)
-  if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw Error('PORT를 확인하세요.')
+  const port = runtimePort(env)
   const cfg = runtimeConfig(env, port)
   const url = new URL(cfg.origin)
   if (
@@ -96,7 +94,7 @@ if (
       )
     if (report.local.state === 'ready' && report.external?.state !== 'ready')
       console.log(
-        '로컬 서버는 정상입니다. Codespaces Ports에서 5173 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.',
+        `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
     if (report.local.state !== 'ready' || report.external?.state !== 'ready')
       process.exitCode = 1

@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `d8730b7dbc544052557682f6b8d41880f36d9eccb338a6d4e12552aa1fc509f0`
+소스 묶음 SHA-256: `797e5f50ece7cb25a2102ace3b1fb1070955c45673a8d5390c758498d50a90b5`
 
 ## 다른 코드 묶음
 
@@ -297,7 +297,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/index.html
 
-원본: [server/gateway/index.html](../../server/gateway/index.html) · 362줄 · SHA-256: `cf326a4e4467993a548fe1f6ea8355741c432784f27a8550a2d3851593c1a937`
+원본: [server/gateway/index.html](../../server/gateway/index.html) · 364줄 · SHA-256: `6db317e6db8aa8c71deb5e075640811fa6380ec5eaa69c5a3c2bbd33633b7689`
 
 ```text
 <!doctype html>
@@ -539,16 +539,18 @@ export default function AccountSession({ children }: { children: ReactNode }) {
           <details>
             <summary>다른 사람과 공유하는 방법</summary>
             <p>
-              Codespaces의 Ports 탭에서 실행 중인 5173 포트를 오른쪽 클릭하고
+              Codespaces의 Ports 탭에서 실행 중인 5180 포트를 오른쪽 클릭하고
               Port Visibility → Public을 선택하세요. 개인 Codespace의 Private
               포트는 다른 사람이 자기 GitHub 계정으로 로그인해도 열리지 않을 수
               있습니다. Public은 소개·로그인 화면에 도달하게 하는 설정이며,
               계산기는 계속 IVC가 허용한 계정만 사용할 수 있습니다.
             </p>
             <p>
-              외부 확인은 서버가 로그인 쿠키 없이 현재 주소에 접속하는
-              검사입니다. Codespace가 정지되거나 삭제되면 공유 주소도 멈춥니다.
-              계속 서비스하려면 상시 실행되는 HTTPS 서버에 배포해야 합니다.
+              연결 확인은 서버가 로그인 쿠키 없이 현재 주소의 소개 화면과 로그인
+              파일에 접속하는 검사입니다. 상대방 브라우저의 접속 경로까지
+              확인하는 것은 아닙니다. Codespace가 정지되거나 삭제되면 공유
+              주소도 멈춥니다. 계속 서비스하려면 상시 실행되는 HTTPS 서버에
+              배포해야 합니다.
             </p>
             <p>
               먼저 연결을 확인한 뒤 초대를 만들고 링크와 코드를 해당 사용자에게
