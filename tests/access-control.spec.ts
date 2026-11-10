@@ -113,7 +113,7 @@ test('logout destroys session and protected resources remain unavailable on back
 test('an empty proxy 404 explains the login failure without exposing the calculator', async ({
   page,
 }) => {
-  await page.route('**/api/login', (route) =>
+  await page.route('**/ivc-auth/login', (route) =>
     route.fulfill({ status: 404, body: '' }),
   )
   await page.goto('/')
@@ -135,7 +135,7 @@ test('login never forwards credentials through an HTTP redirect', async ({
     forwarded = true
     return route.fulfill({ status: 200, body: '{}' })
   })
-  await page.route('**/api/login', (route) =>
+  await page.route('**/ivc-auth/login', (route) =>
     route.fulfill({
       status: 307,
       headers: { Location: '/unexpected-login-target' },
@@ -150,4 +150,22 @@ test('login never forwards credentials through an HTTP redirect', async ({
   await expect(page.locator('#feedback')).toContainText('리디렉션')
   expect(forwarded).toBe(false)
   await expect(page.locator('.module-grid')).toHaveCount(0)
+})
+
+test('login and calculator work when a forwarder returns empty 404 for the /api namespace', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 404, body: '' }),
+  )
+  const loginRequest = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === '/ivc-auth/login' &&
+      request.method() === 'POST',
+  )
+  await logIn(page)
+  await loginRequest
+  await expect(page.locator('.module-grid')).toBeVisible()
+  await page.getByRole('button', { name: 'Log out', exact: true }).click()
+  await expect(page).toHaveURL('/')
 })

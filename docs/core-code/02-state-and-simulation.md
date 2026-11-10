@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `2ec4356c6e08d49c73c00a6d3af8c6aa22c8b4073120608232045ce1778ad93e`
+소스 묶음 SHA-256: `1d48fa3691b6de474e4c8ebdd6e4dc070cb22aa268bbbea68130cd4848141974`
 
 ## 다른 코드 묶음
 
@@ -1083,7 +1083,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 330줄 · SHA-256: `cae2ba512a4dedfe78f5ea4e0981ded0dbbf95a18b4c0ed7e5671bbc50029682`
+원본: [server/app.mjs](../../server/app.mjs) · 353줄 · SHA-256: `8d62d2b11f1164741d4e2dac6488cc31a2385bb5caa09c113fccea0a5cb61f8a`
 
 ```javascript
 import { createServer } from 'node:http'
@@ -1189,6 +1189,23 @@ export async function createAccessServer(input) {
         path.split('/').includes('..')
       )
         return fail(400, '잘못된 경로입니다.')
+      // Dedicated application namespace avoids collisions in forwarding layers.
+      // Legacy /api routes share the same handlers and authorization checks.
+      path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
+      const authActions = new Set([
+        '/api/login',
+        '/api/logout',
+        '/api/accept-invite',
+        '/api/change-password',
+        '/api/admin/invite',
+        '/api/admin/revoke',
+      ])
+      if (req.method === 'POST' && authActions.has(path)) {
+        const action = path.slice('/api/'.length)
+        res.once('finish', () =>
+          console.info(`IVC auth ${action}: HTTP ${res.statusCode}`),
+        )
+      }
       const user = readSession(req)
       if (!['GET', 'HEAD', 'POST'].includes(req.method))
         return fail(405, '허용되지 않은 요청입니다.')
@@ -1330,6 +1347,12 @@ export async function createAccessServer(input) {
         }
         return fail(404, '요청을 찾을 수 없습니다.')
       }
+      if (path === '/api/status')
+        return json(200, {
+          service: 'IVC',
+          api: '/ivc-auth',
+          version: 'auth-v2',
+        })
       if (path === '/api/session')
         return user
           ? json(200, {
@@ -1422,7 +1445,7 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 18줄 · SHA-256: `2488e32b2944422472b1a9029efe5126ff5c6fea077d993a2b32870feda1f4e7`
+원본: [server/start.mjs](../../server/start.mjs) · 22줄 · SHA-256: `a0a15ec9c2230f0c667acf8def2906aae251069ed81b5bed13612938bb2bdce3`
 
 ```javascript
 import { runtimeConfig } from './runtime-config.mjs'
@@ -1436,11 +1459,15 @@ const cfg = runtimeConfig(process.env, port)
 const { server } = await createAccessServer(cfg)
 server.listen(port, process.env.HOST ?? '127.0.0.1', () =>
   console.log(
-    `IVC secure server: ${cfg.origin}\n로그인 후 계산기에 접속할 수 있습니다.`,
+    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (auth-v2)\n로그인 후 계산기에 접속할 수 있습니다.`,
   ),
 )
 server.on('error', (e) => {
   console.error('IVC server:', e.code)
+  if (e.code === 'EADDRINUSE')
+    console.error(
+      `${port} 포트를 사용하는 기존 서버를 먼저 종료하세요. 현재 새 서버는 시작되지 않았습니다.`,
+    )
   process.exitCode = 1
 })
 ```

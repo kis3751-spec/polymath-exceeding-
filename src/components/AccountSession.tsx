@@ -16,7 +16,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     async function check() {
       const request = ++version.current
       try {
-        const response = await fetch('/api/session', {
+        const response = await fetch('/ivc-auth/session', {
           credentials: 'same-origin',
           cache: 'no-store',
           headers:
@@ -96,7 +96,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     version.current++
     setSession(null)
     try {
-      const response = await fetch('/api/logout', {
+      const response = await fetch('/ivc-auth/logout', {
         method: 'POST',
         credentials: 'same-origin',
         headers: {

@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `de3be04d6b5747ec1646a2b9439d945ce7a8d745a8c7e7c1925ccae900dc40ad`
+소스 묶음 SHA-256: `543ff3449e28889284a89fe06e8076a71ca75de6ae1b2660ca2cc5d9a19c6b66`
 
 ## 다른 코드 묶음
 
@@ -86,7 +86,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ## src/components/AccountSession.tsx
 
-원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 137줄 · SHA-256: `c30bd1ac24336ae8027d992be5da69d84ec11974b65cce3cf4377ae034e16a51`
+원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 137줄 · SHA-256: `5225e20517f109c79b14f040dfba88338c7e55d5ad75f725c4c66ba1e1843445`
 
 ```tsx
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -107,7 +107,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     async function check() {
       const request = ++version.current
       try {
-        const response = await fetch('/api/session', {
+        const response = await fetch('/ivc-auth/session', {
           credentials: 'same-origin',
           cache: 'no-store',
           headers:
@@ -187,7 +187,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     version.current++
     setSession(null)
     try {
-      const response = await fetch('/api/logout', {
+      const response = await fetch('/ivc-auth/logout', {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -595,7 +595,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 212줄 · SHA-256: `79bcd73966b3f661aabfb9700063bd9861c328484ed1c11b971e635cb152f630`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 212줄 · SHA-256: `ab62ad988551bc39de5e8465adf3f9b9cd632064211c32ab706a7280894ad18a`
 
 ```text
 import { responseData } from '/response.js'
@@ -609,7 +609,7 @@ function feedback(message, error = false) {
   el.hidden = false
 }
 async function api(path, body) {
-  const response = await fetch(path, {
+  const response = await fetch(path.replace(/^\/api(?=\/)/, '/ivc-auth'), {
     redirect: 'error',
     method: body ? 'POST' : 'GET',
     credentials: 'same-origin',

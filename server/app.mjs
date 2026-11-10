@@ -101,6 +101,23 @@ export async function createAccessServer(input) {
         path.split('/').includes('..')
       )
         return fail(400, '잘못된 경로입니다.')
+      // Dedicated application namespace avoids collisions in forwarding layers.
+      // Legacy /api routes share the same handlers and authorization checks.
+      path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
+      const authActions = new Set([
+        '/api/login',
+        '/api/logout',
+        '/api/accept-invite',
+        '/api/change-password',
+        '/api/admin/invite',
+        '/api/admin/revoke',
+      ])
+      if (req.method === 'POST' && authActions.has(path)) {
+        const action = path.slice('/api/'.length)
+        res.once('finish', () =>
+          console.info(`IVC auth ${action}: HTTP ${res.statusCode}`),
+        )
+      }
       const user = readSession(req)
       if (!['GET', 'HEAD', 'POST'].includes(req.method))
         return fail(405, '허용되지 않은 요청입니다.')
@@ -242,6 +259,12 @@ export async function createAccessServer(input) {
         }
         return fail(404, '요청을 찾을 수 없습니다.')
       }
+      if (path === '/api/status')
+        return json(200, {
+          service: 'IVC',
+          api: '/ivc-auth',
+          version: 'auth-v2',
+        })
       if (path === '/api/session')
         return user
           ? json(200, {

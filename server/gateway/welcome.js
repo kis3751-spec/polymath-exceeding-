@@ -9,7 +9,7 @@ function feedback(message, error = false) {
   el.hidden = false
 }
 async function api(path, body) {
-  const response = await fetch(path, {
+  const response = await fetch(path.replace(/^\/api(?=\/)/, '/ivc-auth'), {
     redirect: 'error',
     method: body ? 'POST' : 'GET',
     credentials: 'same-origin',

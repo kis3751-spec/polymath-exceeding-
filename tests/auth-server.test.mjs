@@ -736,3 +736,47 @@ test('empty and HTML intermediary responses cannot produce a false login or JSON
     { ok: true },
   )
 })
+
+test('dedicated auth namespace shares authorization, CSRF and cookie semantics with legacy routes', async () => {
+  const status = await request('/ivc-auth/status')
+  assert.deepEqual(await status.json(), {
+    service: 'IVC',
+    api: '/ivc-auth',
+    version: 'auth-v2',
+  })
+  assert.equal((await request('/ivc-auth/admin/users')).status, 401)
+  app.store.run('DELETE FROM limits')
+  const login = await request('/ivc-auth/login', {
+    email: ownerEmail,
+    password: 'Changed-test-password 872!',
+  })
+  assert.equal(login.status, 200)
+  const cookie = login.headers.get('set-cookie').split(';')[0]
+  const session = await (
+    await request('/ivc-auth/session', null, { cookie })
+  ).json()
+  assert.equal(session.user.role, 'owner')
+  assert.equal(
+    (
+      await request(
+        '/ivc-auth/admin/invite',
+        {
+          email: 'blocked@example.test',
+          currentPassword: 'Changed-test-password 872!',
+        },
+        { cookie },
+      )
+    ).status,
+    403,
+  )
+  assert.equal(
+    (await request('/ivc-auth/logout', {}, { cookie, csrf: session.csrf }))
+      .status,
+    200,
+  )
+  assert.equal(
+    (await request('/ivc-auth/session', null, { cookie })).status,
+    401,
+  )
+  assert.equal((await request('/api/session', null, { cookie })).status, 401)
+})
