@@ -742,7 +742,7 @@ test('dedicated auth namespace shares authorization, CSRF and cookie semantics w
   assert.deepEqual(await status.json(), {
     service: 'IVC',
     api: '/ivc-auth',
-    version: 'auth-v2',
+    version: 'auth-v3',
   })
   assert.equal((await request('/ivc-auth/admin/users')).status, 401)
   app.store.run('DELETE FROM limits')
@@ -779,4 +779,116 @@ test('dedicated auth namespace shares authorization, CSRF and cookie semantics w
     401,
   )
   assert.equal((await request('/api/session', null, { cookie })).status, 401)
+})
+
+test('Codespaces rewritten Origin requires browser nonce proof and preserves cross-site rejection', async () => {
+  const { runtimeConfig } = await import('../server/runtime-config.mjs')
+  const cfg = runtimeConfig(
+    {
+      CODESPACE_NAME: 'sample-space',
+      GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+    },
+    5173,
+  )
+  const proxy = await createAccessServer({
+    ...cfg,
+    store: app.store,
+    dist: resolve(root, 'dist'),
+  })
+  await new Promise((r) => proxy.server.listen(0, '127.0.0.1', r))
+  async function raw(path, body, extra = {}) {
+    return new Promise((resolve, reject) => {
+      const req = httpRequest(
+        `http://127.0.0.1:${proxy.server.address().port}${path}`,
+        {
+          method: body ? 'POST' : 'GET',
+          headers: {
+            Host: 'localhost:5173',
+            Origin: 'http://localhost:5173',
+            'Sec-Fetch-Site': 'same-origin',
+            ...(body ? { 'Content-Type': 'application/json' } : {}),
+            ...extra,
+          },
+        },
+        (res) => {
+          const chunks = []
+          res.on('data', (x) => chunks.push(x))
+          res.on('end', () =>
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              json: JSON.parse(Buffer.concat(chunks).toString()),
+            }),
+          )
+        },
+      )
+      req.on('error', reject)
+      req.end(body ? JSON.stringify(body) : undefined)
+    })
+  }
+  try {
+    const creds = { email: ownerEmail, password: 'Changed-test-password 872!' }
+    assert.equal((await raw('/ivc-auth/login', creds)).status, 403)
+    const proof = await raw('/ivc-auth/csrf')
+    assert.equal(proof.status, 200)
+    assert.match(proof.headers['set-cookie'][0], /^__Host-ivc-entry=/)
+    assert.match(
+      proof.headers['set-cookie'][0],
+      /HttpOnly; Secure; SameSite=Strict/,
+    )
+    const headers = {
+      Cookie: proof.headers['set-cookie'][0].split(';')[0],
+      'X-CSRF-Token': proof.json.csrf,
+    }
+    assert.equal(
+      (
+        await raw('/ivc-auth/login', creds, {
+          ...headers,
+          Origin: 'https://evil.test',
+        })
+      ).status,
+      403,
+    )
+    assert.equal(
+      (
+        await raw('/ivc-auth/login', creds, {
+          ...headers,
+          'Sec-Fetch-Site': 'cross-site',
+        })
+      ).status,
+      403,
+    )
+    assert.equal(
+      (
+        await raw('/ivc-auth/login', creds, {
+          ...headers,
+          'X-CSRF-Token': 'incorrect',
+        })
+      ).status,
+      403,
+    )
+    const login = await raw('/ivc-auth/login', creds, headers)
+    assert.equal(login.status, 200)
+    const sessionCookie = login.headers['set-cookie'][0].split(';')[0]
+    const session = await raw('/ivc-auth/session', null, {
+      Cookie: sessionCookie,
+    })
+    assert.equal(
+      (await raw('/ivc-auth/logout', {}, { Cookie: sessionCookie })).status,
+      403,
+    )
+    assert.equal(
+      (
+        await raw(
+          '/ivc-auth/logout',
+          {},
+          { Cookie: sessionCookie, 'X-CSRF-Token': session.json.csrf },
+        )
+      ).status,
+      200,
+    )
+  } finally {
+    proxy.server.closeAllConnections()
+    await new Promise((r) => proxy.server.close(r))
+  }
 })

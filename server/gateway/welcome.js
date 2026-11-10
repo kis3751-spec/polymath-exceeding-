@@ -9,6 +9,7 @@ function feedback(message, error = false) {
   el.hidden = false
 }
 async function api(path, body) {
+  const proof = body && !session ? (await api('/api/csrf')).csrf : session?.csrf
   const response = await fetch(path.replace(/^\/api(?=\/)/, '/ivc-auth'), {
     redirect: 'error',
     method: body ? 'POST' : 'GET',
@@ -17,7 +18,7 @@ async function api(path, body) {
     headers: body
       ? {
           'Content-Type': 'application/json',
-          ...(session ? { 'X-CSRF-Token': session.csrf } : {}),
+          ...(proof ? { 'X-CSRF-Token': proof } : {}),
         }
       : {},
     ...(body ? { body: JSON.stringify(body) } : {}),

@@ -169,3 +169,20 @@ test('login and calculator work when a forwarder returns empty 404 for the /api 
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(page).toHaveURL('/')
 })
+
+test('browser login remains protected when a local forwarder rewrites the Origin header', async ({
+  page,
+}) => {
+  await page.route('**/ivc-auth/**', (route) => {
+    const request = route.request()
+    if (request.method() !== 'POST') return route.continue()
+    const url = new URL(request.url())
+    return route.continue({
+      headers: { ...request.headers(), origin: `http://localhost:${url.port}` },
+    })
+  })
+  await logIn(page)
+  await expect(page.locator('.module-grid')).toBeVisible()
+  await page.getByRole('button', { name: 'Log out', exact: true }).click()
+  await expect(page).toHaveURL('/')
+})

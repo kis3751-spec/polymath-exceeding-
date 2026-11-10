@@ -10,6 +10,7 @@ const store = new AccessStore(resolve(root, 'access.sqlite'))
 await store.bootstrap('owner@example.test', 'IVC-browser-test-password!')
 const { server } = await createAccessServer({
   origin: `http://127.0.0.1:${port}`,
+  loopbackProxyHosts: [`localhost:${port}`],
   store,
   dist: resolve('dist'),
 })

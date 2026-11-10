@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { acceptedHost } from './runtime-config.mjs'
+import { acceptedHost, proxyRewrittenOrigin } from './runtime-config.mjs'
 import { readFile, realpath } from 'node:fs/promises'
 import { resolve, sep, extname } from 'node:path'
 import {
@@ -10,6 +10,7 @@ import {
   validPassword,
   hashPassword,
   verifyPassword,
+  secret,
 } from './store.mjs'
 const gateway = resolve(import.meta.dirname, 'gateway')
 const mime = {
@@ -43,6 +44,7 @@ export async function createAccessServer(input) {
     throw Error('먼저 npm run auth:setup으로 최고 관리자를 설정하세요.')
   const dummy = await hashPassword('unused-' + crypto.randomUUID())
   const cookieName = cfg.secure ? '__Host-ivc-session' : 'ivc-local-session'
+  const entryCookie = cfg.secure ? '__Host-ivc-entry' : 'ivc-local-entry'
   const cookie = (token, remove = false) =>
     `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 28800}`
   function readSession(req) {
@@ -122,11 +124,47 @@ export async function createAccessServer(input) {
       if (!['GET', 'HEAD', 'POST'].includes(req.method))
         return fail(405, '허용되지 않은 요청입니다.')
       if (req.method === 'POST') {
+        const token = req.headers['x-csrf-token']
+        const entries = (req.headers.cookie ?? '')
+          .split(';')
+          .map((x) => x.trim())
+          .filter((x) => x.startsWith(entryCookie + '='))
+        const nonce =
+          entries.length === 1 ? entries[0].slice(entryCookie.length + 1) : null
+        const validProof = user
+          ? token === user.csrf
+          : typeof token === 'string' &&
+            /^[\w-]{43}$/.test(token) &&
+            nonce === token
+        if (req.headers['sec-fetch-site'] === 'cross-site') {
+          console.info('IVC auth blocked: cross-site request')
+          return fail(403, '다른 사이트에서 보낸 요청은 허용되지 않습니다.')
+        }
         if (
-          req.headers.origin !== cfg.origin ||
-          req.headers['sec-fetch-site'] === 'cross-site'
-        )
-          return fail(403, '요청 출처를 확인할 수 없습니다.')
+          req.headers.origin !== cfg.origin &&
+          !(proxyRewrittenOrigin(req, cfg) && validProof)
+        ) {
+          // Strip userinfo, paths and query text even from malformed client headers.
+          let originLabel = req.headers.origin ? 'invalid' : 'missing'
+          try {
+            originLabel = new URL(req.headers.origin).origin
+          } catch {}
+          const siteLabel = [
+            'same-origin',
+            'same-site',
+            'cross-site',
+            'none',
+          ].includes(req.headers['sec-fetch-site'])
+            ? req.headers['sec-fetch-site']
+            : 'missing/invalid'
+          console.info(
+            `IVC auth blocked: origin/proof mismatch (origin=${originLabel}, expected=${cfg.origin}, site=${siteLabel})`,
+          )
+          return fail(
+            403,
+            '요청 출처 또는 로그인 보안 토큰을 확인할 수 없습니다. 새로고침하세요.',
+          )
+        }
         if (
           !/^application\/json(?:\s*;.*)?$/i.test(
             req.headers['content-type'] ?? '',
@@ -259,11 +297,19 @@ export async function createAccessServer(input) {
         }
         return fail(404, '요청을 찾을 수 없습니다.')
       }
+      if (path === '/api/csrf') {
+        const nonce = secret()
+        res.setHeader(
+          'Set-Cookie',
+          `${entryCookie}=${nonce}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=600`,
+        )
+        return json(200, { csrf: nonce })
+      }
       if (path === '/api/status')
         return json(200, {
           service: 'IVC',
           api: '/ivc-auth',
-          version: 'auth-v2',
+          version: 'auth-v3',
         })
       if (path === '/api/session')
         return user

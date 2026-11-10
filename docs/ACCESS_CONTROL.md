@@ -91,3 +91,13 @@ Codespaces 접속 시 `접속 주소를 확인하세요`가 표시되던 문제�
 - 사이트 주소 뒤 `/ivc-auth/status`를 열면 로그인 없이 `{service:"IVC",api:"/ivc-auth",version:"auth-v2"}` 형태의 공개 상태 응답을 반환합니다. 계정·세션·비밀값은 포함하지 않습니다.
 - 인증 POST가 IVC 서버에 도착하면 고정된 작업명과 HTTP 상태만 터미널에 기록합니다. 예: `IVC auth login: HTTP 200`. 이메일·비밀번호·Cookie·초대 링크·요청 본문은 기록하지 않습니다.
 - 브라우저에서 로그인했는데 해당 로그가 없으면 실행 중인 서버나 중계 경로를 먼저 확인합니다. 로그가 401이면 계정 자격 증명을, 403이면 Origin/CSRF/권한 검사를, 429이면 시도 제한을 확인합니다.
+
+## Codespaces Origin 재작성 처리 (auth-v3)
+
+서버에 `IVC auth login: HTTP 403`이 남으면 요청은 IVC까지 도착했지만 출처 검사에서 거부되었을 수 있습니다. auth-v3는 로그인/초대 제출 전 `/ivc-auth/csrf`에서 무작위 토큰을 받으며, 같은 값의 HttpOnly·SameSite=Strict 쿠키를 HTTPS에서 \_\_Host-/Secure 조건으로 발급합니다. 토큰은 메모리에만 보관하고 POST의 X-CSRF-Token으로 돌려줍니다.
+
+공개 원점과 다른 Origin은 기본적으로 계속 거부합니다. Codespaces 환경변수가 있고 실제 연결 상대가 loopback이며 Host가 승인된 경우에만, 현재 포트의 정확한 localhost/127.0.0.1/::1 Origin으로 재작성된 요청을 검토합니다. 이 경우에도 로그인 전 토큰과 쿠키가 일치하거나 이미 로그인한 세션의 CSRF 토큰이 맞아야 합니다. Origin이 생략되면 same-origin Fetch Metadata와 토큰 증명이 모두 필요합니다. cross-site Metadata, 임의의 다른 사이트 Origin, 다른 포트, 위조/누락 토큰을 허용하지 않습니다.
+
+성공한 로그인에는 계속 비밀번호 검증이 필요하고, 관리자 기능에는 세션 권한과 재확인을 그대로 적용합니다. 새로운 출처 진단 로그는 비밀값을 빼고 공개 원점과 상태만 표시합니다. `origin/proof mismatch` 또는 `cross-site request`의 구체적인 거부 사유를 확인할 수 있습니다.
+
+이 보완의 HTTP 보안 검사 31개와 로그인 브라우저 검사 7개를 통과했습니다. 브라우저 검사에는 전달 중 Origin만 localhost로 바꾸는 상황에서 로그인·로그아웃하는 시나리오가 포함됩니다. 운영 Codespace에서의 성공 여부는 별도로 확인해야 하며, 재현 검사를 실제 운영 접속 성공으로 간주하지 않습니다.

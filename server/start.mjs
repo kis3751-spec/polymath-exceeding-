@@ -9,7 +9,7 @@ const cfg = runtimeConfig(process.env, port)
 const { server } = await createAccessServer(cfg)
 server.listen(port, process.env.HOST ?? '127.0.0.1', () =>
   console.log(
-    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (auth-v2)\n로그인 후 계산기에 접속할 수 있습니다.`,
+    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (auth-v3)\n로그인 후 계산기에 접속할 수 있습니다.`,
   ),
 )
 server.on('error', (e) => {

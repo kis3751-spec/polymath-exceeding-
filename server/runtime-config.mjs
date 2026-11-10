@@ -48,3 +48,19 @@ export function acceptedHost(req, cfg) {
     (cfg.loopbackProxyHosts ?? []).includes(host)
   )
 }
+
+/** A proxy-origin exception never suffices on its own: callers also verify CSRF. */
+export function proxyRewrittenOrigin(req, cfg) {
+  const peer = req.socket.remoteAddress
+  if (
+    !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer) ||
+    !cfg.loopbackProxyHosts?.length ||
+    !acceptedHost(req, cfg)
+  )
+    return false
+  const origin = req.headers.origin
+  if (!origin) return req.headers['sec-fetch-site'] === 'same-origin'
+  return cfg.loopbackProxyHosts.some(
+    (host) => origin === `http://${host}` || origin === `https://${host}`,
+  )
+}

@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `543ff3449e28889284a89fe06e8076a71ca75de6ae1b2660ca2cc5d9a19c6b66`
+소스 묶음 SHA-256: `5707280f7935eef55c1affdf1d3b6bb6d8e58ddb81f8b6fb69d29a6400b5ec34`
 
 ## 다른 코드 묶음
 
@@ -595,7 +595,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 212줄 · SHA-256: `ab62ad988551bc39de5e8465adf3f9b9cd632064211c32ab706a7280894ad18a`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 213줄 · SHA-256: `7c30dc7aa284945467e71fe6e93cace9063c81e38441fbd30b64b4fe8caec083`
 
 ```text
 import { responseData } from '/response.js'
@@ -609,6 +609,7 @@ function feedback(message, error = false) {
   el.hidden = false
 }
 async function api(path, body) {
+  const proof = body && !session ? (await api('/api/csrf')).csrf : session?.csrf
   const response = await fetch(path.replace(/^\/api(?=\/)/, '/ivc-auth'), {
     redirect: 'error',
     method: body ? 'POST' : 'GET',
@@ -617,7 +618,7 @@ async function api(path, body) {
     headers: body
       ? {
           'Content-Type': 'application/json',
-          ...(session ? { 'X-CSRF-Token': session.csrf } : {}),
+          ...(proof ? { 'X-CSRF-Token': proof } : {}),
         }
       : {},
     ...(body ? { body: JSON.stringify(body) } : {}),
