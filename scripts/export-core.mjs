@@ -73,6 +73,7 @@ const books = [
       'server/store.mjs',
       'server/app.mjs',
       'server/start.mjs',
+      'server/runtime-config.mjs',
       'server/setup.mjs',
       'server/dev.mjs',
       'src/equation-count.ts',

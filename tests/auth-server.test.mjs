@@ -549,3 +549,148 @@ test('expired invitations fail even with the correct email and password', async 
     false,
   )
 })
+
+test('Codespaces rewritten loopback Host supports the full HTTPS login flow', async () => {
+  const { runtimeConfig } = await import('../server/runtime-config.mjs')
+  const cfg = runtimeConfig(
+    {
+      CODESPACE_NAME: 'sample-space',
+      GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+    },
+    5173,
+  )
+  const proxy = await createAccessServer({
+    ...cfg,
+    store: app.store,
+    dist: resolve(root, 'dist'),
+  })
+  await new Promise((r) => proxy.server.listen(0, '127.0.0.1', r))
+  async function raw(path, host, body, extra = {}) {
+    return new Promise((resolve, reject) => {
+      const req = httpRequest(
+        `http://127.0.0.1:${proxy.server.address().port}${path}`,
+        {
+          method: body ? 'POST' : 'GET',
+          headers: {
+            Host: host,
+            ...(body
+              ? { Origin: cfg.origin, 'Content-Type': 'application/json' }
+              : {}),
+            ...extra,
+          },
+        },
+        (res) => {
+          const chunks = []
+          res.on('data', (chunk) => chunks.push(chunk))
+          res.on('end', () =>
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              body: Buffer.concat(chunks).toString(),
+            }),
+          )
+        },
+      )
+      req.on('error', reject)
+      req.end(body ? JSON.stringify(body) : undefined)
+    })
+  }
+  try {
+    for (const host of [
+      'localhost:5173',
+      '127.0.0.1:5173',
+      '[::1]:5173',
+      'localhost',
+    ])
+      assert.equal((await raw('/', host)).status, 200)
+    const login = await raw('/api/login', 'localhost:5173', {
+      email: ownerEmail,
+      password: 'Changed-test-password 872!',
+    })
+    assert.equal(login.status, 200)
+    assert.match(login.headers['set-cookie'][0], /^__Host-ivc-session=/)
+    const cookie = login.headers['set-cookie'][0].split(';')[0]
+    assert.equal(
+      (await raw('/api/session', 'localhost:5173', null, { Cookie: cookie }))
+        .status,
+      200,
+    )
+    assert.equal(
+      (
+        await raw('/assets/private.js', 'localhost:5173', null, {
+          Cookie: cookie,
+        })
+      ).status,
+      200,
+    )
+    assert.equal(
+      (await raw('/assets/private.js', 'localhost:5173')).status,
+      401,
+    )
+    assert.equal(
+      (
+        await raw('/', 'evil.test', null, {
+          'X-Forwarded-Host': new URL(cfg.origin).host,
+        })
+      ).status,
+      421,
+    )
+    assert.equal(
+      (
+        await raw(
+          '/api/login',
+          'localhost:5173',
+          { email: ownerEmail, password },
+          { Origin: 'https://evil.test' },
+        )
+      ).status,
+      403,
+    )
+  } finally {
+    proxy.server.closeAllConnections()
+    await new Promise((r) => proxy.server.close(r))
+  }
+})
+test('Codespaces loopback exceptions do not accept remote peers or arbitrary forwarded hosts', async () => {
+  const { runtimeConfig, acceptedHost } = await import(
+    '../server/runtime-config.mjs'
+  )
+  const cfg = runtimeConfig(
+    {
+      CODESPACE_NAME: 'sample-space',
+      GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+    },
+    5173,
+  )
+  assert.equal(
+    acceptedHost(
+      {
+        headers: { host: 'localhost:5173' },
+        socket: { remoteAddress: '203.0.113.1' },
+      },
+      cfg,
+    ),
+    false,
+  )
+  assert.equal(
+    acceptedHost(
+      {
+        headers: { host: 'localhost:9999' },
+        socket: { remoteAddress: '127.0.0.1' },
+      },
+      cfg,
+    ),
+    false,
+  )
+  assert.equal(
+    acceptedHost(
+      {
+        headers: { host: 'localhost:5173' },
+        socket: { remoteAddress: '127.0.0.1' },
+      },
+      runtimeConfig({}, 5173),
+    ),
+    false,
+  )
+  assert.equal(cfg.origin, 'https://sample-space-5173.app.github.dev')
+})

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `60a436db104db1d689335d78d30a4f69b9d580529e3be05eac6dce28c705c3a2`
+소스 묶음 SHA-256: `80e366c2e370b4eb18aaca429bcbf846abdf5051c776dca001a2d446f41ae526`
 
 ## 다른 코드 묶음
 
@@ -35,19 +35,20 @@
 - [server/store.mjs](#source-8) · [저장소 원본](../../server/store.mjs)
 - [server/app.mjs](#source-9) · [저장소 원본](../../server/app.mjs)
 - [server/start.mjs](#source-10) · [저장소 원본](../../server/start.mjs)
-- [server/setup.mjs](#source-11) · [저장소 원본](../../server/setup.mjs)
-- [server/dev.mjs](#source-12) · [저장소 원본](../../server/dev.mjs)
-- [src/equation-count.ts](#source-13) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-14) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-15) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-16) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-17) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-18) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-19) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-20) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-21) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-22) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-23) · [저장소 원본](../../src/App.tsx)
+- [server/runtime-config.mjs](#source-11) · [저장소 원본](../../server/runtime-config.mjs)
+- [server/setup.mjs](#source-12) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-13) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-14) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-15) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-16) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-17) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-18) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-19) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-20) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-21) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-22) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-23) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-24) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -1082,10 +1083,11 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 325줄 · SHA-256: `6bd67ece94a0919ca67e8e2347050f9f8f54d56277a97a941f2e769d72127d8b`
+원본: [server/app.mjs](../../server/app.mjs) · 321줄 · SHA-256: `1c58c83fabe13029c29ed22aef89fc2244a412d3f81944fa9f245dae11541494`
 
 ```javascript
 import { createServer } from 'node:http'
+import { acceptedHost } from './runtime-config.mjs'
 import { readFile, realpath } from 'node:fs/promises'
 import { resolve, sep, extname } from 'node:path'
 import {
@@ -1167,12 +1169,7 @@ export async function createAccessServer(input) {
       json(code, { error: message })
     }
     try {
-      // Exact Host validation does not trust client-supplied Forwarded headers.
-      if (
-        req.headers.host !== new URL(cfg.origin).host &&
-        !(cfg.proxyHost && req.headers.host === cfg.proxyHost)
-      )
-        return fail(421, '접속 주소를 확인하세요.')
+      if (!acceptedHost(req, cfg)) return fail(421, '접속 주소를 확인하세요.')
       const raw = req.url ?? '/'
       if (raw.length > 4096) return fail(414, 'URL이 너무 깁니다.')
       let path
@@ -1416,42 +1413,21 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 39줄 · SHA-256: `e342423be2cf2a7d94c99562f7c8ab5cfc1a298e0078cd60701304fb3831e9ad`
+원본: [server/start.mjs](../../server/start.mjs) · 18줄 · SHA-256: `2488e32b2944422472b1a9029efe5126ff5c6fea077d993a2b32870feda1f4e7`
 
 ```javascript
-import { resolve } from 'node:path'
+import { runtimeConfig } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
 const port = Number(at >= 0 ? args[at + 1] : (process.env.PORT ?? 5173))
 if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw Error('유효한 포트가 필요합니다.')
-const codespace = process.env.CODESPACE_NAME,
-  forward = process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN
-const origin =
-  process.env.APP_ORIGIN ??
-  (codespace && forward
-    ? `https://${codespace}-${port}.${forward}`
-    : `http://127.0.0.1:${port}`)
-if (process.env.NODE_ENV === 'production' && !process.env.APP_ORIGIN)
-  throw Error('운영 APP_ORIGIN을 명시하세요.')
-if (
-  origin.startsWith('http:') &&
-  !['127.0.0.1', 'localhost', '::1'].includes(process.env.HOST ?? '127.0.0.1')
-)
-  throw Error(
-    'HTTP 개발 서버는 loopback에서만 열 수 있습니다. HTTPS 프록시와 APP_ORIGIN을 설정하세요.',
-  )
-const { server } = await createAccessServer({
-  origin,
-  production: process.env.NODE_ENV === 'production',
-  proxyHost: process.env.IVC_PROXY_HOST,
-  database: resolve(process.env.IVC_DATA_DIR ?? '.ivc-data', 'access.sqlite'),
-  dist: resolve('dist'),
-})
+const cfg = runtimeConfig(process.env, port)
+const { server } = await createAccessServer(cfg)
 server.listen(port, process.env.HOST ?? '127.0.0.1', () =>
   console.log(
-    `IVC secure server: ${origin}\n로그인 후 계산기에 접속할 수 있습니다.`,
+    `IVC secure server: ${cfg.origin}\n로그인 후 계산기에 접속할 수 있습니다.`,
   ),
 )
 server.on('error', (e) => {
@@ -1461,6 +1437,65 @@ server.on('error', (e) => {
 ```
 
 <a id="source-11"></a>
+
+## server/runtime-config.mjs
+
+원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 50줄 · SHA-256: `5ff4992284be6d8e2e33679d49d86cd3a6fad0fae355550a1c3a9095b0146d15`
+
+```javascript
+import { resolve } from 'node:path'
+
+/** Only trusted process configuration selects the public origin/proxy hosts. */
+export function runtimeConfig(env, port) {
+  const codespaces = Boolean(
+    env.CODESPACE_NAME && env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN,
+  )
+  const origin =
+    env.APP_ORIGIN ??
+    (codespaces
+      ? `https://${env.CODESPACE_NAME}-${port}.${env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
+      : `http://127.0.0.1:${port}`)
+  if (env.NODE_ENV === 'production' && !env.APP_ORIGIN)
+    throw Error('운영 APP_ORIGIN을 명시하세요.')
+  if (
+    origin.startsWith('http:') &&
+    !['127.0.0.1', 'localhost', '::1'].includes(env.HOST ?? '127.0.0.1')
+  )
+    throw Error(
+      'HTTP 개발 서버는 loopback에서만 열 수 있습니다. HTTPS 프록시와 APP_ORIGIN을 설정하세요.',
+    )
+  return {
+    origin,
+    production: env.NODE_ENV === 'production',
+    proxyHost: env.IVC_PROXY_HOST,
+    // Codespaces replaces Host with an internal loopback authority.
+    // Forwarded headers are never used to choose trusted hosts or origins.
+    loopbackProxyHosts: codespaces
+      ? ['localhost', '127.0.0.1', '[::1]'].flatMap((host) => [
+          host,
+          `${host}:${port}`,
+        ])
+      : [],
+    database: resolve(env.IVC_DATA_DIR ?? '.ivc-data', 'access.sqlite'),
+    dist: resolve('dist'),
+  }
+}
+export function acceptedHost(req, cfg) {
+  const host = req.headers.host
+  if (
+    host === new URL(cfg.origin).host ||
+    (cfg.proxyHost && host === cfg.proxyHost)
+  )
+    return true
+  const peer = req.socket.remoteAddress
+  return (
+    ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer) &&
+    (cfg.loopbackProxyHosts ?? []).includes(host)
+  )
+}
+```
+
+<a id="source-12"></a>
 
 ## server/setup.mjs
 
@@ -1532,7 +1567,7 @@ try {
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-13"></a>
 
 ## server/dev.mjs
 
@@ -1546,7 +1581,7 @@ if (built.status !== 0) process.exit(built.status ?? 1)
 await import('./start.mjs')
 ```
 
-<a id="source-13"></a>
+<a id="source-14"></a>
 
 ## src/equation-count.ts
 
@@ -1587,7 +1622,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-15"></a>
 
 ## src/csv.ts
 
@@ -1610,7 +1645,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-16"></a>
 
 ## src/engine/sweep.ts
 
@@ -1801,7 +1836,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-17"></a>
 
 ## src/engine/branches.ts
 
@@ -2326,7 +2361,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## src/engine/branch-events.ts
 
@@ -2409,7 +2444,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-19"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -2963,7 +2998,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-20"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -3040,7 +3075,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-21"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -3117,7 +3152,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-22"></a>
 
 ## src/engine/default-overview.ts
 
@@ -3243,7 +3278,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-23"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -3659,7 +3694,7 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-24"></a>
 
 ## src/App.tsx
 

@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { acceptedHost } from './runtime-config.mjs'
 import { readFile, realpath } from 'node:fs/promises'
 import { resolve, sep, extname } from 'node:path'
 import {
@@ -80,12 +81,7 @@ export async function createAccessServer(input) {
       json(code, { error: message })
     }
     try {
-      // Exact Host validation does not trust client-supplied Forwarded headers.
-      if (
-        req.headers.host !== new URL(cfg.origin).host &&
-        !(cfg.proxyHost && req.headers.host === cfg.proxyHost)
-      )
-        return fail(421, '접속 주소를 확인하세요.')
+      if (!acceptedHost(req, cfg)) return fail(421, '접속 주소를 확인하세요.')
       const raw = req.url ?? '/'
       if (raw.length > 4096) return fail(414, 'URL이 너무 깁니다.')
       let path
