@@ -153,15 +153,39 @@
             Log in <span aria-hidden="true">↗</span>
           </button>
         </form>
+        <button id="show-invitation" class="subtle" type="button">
+          Have an invitation code?
+        </button>
+      </section>
+      <section id="invitation-code-panel" class="access-card" hidden>
+        <div>
+          <h2>Invitation code</h2>
+          <p>
+            GitHub 로그인 중 초대 화면을 잃었다면 관리자가 준 1회용 코드를
+            입력하세요. 이메일만 등록되어서는 계정이 활성화되지 않습니다.
+          </p>
+        </div>
+        <form id="invitation-code-form">
+          <label
+            >Invitation code<input
+              name="token"
+              autocomplete="off"
+              spellcheck="false"
+              required
+              minlength="43"
+              maxlength="43" /></label
+          ><button class="primary">Open invitation</button>
+        </form>
       </section>
       <section id="invite-panel" class="access-card" hidden>
         <div>
           <span class="eyebrow">A NEW PERSPECTIVE STARTS HERE</span>
           <h2>Accept invitation</h2>
           <p>
-            초대받은 이메일과 새 비밀번호를 입력하세요. 초대 링크는 한 번만
-            사용할 수 있습니다.
+            본인이 사용할 새 비밀번호를 정하면 계산기로 바로 이동합니다. GitHub
+            비밀번호를 입력하는 곳이 아닙니다.
           </p>
+          <small id="invitation-expiry"></small>
         </div>
         <form id="invite-form">
           <label
@@ -170,6 +194,7 @@
               type="email"
               autocomplete="username"
               maxlength="254"
+              readonly
               required /></label
           ><label
             >New Password<input
@@ -202,31 +227,79 @@
           </div>
           <button id="refresh-users">Refresh</button>
         </div>
+        <div class="sharing-card" id="sharing-panel">
+          <div class="admin-title">
+            <strong>Sharing <span id="sharing-state">Checking…</span></strong
+            ><button id="check-sharing" type="button">Check connection</button>
+          </div>
+          <p id="sharing-message" role="status"></p>
+          <label>Site address<input id="sharing-origin" readonly /></label>
+          <details>
+            <summary>다른 사람과 공유하는 방법</summary>
+            <p>
+              Codespaces의 Ports 탭에서 실행 중인 5173 포트를 오른쪽 클릭하고
+              Port Visibility → Public을 선택하세요. 개인 Codespace의 Private
+              포트는 다른 사람이 자기 GitHub 계정으로 로그인해도 열리지 않을 수
+              있습니다. Public은 소개·로그인 화면에 도달하게 하는 설정이며,
+              계산기는 계속 IVC가 허용한 계정만 사용할 수 있습니다.
+            </p>
+            <p>
+              외부 확인은 서버가 로그인 쿠키 없이 현재 주소에 접속하는
+              검사입니다. Codespace가 정지되거나 삭제되면 공유 주소도 멈춥니다.
+              계속 서비스하려면 상시 실행되는 HTTPS 서버에 배포해야 합니다.
+            </p>
+            <p>
+              먼저 연결을 확인한 뒤 초대를 만들고 링크와 코드를 해당 사용자에게
+              직접 전달하세요. 이메일이 자동 발송되지는 않습니다. 상대방은 새
+              IVC 비밀번호를 정해야 하며, 관리자 비밀번호를 전달하면 안 됩니다.
+            </p>
+          </details>
+        </div>
         <form id="invite-user-form" class="invite-user-form">
+          <input
+            id="admin-identity"
+            type="email"
+            autocomplete="section-admin username"
+            readonly
+            hidden
+          />
           <label
             >Allowed Email<input
               name="email"
               type="email"
+              autocomplete="off"
               maxlength="254"
               required /></label
           ><label
             >Admin Password<input
               name="currentPassword"
               type="password"
-              autocomplete="current-password"
+              autocomplete="section-admin current-password"
               maxlength="128"
               required /></label
           ><button class="primary">Create invitation</button>
         </form>
+        <small
+          >Admin Password는 현재 로그인한 최고 관리자 본인의 IVC 비밀번호입니다.
+          초대받는 사람의 비밀번호는 그 사람이 정합니다.</small
+        >
         <div id="invitation-result" hidden>
           <label
             >One-time invitation link<input
               readonly
               id="invitation-link" /></label
           ><button id="copy-invitation">Copy link</button>
+          <label
+            >One-time invitation code<input
+              readonly
+              id="invitation-code" /></label
+          ><button id="copy-code">Copy code</button>
           <p>
-            48시간 안에 사용할 수 있습니다. 해당 이메일 사용자에게 안전한 경로로
-            직접 전달하세요. 링크를 가진 사람이 계정을 활성화할 수 있습니다.
+            48시간 안에 한 번 사용할 수 있습니다. 링크를 열면 초대받은 이메일이
+            표시됩니다. 링크가 로그인 화면에서 끊기면 Site address → Log in →
+            Have an invitation code?에서 코드를 입력하세요. 링크·코드를 가진
+            사람이 해당 계정을 활성화할 수 있으므로 해당 사용자에게만
+            전달하세요. 다시 발급하면 이전 초대는 폐기됩니다.
           </p>
         </div>
         <div class="user-table">

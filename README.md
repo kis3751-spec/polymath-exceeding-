@@ -15,7 +15,15 @@ npm run dev -- --port 5173
 
 `auth:setup`은 서버에서 처음 한 번 실행합니다. 기본 최고 관리자 이메일은 `eerrtteerrt12@gmail.com`이며 비밀번호는 숨김 입력으로 설정합니다. 이미 설정했다면 이 단계를 건너뜁니다. DB와 비밀번호는 Git에 포함하지 않으므로 새 Codespace·새 서버에서는 별도 초기화가 필요합니다.
 
-처음에는 IVC 소개 화면이 열립니다. **Log in to IVC**로 로그인하면 계산기로 전환됩니다. 최고 관리자는 **Manage Access**에서 허용 계정을 초대·회수하며, 일반 사용자는 초대 링크로만 계정을 활성화할 수 있습니다. 같은 모델을 공유하려면 Save Project로 만든 JSON을 별도로 전달합니다.
+처음에는 IVC 소개 화면이 열립니다. **Log in to IVC**로 로그인하면 계산기로 전환됩니다. 최고 관리자는 **Manage Access**에서 허용 계정을 초대·회수하며, 일반 사용자는 초대 링크 또는 일회용 코드로 계정을 활성화한 뒤 사용할 수 있습니다. 같은 모델을 공유하려면 Save Project로 만든 JSON을 별도로 전달합니다.
+
+**Codespaces에서 다른 사람에게 공유할 때는** 서버 터미널을 그대로 두고 **새 터미널**에서 실행합니다.
+
+```sh
+npm run share:codespaces
+```
+
+이 명령은 보호 서버를 확인한 뒤 해당 포트를 Public으로 바꾸고 GitHub 로그인 없는 접속을 검사합니다. CLI 권한이 없으면 **Ports → 5173 → Port Visibility → Public**으로 설정하세요. 상대방에게 GitHub 계정이 있어도 개인 Codespace의 Private 포트는 열리지 않을 수 있습니다. Public이어도 계산기와 계산 파일에는 IVC 로그인이 필요합니다. 관리자의 **Manage Access → Sharing**에서 연결을 확인하고 초대 링크·코드를 전달하세요. 이메일은 자동 발송되지 않으며, 상대방이 자신의 새 IVC 비밀번호를 정해야 합니다. Codespace가 정지되면 공유 주소도 중단되므로 상시 서비스에는 별도 HTTPS 호스팅이 필요합니다.
 
 `npm run dev`와 `npm run preview` 모두 보호 서버를 사용합니다. 개발 명령은 빌드 후 서버를 시작하므로 소스 수정 후 다시 실행하세요. 운영은 `npm run build` 후 HTTPS 원점을 설정하고 `npm start`로 실행합니다. **dist만 정적 호스팅에 올리면 로그인 보안이 적용되지 않습니다.** 영구 DB·HTTPS·프록시·Codespaces 공유 설정과 보안 경계는 [Access Control & Deployment](docs/ACCESS_CONTROL.md)에 상세히 설명했습니다.
 

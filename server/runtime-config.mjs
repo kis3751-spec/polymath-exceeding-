@@ -21,6 +21,7 @@ export function runtimeConfig(env, port) {
     )
   return {
     origin,
+    codespaces,
     production: env.NODE_ENV === 'production',
     proxyHost: env.IVC_PROXY_HOST,
     // Codespaces replaces Host with an internal loopback authority.

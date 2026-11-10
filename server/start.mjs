@@ -1,5 +1,6 @@
 import { runtimeConfig } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
+import { AUTH_VERSION } from './sharing.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
 const port = Number(at >= 0 ? args[at + 1] : (process.env.PORT ?? 5173))
@@ -9,7 +10,7 @@ const cfg = runtimeConfig(process.env, port)
 const { server } = await createAccessServer(cfg)
 server.listen(port, process.env.HOST ?? '127.0.0.1', () =>
   console.log(
-    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (auth-v3)\n로그인 후 계산기에 접속할 수 있습니다.`,
+    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? '\n타인 초대 전: 새 터미널에서 npm run share:codespaces 또는 Ports → Port Visibility → Public' : ''}`,
   ),
 )
 server.on('error', (e) => {

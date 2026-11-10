@@ -32,6 +32,8 @@ async function derive(...args) {
 export const digest = (value) =>
   createHash('sha256').update(value).digest('hex')
 export const secret = () => randomBytes(32).toString('base64url')
+const validSecret = (value) =>
+  typeof value === 'string' && /^[\w-]{43}$/.test(value)
 export const normalizeEmail = (value) =>
   typeof value === 'string' ? value.trim().toLowerCase() : ''
 export const validEmail = (value) =>
@@ -89,6 +91,7 @@ export class AccessStore {
       CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), csrf TEXT NOT NULL, created INTEGER NOT NULL, touched INTEGER NOT NULL, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS invites (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS invite_flows (hash TEXT PRIMARY KEY, invite_hash TEXT NOT NULL REFERENCES invites(hash) ON DELETE CASCADE, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, time INTEGER NOT NULL, actor TEXT, action TEXT NOT NULL, target TEXT);
       CREATE INDEX IF NOT EXISTS session_user ON sessions(user_id);`)
@@ -189,6 +192,7 @@ export class AccessStore {
     if (
       !row ||
       row.active !== 1 ||
+      !row.password ||
       row.expires <= now ||
       row.touched + 30 * 60_000 <= now
     ) {
@@ -219,12 +223,31 @@ export class AccessStore {
     )
     return { token, csrf }
   }
+  issueInvite(user, actor, action = 'member.invite') {
+    this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)
+    this.run('DELETE FROM sessions WHERE user_id=?', user.id)
+    this.run('DELETE FROM invites WHERE user_id=?', user.id)
+    const token = secret()
+    this.run(
+      'INSERT INTO invites VALUES(?,?,?)',
+      digest(token),
+      user.id,
+      this.now() + 48 * 3600_000,
+    )
+    this.audit(actor, action, user.id)
+    return token
+  }
   invite(email, actor) {
+    email = normalizeEmail(email)
+    if (!validEmail(email)) throw Error('올바른 이메일을 입력하세요.')
     return this.transaction(() => {
       let user = this.byEmail(email)
       if (user?.role === 'owner')
         throw Error('최고 관리자 계정은 변경할 수 없습니다.')
-      if (user?.active && user.password) throw Error('이미 허용된 계정입니다.')
+      if (user?.active && user.password)
+        throw Error(
+          '이미 활성화된 계정입니다. 비밀번호 재설정은 Reset account를 사용하세요.',
+        )
       if (!user) {
         const id = randomUUID()
         this.run(
@@ -238,47 +261,90 @@ export class AccessStore {
         )
         user = this.user(id)
       }
-      // Re-enabling requires a new one-use invitation and new password.
-      this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)
-      this.run('DELETE FROM sessions WHERE user_id=?', user.id)
-      this.run('DELETE FROM invites WHERE user_id=?', user.id)
-      const token = secret()
-      this.run(
-        'INSERT INTO invites VALUES(?,?,?)',
-        digest(token),
-        user.id,
-        this.now() + 48 * 3600_000,
-      )
-      this.audit(actor, 'member.invite', user.id)
-      return token
+      return this.issueInvite(user, actor)
     })
   }
-  async accept(token, email, password) {
-    if (!/^[\w-]{43}$/.test(token ?? '') || !validPassword(password))
-      return false
+  resetInvite(id, actor) {
+    return this.transaction(() => {
+      const user = this.user(id)
+      if (!user || user.role !== 'member' || id === this.owner())
+        throw Error('재설정할 수 없는 계정입니다.')
+      return this.issueInvite(user, actor, 'member.reset')
+    })
+  }
+  validInviteHash(hash) {
+    const row = this.query(
+      'SELECT i.*,u.email,u.active,u.role FROM invites i JOIN users u ON u.id=i.user_id WHERE i.hash=?',
+      hash,
+    )
+    return row &&
+      row.expires > this.now() &&
+      row.active === 1 &&
+      row.role === 'member'
+      ? row
+      : null
+  }
+  inviteInfo(token) {
+    if (!validSecret(token)) return null
+    return this.validInviteHash(digest(token))
+  }
+  beginInvite(token) {
+    const row = this.inviteInfo(token)
+    if (!row) return null
+    this.run('DELETE FROM invite_flows WHERE expires<=?', this.now())
+    const flow = secret(),
+      expires = Math.min(row.expires, this.now() + 15 * 60_000)
+    this.run(
+      'INSERT INTO invite_flows VALUES(?,?,?)',
+      digest(flow),
+      row.hash,
+      expires,
+    )
+    return { token: flow, email: row.email, expires }
+  }
+  flowInfo(flow) {
+    if (!validSecret(flow)) return null
+    const row = this.query(
+      'SELECT * FROM invite_flows WHERE hash=?',
+      digest(flow),
+    )
+    if (!row || row.expires <= this.now()) return null
+    const invite = this.validInviteHash(row.invite_hash)
+    return invite ? { ...invite, flowExpires: row.expires } : null
+  }
+  async accept(token, email, password, withSession = false) {
+    if (!validSecret(token)) return false
+    return this.activateInvite(
+      digest(token),
+      email,
+      password,
+      undefined,
+      withSession,
+    )
+  }
+  async acceptFlow(flow, email, password, withSession = false) {
+    const row = this.flowInfo(flow)
+    if (!row) return false
+    return this.activateInvite(row.hash, email, password, flow, withSession)
+  }
+  async activateInvite(hash, email, password, flow, withSession) {
+    if (!validPassword(password)) return false
     const encoded = await hashPassword(password)
     return this.transaction(() => {
-      const invite = this.query(
-        'SELECT i.*,u.email,u.active,u.role FROM invites i JOIN users u ON u.id=i.user_id WHERE i.hash=?',
-        digest(token),
-      )
+      const row = this.validInviteHash(hash)
       if (
-        !invite ||
-        invite.expires <= this.now() ||
-        !invite.active ||
-        invite.role !== 'member' ||
-        invite.email !== normalizeEmail(email)
+        !row ||
+        row.email !== normalizeEmail(email) ||
+        (flow && !this.flowInfo(flow))
       )
         return false
-      this.run(
-        'UPDATE users SET password=? WHERE id=?',
-        encoded,
-        invite.user_id,
-      )
-      this.run('DELETE FROM invites WHERE user_id=?', invite.user_id)
-      this.run('DELETE FROM sessions WHERE user_id=?', invite.user_id)
-      this.audit(invite.user_id, 'member.activate', invite.user_id)
-      return true
+      this.run('UPDATE users SET password=? WHERE id=?', encoded, row.user_id)
+      this.run('DELETE FROM invites WHERE user_id=?', row.user_id)
+      this.run('DELETE FROM sessions WHERE user_id=?', row.user_id)
+      this.audit(row.user_id, 'member.activate', row.user_id)
+      // Issue within the same transaction: a later reset/revocation deletes this
+      // session even if the HTTP response has not been sent yet.
+      return withSession ? this.createSession(this.user(row.user_id)) : true
     })
   }
   revoke(id, actor) {

@@ -14,7 +14,8 @@
     "format": "prettier --write src scripts tests *.json *.ts *.md index.html",
     "start": "node server/start.mjs",
     "auth:setup": "node server/setup.mjs",
-    "test:auth": "node --test tests/auth-server.test.mjs"
+    "share:codespaces": "node scripts/share-codespaces.mjs",
+    "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

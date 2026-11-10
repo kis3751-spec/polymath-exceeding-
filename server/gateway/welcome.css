@@ -598,3 +598,46 @@ footer {
     scroll-behavior: auto !important;
   }
 }
+.sharing-card {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #d9e2df;
+  background: #f5f8f7;
+  border-radius: 10px;
+}
+.sharing-card .admin-title {
+  margin-bottom: 12px;
+}
+.sharing-card p {
+  line-height: 1.7;
+  font-size: 14px;
+}
+.sharing-card details {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.sharing-card summary {
+  cursor: pointer;
+}
+#sharing-state {
+  font-size: 12px;
+  margin-left: 10px;
+  font-weight: 500;
+}
+.sharing-card[data-state='ready'] {
+  border-color: #6d998b;
+}
+.sharing-card[data-state='blocked'],
+.sharing-card[data-state='unavailable'],
+.sharing-card[data-state='mismatch'] {
+  border-color: #b99171;
+}
+#invitation-result input {
+  font-family: ui-monospace, monospace;
+  min-width: 0;
+}
+.user-table td:last-child button {
+  margin: 3px;
+  font-size: 12px;
+  padding: 8px;
+}

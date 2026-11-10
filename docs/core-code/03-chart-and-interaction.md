@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `5707280f7935eef55c1affdf1d3b6bb6d8e58ddb81f8b6fb69d29a6400b5ec34`
+소스 묶음 SHA-256: `d8730b7dbc544052557682f6b8d41880f36d9eccb338a6d4e12552aa1fc509f0`
 
 ## 다른 코드 묶음
 
@@ -297,7 +297,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/index.html
 
-원본: [server/gateway/index.html](../../server/gateway/index.html) · 289줄 · SHA-256: `414bfdbc596831b135087e0ef825ee4ae64d68e4c9c02452576c5203b02ca849`
+원본: [server/gateway/index.html](../../server/gateway/index.html) · 362줄 · SHA-256: `cf326a4e4467993a548fe1f6ea8355741c432784f27a8550a2d3851593c1a937`
 
 ```text
 <!doctype html>
@@ -455,15 +455,39 @@ export default function AccountSession({ children }: { children: ReactNode }) {
             Log in <span aria-hidden="true">↗</span>
           </button>
         </form>
+        <button id="show-invitation" class="subtle" type="button">
+          Have an invitation code?
+        </button>
+      </section>
+      <section id="invitation-code-panel" class="access-card" hidden>
+        <div>
+          <h2>Invitation code</h2>
+          <p>
+            GitHub 로그인 중 초대 화면을 잃었다면 관리자가 준 1회용 코드를
+            입력하세요. 이메일만 등록되어서는 계정이 활성화되지 않습니다.
+          </p>
+        </div>
+        <form id="invitation-code-form">
+          <label
+            >Invitation code<input
+              name="token"
+              autocomplete="off"
+              spellcheck="false"
+              required
+              minlength="43"
+              maxlength="43" /></label
+          ><button class="primary">Open invitation</button>
+        </form>
       </section>
       <section id="invite-panel" class="access-card" hidden>
         <div>
           <span class="eyebrow">A NEW PERSPECTIVE STARTS HERE</span>
           <h2>Accept invitation</h2>
           <p>
-            초대받은 이메일과 새 비밀번호를 입력하세요. 초대 링크는 한 번만
-            사용할 수 있습니다.
+            본인이 사용할 새 비밀번호를 정하면 계산기로 바로 이동합니다. GitHub
+            비밀번호를 입력하는 곳이 아닙니다.
           </p>
+          <small id="invitation-expiry"></small>
         </div>
         <form id="invite-form">
           <label
@@ -472,6 +496,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
               type="email"
               autocomplete="username"
               maxlength="254"
+              readonly
               required /></label
           ><label
             >New Password<input
@@ -504,31 +529,79 @@ export default function AccountSession({ children }: { children: ReactNode }) {
           </div>
           <button id="refresh-users">Refresh</button>
         </div>
+        <div class="sharing-card" id="sharing-panel">
+          <div class="admin-title">
+            <strong>Sharing <span id="sharing-state">Checking…</span></strong
+            ><button id="check-sharing" type="button">Check connection</button>
+          </div>
+          <p id="sharing-message" role="status"></p>
+          <label>Site address<input id="sharing-origin" readonly /></label>
+          <details>
+            <summary>다른 사람과 공유하는 방법</summary>
+            <p>
+              Codespaces의 Ports 탭에서 실행 중인 5173 포트를 오른쪽 클릭하고
+              Port Visibility → Public을 선택하세요. 개인 Codespace의 Private
+              포트는 다른 사람이 자기 GitHub 계정으로 로그인해도 열리지 않을 수
+              있습니다. Public은 소개·로그인 화면에 도달하게 하는 설정이며,
+              계산기는 계속 IVC가 허용한 계정만 사용할 수 있습니다.
+            </p>
+            <p>
+              외부 확인은 서버가 로그인 쿠키 없이 현재 주소에 접속하는
+              검사입니다. Codespace가 정지되거나 삭제되면 공유 주소도 멈춥니다.
+              계속 서비스하려면 상시 실행되는 HTTPS 서버에 배포해야 합니다.
+            </p>
+            <p>
+              먼저 연결을 확인한 뒤 초대를 만들고 링크와 코드를 해당 사용자에게
+              직접 전달하세요. 이메일이 자동 발송되지는 않습니다. 상대방은 새
+              IVC 비밀번호를 정해야 하며, 관리자 비밀번호를 전달하면 안 됩니다.
+            </p>
+          </details>
+        </div>
         <form id="invite-user-form" class="invite-user-form">
+          <input
+            id="admin-identity"
+            type="email"
+            autocomplete="section-admin username"
+            readonly
+            hidden
+          />
           <label
             >Allowed Email<input
               name="email"
               type="email"
+              autocomplete="off"
               maxlength="254"
               required /></label
           ><label
             >Admin Password<input
               name="currentPassword"
               type="password"
-              autocomplete="current-password"
+              autocomplete="section-admin current-password"
               maxlength="128"
               required /></label
           ><button class="primary">Create invitation</button>
         </form>
+        <small
+          >Admin Password는 현재 로그인한 최고 관리자 본인의 IVC 비밀번호입니다.
+          초대받는 사람의 비밀번호는 그 사람이 정합니다.</small
+        >
         <div id="invitation-result" hidden>
           <label
             >One-time invitation link<input
               readonly
               id="invitation-link" /></label
           ><button id="copy-invitation">Copy link</button>
+          <label
+            >One-time invitation code<input
+              readonly
+              id="invitation-code" /></label
+          ><button id="copy-code">Copy code</button>
           <p>
-            48시간 안에 사용할 수 있습니다. 해당 이메일 사용자에게 안전한 경로로
-            직접 전달하세요. 링크를 가진 사람이 계정을 활성화할 수 있습니다.
+            48시간 안에 한 번 사용할 수 있습니다. 링크를 열면 초대받은 이메일이
+            표시됩니다. 링크가 로그인 화면에서 끊기면 Site address → Log in →
+            Have an invitation code?에서 코드를 입력하세요. 링크·코드를 가진
+            사람이 해당 계정을 활성화할 수 있으므로 해당 사용자에게만
+            전달하세요. 다시 발급하면 이전 초대는 폐기됩니다.
           </p>
         </div>
         <div class="user-table">
@@ -595,18 +668,46 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 213줄 · SHA-256: `7c30dc7aa284945467e71fe6e93cace9063c81e38441fbd30b64b4fe8caec083`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 407줄 · SHA-256: `c2be9655141e49d0bf83e286d830202a344bd155d82b5c08fd3a6ebd60c9b156`
 
 ```text
 import { responseData } from '/response.js'
 let session = null,
-  invitation = null
+  invitation = null,
+  sessionVersion = 0
 const $ = (selector) => document.querySelector(selector)
+const channel =
+  typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel('ivc-session')
+    : null
 function feedback(message, error = false) {
   const el = $('#feedback')
   el.textContent = message
   el.classList.toggle('error', error)
   el.hidden = false
+}
+function clearSession() {
+  sessionVersion++
+  session = null
+  for (const id of [
+    '#admin-panel',
+    '#password-panel',
+    '#manage-access',
+    '#logout',
+    '#invitation-result',
+  ])
+    $(id).hidden = true
+  $('#user-list').replaceChildren()
+  $('#invitation-link').value = ''
+  $('#invitation-code').value = ''
+  $('#signed-in').textContent = ''
+  $('#invite-user-form [name=currentPassword]').value = ''
+  $('#password-form').reset()
+  $('.workspace-entry').hidden = true
+  for (const el of document.querySelectorAll(
+    '.login-trigger,.hero-actions,.access-note',
+  ))
+    el.hidden = false
 }
 async function api(path, body) {
   const proof = body && !session ? (await api('/api/csrf')).csrf : session?.csrf
@@ -615,6 +716,7 @@ async function api(path, body) {
     method: body ? 'POST' : 'GET',
     credentials: 'same-origin',
     cache: 'no-store',
+    signal: AbortSignal.timeout(12_000),
     headers: body
       ? {
           'Content-Type': 'application/json',
@@ -627,7 +729,15 @@ async function api(path, body) {
       '로그인 요청의 연결 또는 리디렉션이 차단되었습니다. Codespaces 포트 주소와 접근 권한을 확인하세요.',
     )
   })
-  return responseData(response, path)
+  try {
+    return await responseData(response, path)
+  } catch (error) {
+    if (error.status === 401 && session) {
+      clearSession()
+      $('#access-panel').hidden = false
+    }
+    throw error
+  }
 }
 function scrollToPanel(id) {
   $(id).hidden = false
@@ -637,10 +747,13 @@ function scrollToPanel(id) {
       : 'smooth',
     block: 'start',
   })
-  $(id).querySelector('input')?.focus({ preventScroll: true })
+  $(id).querySelector('input:not([readonly])')?.focus({ preventScroll: true })
 }
 for (const button of document.querySelectorAll('.login-trigger'))
   button.addEventListener('click', () => scrollToPanel('#access-panel'))
+$('#show-invitation').addEventListener('click', () =>
+  scrollToPanel('#invitation-code-panel'),
+)
 function busy(form, value) {
   for (const button of form.querySelectorAll('button')) button.disabled = value
 }
@@ -658,26 +771,73 @@ function submit(id, work) {
     }
   })
 }
+async function confirmLogin() {
+  try {
+    await readSessionData()
+  } catch (error) {
+    if (error.status === 401)
+      throw Error(
+        '로그인 쿠키를 확인하지 못했습니다. 같은 HTTPS 주소를 사용하고 이 사이트의 쿠키 차단 설정을 확인하세요.',
+      )
+    throw error
+  }
+}
+async function readSessionData() {
+  const data = await api('/api/session')
+  if (
+    !data.user ||
+    typeof data.user.id !== 'string' ||
+    typeof data.user.email !== 'string' ||
+    !['owner', 'member'].includes(data.user.role) ||
+    typeof data.csrf !== 'string' ||
+    !/^[\w-]{43}$/.test(data.csrf)
+  )
+    throw Error(
+      '로그인 서버의 세션 응답이 올바르지 않습니다. 현재 주소와 서버를 확인하세요.',
+    )
+  return data
+}
 submit('#login-form', async (body) => {
   await api('/api/login', body)
+  await confirmLogin()
   location.assign('/calculator')
 })
-submit('#invite-form', async (body, form) => {
+function showInvitation(data) {
+  invitation = data
+  $('#invite-form [name=email]').value = data.email
+  $('#invite-form [name=password]').value = ''
+  $('#invite-form [name=confirm]').value = ''
+  $('#invitation-expiry').textContent =
+    `계정 설정: ${new Date(data.expires).toLocaleString('ko-KR')}까지. 시간이 지나면 원래 링크·코드를 다시 여세요.`
+  $('#invitation-code-panel').hidden = true
+  $('#access-panel').hidden = true
+  scrollToPanel('#invite-panel')
+}
+async function beginInvitation(token) {
+  const data = await api('/api/begin-invite', { token })
+  // Only discard the URL secret after the server has stored an HttpOnly continuation cookie.
+  history.replaceState(null, '', '/')
+  $('#invitation-code-form').reset()
+  showInvitation(data)
+}
+submit('#invitation-code-form', (body) => beginInvitation(body.token.trim()))
+submit('#invite-form', async (body) => {
+  if (!invitation) throw Error('원래 초대 링크나 코드를 다시 여세요.')
   if (body.password !== body.confirm)
     throw Error('비밀번호가 일치하지 않습니다.')
   await api('/api/accept-invite', {
-    token: invitation,
     email: body.email,
     password: body.password,
   })
+  await confirmLogin()
   invitation = null
-  form.reset()
-  $('#invite-panel').hidden = true
-  feedback('계정이 활성화되었습니다. 새 비밀번호로 로그인하세요.')
-  scrollToPanel('#access-panel')
+  $('#invite-form').reset()
+  location.replace('/calculator')
 })
 async function loadUsers() {
+  const id = session?.user.id
   const data = await api('/api/admin/users')
+  if (!session || session.user.id !== id) return
   const list = $('#user-list')
   list.replaceChildren()
   for (const user of data.users) {
@@ -685,143 +845,253 @@ async function loadUsers() {
     for (const text of [
       user.email,
       user.role === 'owner' ? 'Super Admin' : 'Member',
-      !user.active ? 'Revoked' : user.activated ? 'Allowed' : 'Invited',
+      {
+        active: 'Active',
+        revoked: 'Revoked',
+        invited: 'Invited',
+        expired: 'Invitation expired',
+      }[user.status],
     ]) {
       const td = document.createElement('td')
       td.textContent = text
       row.append(td)
     }
     const action = document.createElement('td')
-    if (user.role !== 'owner' && user.active) {
-      const button = document.createElement('button')
-      button.textContent = 'Revoke access'
-      button.setAttribute('aria-label', `Revoke ${user.email}`)
-      button.addEventListener('click', async () => {
-        const input = $('#invite-user-form input[name=currentPassword]')
-        if (!input.value) {
-          input.focus()
-          return feedback(
-            'Admin Password에 현재 비밀번호를 입력한 뒤 회수하세요.',
-            true,
+    if (user.role !== 'owner') {
+      function actionButton(label, name, work, confirmation) {
+        const button = document.createElement('button')
+        button.textContent = label
+        button.setAttribute('aria-label', `${name} ${user.email}`)
+        button.addEventListener('click', async () => {
+          const input = $('#invite-user-form [name=currentPassword]')
+          if (!input.value) {
+            input.focus({ preventScroll: true })
+            return feedback(
+              'Admin Password에 현재 로그인한 관리자 본인의 비밀번호를 입력하세요.',
+              true,
+            )
+          }
+          if (confirmation && !confirm(confirmation)) return
+          button.disabled = true
+          try {
+            await work(input.value)
+            input.value = ''
+            await loadUsers()
+          } catch (e) {
+            feedback(e.message, true)
+          } finally {
+            button.disabled = false
+          }
+        })
+        action.append(button)
+      }
+      if (user.active)
+        actionButton(
+          'Revoke access',
+          'Revoke',
+          async (currentPassword) => {
+            await api('/api/admin/revoke', { id: user.id, currentPassword })
+            feedback('접근 권한과 세션을 회수했습니다.')
+          },
+          `${user.email}의 접근 권한과 모든 기존 세션을 회수할까요?`,
+        )
+      const active = user.status === 'active'
+      actionButton(
+        active ? 'Reset account' : 'Reissue invitation',
+        active ? 'Reset' : 'Reissue',
+        async (currentPassword) => {
+          const data = await api(
+            active ? '/api/admin/reset' : '/api/admin/invite',
+            {
+              ...(active ? { id: user.id } : { email: user.email }),
+              currentPassword,
+            },
           )
-        }
-        if (!confirm(`${user.email}의 접근 권한과 기존 세션을 회수할까요?`))
-          return
-        button.disabled = true
-        try {
-          await api('/api/admin/revoke', {
-            id: user.id,
-            currentPassword: input.value,
-          })
-          input.value = ''
-          await loadUsers()
-          feedback('접근 권한과 세션을 회수했습니다.')
-        } catch (e) {
-          feedback(e.message, true)
-        } finally {
-          button.disabled = false
-        }
-      })
-      action.append(button)
+          showIssuedInvitation(data)
+        },
+        active
+          ? `${user.email}의 기존 비밀번호와 모든 세션을 폐기하고 재설정 초대를 만들까요?`
+          : `새 초대를 만들면 ${user.email}의 이전 링크는 폐기됩니다. 계속할까요?`,
+      )
     } else action.textContent = '—'
     row.append(action)
     list.append(row)
   }
 }
+function showIssuedInvitation(data) {
+  $('#invitation-link').value = data.url
+  $('#invitation-code').value = data.code
+  $('#invitation-result').hidden = false
+  feedback(
+    '48시간 유효한 일회용 초대를 만들었습니다. 링크·코드를 해당 사용자에게 직접 전달하세요.',
+  )
+}
 submit('#invite-user-form', async (body, form) => {
   const data = await api('/api/admin/invite', body)
-  $('#invitation-link').value = data.url
-  $('#invitation-result').hidden = false
+  showIssuedInvitation(data)
   form.querySelector('[name=currentPassword]').value = ''
   await loadUsers()
-  feedback('48시간 유효한 일회용 초대를 만들었습니다.')
 })
-$('#refresh-users').addEventListener('click', () =>
-  loadUsers().catch((e) => feedback(e.message, true)),
-)
-$('#copy-invitation').addEventListener('click', async () => {
+async function checkSharing() {
+  const id = session?.user.id,
+    button = $('#check-sharing')
+  button.disabled = true
+  $('#sharing-state').textContent = 'Checking…'
   try {
-    await navigator.clipboard.writeText($('#invitation-link').value)
-    feedback('초대 링크를 복사했습니다.')
-  } catch {
-    $('#invitation-link').select()
-    feedback('링크를 선택했습니다. 복사해서 안전하게 전달하세요.')
+    const data = await api('/api/admin/sharing')
+    if (!session || session.user.id !== id) return
+    $('#sharing-origin').value = data.origin
+    $('#sharing-state').textContent = {
+      ready: 'Ready',
+      local: 'Local only',
+      blocked: 'Blocked',
+      mismatch: 'Wrong server',
+      unavailable: 'Unavailable',
+    }[data.state]
+    $('#sharing-panel').dataset.state = data.state
+    $('#sharing-message').textContent = data.message
+  } catch (e) {
+    $('#sharing-state').textContent = 'Check failed'
+    feedback(e.message, true)
+  } finally {
+    button.disabled = false
   }
-})
-$('#manage-access').addEventListener('click', () => {
+}
+async function openManagement() {
   scrollToPanel('#admin-panel')
-  loadUsers().catch((e) => feedback(e.message, true))
+  await Promise.all([loadUsers(), checkSharing()])
+}
+$('#check-sharing').addEventListener('click', () => void checkSharing())
+$('#refresh-users').addEventListener('click', () => {
+  Promise.all([loadUsers(), checkSharing()]).catch((e) =>
+    feedback(e.message, true),
+  )
 })
+for (const [button, input] of [
+  ['#copy-invitation', '#invitation-link'],
+  ['#copy-code', '#invitation-code'],
+]) {
+  $(button).addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText($(input).value)
+      feedback('복사했습니다. 해당 사용자에게만 안전하게 전달하세요.')
+    } catch {
+      $(input).select()
+      feedback('선택한 내용을 복사해서 안전하게 전달하세요.')
+    }
+  })
+}
+$('#manage-access').addEventListener('click', () =>
+  openManagement().catch((e) => feedback(e.message, true)),
+)
 submit('#password-form', async (body, form) => {
   if (body.newPassword !== body.confirm)
     throw Error('비밀번호가 일치하지 않습니다.')
   await api('/api/change-password', body)
   form.reset()
+  channel?.postMessage('logout')
   location.replace('/?changed=1')
 })
 $('#logout').addEventListener('click', async () => {
   try {
     await api('/api/logout', {})
-    new BroadcastChannel('ivc-session').postMessage('logout')
-    location.replace('/')
+    channel?.postMessage('logout')
+    location.replace('/' + location.hash)
   } catch (e) {
     feedback(e.message, true)
   }
 })
-async function initialize() {
-  const hash = new URLSearchParams(location.hash.slice(1))
-  invitation = hash.get('invite')
-  if (invitation) {
-    history.replaceState(null, '', '/')
-    scrollToPanel('#invite-panel')
-  }
+async function checkSession() {
+  const version = ++sessionVersion
   try {
-    session = await api('/api/session')
-  } catch {
-    session = null
-  }
-  if (session) {
+    const data = await readSessionData()
+    if (version !== sessionVersion) return
+    if (session && session.user.id !== data.user.id) {
+      location.reload()
+      return
+    }
+    session = data
     for (const el of document.querySelectorAll(
       '.login-trigger,.hero-actions,.access-note',
     ))
       el.hidden = true
     $('.workspace-entry').hidden = false
-    $('#signed-in').textContent = session.user.email
+    $('#access-panel').hidden = true
+    $('#invitation-code-panel').hidden = true
+    $('#signed-in').textContent = data.user.email
+    $('#admin-identity').value = data.user.email
     $('#logout').hidden = false
     $('#password-panel').hidden = false
-    if (new URLSearchParams(location.search).has('account'))
-      scrollToPanel('#password-panel')
-    if (session.user.role === 'owner') {
-      $('#manage-access').hidden = false
-      if (new URLSearchParams(location.search).has('manage')) {
-        scrollToPanel('#admin-panel')
-        await loadUsers()
-      }
-    }
-  } else if (new URLSearchParams(location.search).has('changed')) {
-    feedback('비밀번호를 변경했습니다. 다시 로그인하세요.')
-    scrollToPanel('#access-panel')
-  } else if (new URLSearchParams(location.search).has('expired')) {
-    feedback(
-      '세션이 만료되었거나 접근 권한이 변경되었습니다. 다시 로그인하세요.',
-    )
-    scrollToPanel('#access-panel')
+    $('#manage-access').hidden = data.user.role !== 'owner'
+  } catch (error) {
+    if (error.status !== 401) throw error
+    if (session) clearSession()
   }
 }
-initialize().catch(() =>
-  feedback('서버에 연결하지 못했습니다. 잠시 후 새로고침하세요.', true),
-)
+channel?.addEventListener('message', () => {
+  clearSession()
+  $('#access-panel').hidden = false
+  feedback('로그인 상태가 변경되었습니다. 다시 로그인하세요.')
+})
+window.addEventListener('focus', () => {
+  checkSession().catch((e) => feedback(e.message, true))
+})
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) location.reload()
+})
+setInterval(() => {
+  if (document.visibilityState === 'visible' && session)
+    checkSession().catch((e) => feedback(e.message, true))
+}, 20_000)
+async function initialize() {
+  await checkSession()
+  const token = new URLSearchParams(location.hash.slice(1)).get('invite')
+  if (session) {
+    if (token)
+      feedback(
+        '이미 로그인되어 있습니다. 초대받은 계정으로 시작하려면 먼저 Log out을 누르세요.',
+        true,
+      )
+    if (new URLSearchParams(location.search).has('account'))
+      scrollToPanel('#password-panel')
+    if (
+      session.user.role === 'owner' &&
+      new URLSearchParams(location.search).has('manage')
+    )
+      await openManagement()
+  } else if (token) await beginInvitation(token)
+  else {
+    const resumed = await api('/api/invitation')
+    if (resumed.invitation) return showInvitation(resumed.invitation)
+    if (new URLSearchParams(location.search).has('changed')) {
+      feedback('비밀번호를 변경했습니다. 다시 로그인하세요.')
+      scrollToPanel('#access-panel')
+    } else if (new URLSearchParams(location.search).has('expired')) {
+      feedback(
+        '세션이 만료되었거나 접근 권한이 변경되었습니다. 다시 로그인하세요.',
+      )
+      scrollToPanel('#access-panel')
+    }
+  }
+}
+initialize().catch((e) => {
+  feedback(e.message, true)
+  if (!session) scrollToPanel('#access-panel')
+})
 ```
 
 <a id="source-6"></a>
 
 ## server/gateway/response.js
 
-원본: [server/gateway/response.js](../../server/gateway/response.js) · 31줄 · SHA-256: `d932d11ed9d8eb68022d83f6f842bf02e5ce79298ab7915f10fb2f13bdb04dc3`
+원본: [server/gateway/response.js](../../server/gateway/response.js) · 37줄 · SHA-256: `84ef510e88af45b38a84311b0b889e486094099b5efd9a704f250f468cb7efd4`
 
 ```text
 /** Never treat an empty/HTML proxy response as successful authentication. */
 export async function responseData(response, path) {
+  function failure(message, code) {
+    return Object.assign(new Error(message), { status: response.status, code })
+  }
   const text = await response.text()
   let data
   if (text.trim()) {
@@ -832,21 +1102,24 @@ export async function responseData(response, path) {
     }
   }
   if (!response.ok) {
-    if (data && typeof data.error === 'string') throw Error(data.error)
+    if (data && typeof data.error === 'string')
+      throw failure(data.error, data.code)
     if (
       response.status === 401 &&
       path === '/api/login' &&
       response.headers.get('x-ivc-response') === 'json'
     )
-      throw Error('이메일 또는 비밀번호를 확인하세요. (HTTP 401)')
+      throw failure('이메일 또는 비밀번호를 확인하세요. (HTTP 401)')
     if (response.status === 429)
-      throw Error('로그인 시도가 많습니다. 잠시 후 다시 시도하세요. (HTTP 429)')
-    throw Error(
+      throw failure(
+        '로그인 시도가 많습니다. 잠시 후 다시 시도하세요. (HTTP 429)',
+      )
+    throw failure(
       `로그인 서버의 응답을 확인할 수 없습니다. Codespaces 포트 접근 권한과 서버 실행 상태를 확인하세요. (HTTP ${response.status})`,
     )
   }
   if (!data || typeof data !== 'object' || Array.isArray(data))
-    throw Error(
+    throw failure(
       `서버가 비어 있거나 올바르지 않은 응답을 보냈습니다. 새로고침 후 다시 시도하세요. (HTTP ${response.status})`,
     )
   return data
@@ -857,7 +1130,7 @@ export async function responseData(response, path) {
 
 ## server/gateway/welcome.css
 
-원본: [server/gateway/welcome.css](../../server/gateway/welcome.css) · 600줄 · SHA-256: `9c70190180c4f4774d836c9c59db268cbdb80d2da99aea746f426156bd353985`
+원본: [server/gateway/welcome.css](../../server/gateway/welcome.css) · 643줄 · SHA-256: `aa2b4a2486535af1b02e5ce9b71b1ada3be137f84ab5789f90fe3c3275d1dda1`
 
 ```css
 :root {
@@ -1459,6 +1732,49 @@ footer {
   * {
     scroll-behavior: auto !important;
   }
+}
+.sharing-card {
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid #d9e2df;
+  background: #f5f8f7;
+  border-radius: 10px;
+}
+.sharing-card .admin-title {
+  margin-bottom: 12px;
+}
+.sharing-card p {
+  line-height: 1.7;
+  font-size: 14px;
+}
+.sharing-card details {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.sharing-card summary {
+  cursor: pointer;
+}
+#sharing-state {
+  font-size: 12px;
+  margin-left: 10px;
+  font-weight: 500;
+}
+.sharing-card[data-state='ready'] {
+  border-color: #6d998b;
+}
+.sharing-card[data-state='blocked'],
+.sharing-card[data-state='unavailable'],
+.sharing-card[data-state='mismatch'] {
+  border-color: #b99171;
+}
+#invitation-result input {
+  font-family: ui-monospace, monospace;
+  min-width: 0;
+}
+.user-table td:last-child button {
+  margin: 3px;
+  font-size: 12px;
+  padding: 8px;
 }
 ```
 

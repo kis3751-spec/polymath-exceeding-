@@ -739,11 +739,18 @@ test('empty and HTML intermediary responses cannot produce a false login or JSON
 
 test('dedicated auth namespace shares authorization, CSRF and cookie semantics with legacy routes', async () => {
   const status = await request('/ivc-auth/status')
-  assert.deepEqual(await status.json(), {
-    service: 'IVC',
-    api: '/ivc-auth',
-    version: 'auth-v3',
-  })
+  const data = await status.json()
+  assert.match(data.instance, /^[a-f0-9-]{36}$/)
+  assert.deepEqual(
+    { ...data, instance: undefined },
+    {
+      service: 'IVC',
+      api: '/ivc-auth',
+      version: 'auth-v4',
+      accessControl: 'invite-only',
+      instance: undefined,
+    },
+  )
   assert.equal((await request('/ivc-auth/admin/users')).status, 401)
   app.store.run('DELETE FROM limits')
   const login = await request('/ivc-auth/login', {

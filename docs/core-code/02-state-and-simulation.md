@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `ef2c972907422790597f4aee74cacab02b9add325b60e5a5ce528c25d9fbd4d6`
+소스 묶음 SHA-256: `d4df5b791fdd25a60a9d1de554c30b0d1126fe87b40a44142037cec49e0eb136`
 
 ## 다른 코드 묶음
 
@@ -36,19 +36,21 @@
 - [server/app.mjs](#source-9) · [저장소 원본](../../server/app.mjs)
 - [server/start.mjs](#source-10) · [저장소 원본](../../server/start.mjs)
 - [server/runtime-config.mjs](#source-11) · [저장소 원본](../../server/runtime-config.mjs)
-- [server/setup.mjs](#source-12) · [저장소 원본](../../server/setup.mjs)
-- [server/dev.mjs](#source-13) · [저장소 원본](../../server/dev.mjs)
-- [src/equation-count.ts](#source-14) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-15) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-16) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-17) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-18) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-19) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-20) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-21) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-22) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-23) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-24) · [저장소 원본](../../src/App.tsx)
+- [server/sharing.mjs](#source-12) · [저장소 원본](../../server/sharing.mjs)
+- [scripts/share-codespaces.mjs](#source-13) · [저장소 원본](../../scripts/share-codespaces.mjs)
+- [server/setup.mjs](#source-14) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-15) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-16) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-17) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-18) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-19) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-20) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-21) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-22) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-23) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-24) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-25) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-26) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -776,7 +778,7 @@ export function accountStorageKey(key: string) {
 
 ## server/store.mjs
 
-원본: [server/store.mjs](../../server/store.mjs) · 298줄 · SHA-256: `4dced51691328a159f6d66a0add7111cc4127009b9fa635834e6ff4778cb76b9`
+원본: [server/store.mjs](../../server/store.mjs) · 364줄 · SHA-256: `5b42333188cd1fee316461990495311fb22c3404195e19352913e8157c672c39`
 
 ```javascript
 import { DatabaseSync } from 'node:sqlite'
@@ -813,6 +815,8 @@ async function derive(...args) {
 export const digest = (value) =>
   createHash('sha256').update(value).digest('hex')
 export const secret = () => randomBytes(32).toString('base64url')
+const validSecret = (value) =>
+  typeof value === 'string' && /^[\w-]{43}$/.test(value)
 export const normalizeEmail = (value) =>
   typeof value === 'string' ? value.trim().toLowerCase() : ''
 export const validEmail = (value) =>
@@ -870,6 +874,7 @@ export class AccessStore {
       CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), csrf TEXT NOT NULL, created INTEGER NOT NULL, touched INTEGER NOT NULL, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS invites (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS invite_flows (hash TEXT PRIMARY KEY, invite_hash TEXT NOT NULL REFERENCES invites(hash) ON DELETE CASCADE, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, time INTEGER NOT NULL, actor TEXT, action TEXT NOT NULL, target TEXT);
       CREATE INDEX IF NOT EXISTS session_user ON sessions(user_id);`)
@@ -970,6 +975,7 @@ export class AccessStore {
     if (
       !row ||
       row.active !== 1 ||
+      !row.password ||
       row.expires <= now ||
       row.touched + 30 * 60_000 <= now
     ) {
@@ -1000,12 +1006,31 @@ export class AccessStore {
     )
     return { token, csrf }
   }
+  issueInvite(user, actor, action = 'member.invite') {
+    this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)
+    this.run('DELETE FROM sessions WHERE user_id=?', user.id)
+    this.run('DELETE FROM invites WHERE user_id=?', user.id)
+    const token = secret()
+    this.run(
+      'INSERT INTO invites VALUES(?,?,?)',
+      digest(token),
+      user.id,
+      this.now() + 48 * 3600_000,
+    )
+    this.audit(actor, action, user.id)
+    return token
+  }
   invite(email, actor) {
+    email = normalizeEmail(email)
+    if (!validEmail(email)) throw Error('올바른 이메일을 입력하세요.')
     return this.transaction(() => {
       let user = this.byEmail(email)
       if (user?.role === 'owner')
         throw Error('최고 관리자 계정은 변경할 수 없습니다.')
-      if (user?.active && user.password) throw Error('이미 허용된 계정입니다.')
+      if (user?.active && user.password)
+        throw Error(
+          '이미 활성화된 계정입니다. 비밀번호 재설정은 Reset account를 사용하세요.',
+        )
       if (!user) {
         const id = randomUUID()
         this.run(
@@ -1019,47 +1044,90 @@ export class AccessStore {
         )
         user = this.user(id)
       }
-      // Re-enabling requires a new one-use invitation and new password.
-      this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)
-      this.run('DELETE FROM sessions WHERE user_id=?', user.id)
-      this.run('DELETE FROM invites WHERE user_id=?', user.id)
-      const token = secret()
-      this.run(
-        'INSERT INTO invites VALUES(?,?,?)',
-        digest(token),
-        user.id,
-        this.now() + 48 * 3600_000,
-      )
-      this.audit(actor, 'member.invite', user.id)
-      return token
+      return this.issueInvite(user, actor)
     })
   }
-  async accept(token, email, password) {
-    if (!/^[\w-]{43}$/.test(token ?? '') || !validPassword(password))
-      return false
+  resetInvite(id, actor) {
+    return this.transaction(() => {
+      const user = this.user(id)
+      if (!user || user.role !== 'member' || id === this.owner())
+        throw Error('재설정할 수 없는 계정입니다.')
+      return this.issueInvite(user, actor, 'member.reset')
+    })
+  }
+  validInviteHash(hash) {
+    const row = this.query(
+      'SELECT i.*,u.email,u.active,u.role FROM invites i JOIN users u ON u.id=i.user_id WHERE i.hash=?',
+      hash,
+    )
+    return row &&
+      row.expires > this.now() &&
+      row.active === 1 &&
+      row.role === 'member'
+      ? row
+      : null
+  }
+  inviteInfo(token) {
+    if (!validSecret(token)) return null
+    return this.validInviteHash(digest(token))
+  }
+  beginInvite(token) {
+    const row = this.inviteInfo(token)
+    if (!row) return null
+    this.run('DELETE FROM invite_flows WHERE expires<=?', this.now())
+    const flow = secret(),
+      expires = Math.min(row.expires, this.now() + 15 * 60_000)
+    this.run(
+      'INSERT INTO invite_flows VALUES(?,?,?)',
+      digest(flow),
+      row.hash,
+      expires,
+    )
+    return { token: flow, email: row.email, expires }
+  }
+  flowInfo(flow) {
+    if (!validSecret(flow)) return null
+    const row = this.query(
+      'SELECT * FROM invite_flows WHERE hash=?',
+      digest(flow),
+    )
+    if (!row || row.expires <= this.now()) return null
+    const invite = this.validInviteHash(row.invite_hash)
+    return invite ? { ...invite, flowExpires: row.expires } : null
+  }
+  async accept(token, email, password, withSession = false) {
+    if (!validSecret(token)) return false
+    return this.activateInvite(
+      digest(token),
+      email,
+      password,
+      undefined,
+      withSession,
+    )
+  }
+  async acceptFlow(flow, email, password, withSession = false) {
+    const row = this.flowInfo(flow)
+    if (!row) return false
+    return this.activateInvite(row.hash, email, password, flow, withSession)
+  }
+  async activateInvite(hash, email, password, flow, withSession) {
+    if (!validPassword(password)) return false
     const encoded = await hashPassword(password)
     return this.transaction(() => {
-      const invite = this.query(
-        'SELECT i.*,u.email,u.active,u.role FROM invites i JOIN users u ON u.id=i.user_id WHERE i.hash=?',
-        digest(token),
-      )
+      const row = this.validInviteHash(hash)
       if (
-        !invite ||
-        invite.expires <= this.now() ||
-        !invite.active ||
-        invite.role !== 'member' ||
-        invite.email !== normalizeEmail(email)
+        !row ||
+        row.email !== normalizeEmail(email) ||
+        (flow && !this.flowInfo(flow))
       )
         return false
-      this.run(
-        'UPDATE users SET password=? WHERE id=?',
-        encoded,
-        invite.user_id,
-      )
-      this.run('DELETE FROM invites WHERE user_id=?', invite.user_id)
-      this.run('DELETE FROM sessions WHERE user_id=?', invite.user_id)
-      this.audit(invite.user_id, 'member.activate', invite.user_id)
-      return true
+      this.run('UPDATE users SET password=? WHERE id=?', encoded, row.user_id)
+      this.run('DELETE FROM invites WHERE user_id=?', row.user_id)
+      this.run('DELETE FROM sessions WHERE user_id=?', row.user_id)
+      this.audit(row.user_id, 'member.activate', row.user_id)
+      // Issue within the same transaction: a later reset/revocation deletes this
+      // session even if the HTTP response has not been sent yet.
+      return withSession ? this.createSession(this.user(row.user_id)) : true
     })
   }
   revoke(id, actor) {
@@ -1083,11 +1151,12 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 406줄 · SHA-256: `e256b390afc352c1360fa6974e6d39afa4a8c822475011de6aee8f48df2c61c3`
+원본: [server/app.mjs](../../server/app.mjs) · 527줄 · SHA-256: `e8c104d5a3a821c494284fdb677058f39981ed902650d3d5e9c84c001119eee0`
 
 ```javascript
 import { createServer } from 'node:http'
 import { acceptedHost, proxyRewrittenOrigin } from './runtime-config.mjs'
+import { AUTH_VERSION, probePublicAccess } from './sharing.mjs'
 import { readFile, realpath } from 'node:fs/promises'
 import { resolve, sep, extname } from 'node:path'
 import {
@@ -1131,8 +1200,44 @@ export async function createAccessServer(input) {
   if (!store.owner())
     throw Error('먼저 npm run auth:setup으로 최고 관리자를 설정하세요.')
   const dummy = await hashPassword('unused-' + crypto.randomUUID())
+  const instance = crypto.randomUUID()
+  let sharingCheck = null,
+    sharingAt = 0,
+    sharingPending = false
+  function sharing(force = false) {
+    if (
+      (!sharingCheck || force || Date.now() - sharingAt > 10_000) &&
+      !sharingPending
+    ) {
+      sharingAt = Date.now()
+      sharingPending = true
+      sharingCheck = probePublicAccess(cfg.origin, instance, input.fetchSharing)
+        .then((result) => ({
+          ...result,
+          origin: cfg.origin,
+          codespaces: !!cfg.codespaces,
+          checkedAt: Date.now(),
+        }))
+        .finally(() => {
+          sharingPending = false
+        })
+    }
+    return sharingCheck
+  }
   const cookieName = cfg.secure ? '__Host-ivc-session' : 'ivc-local-session'
   const entryCookie = cfg.secure ? '__Host-ivc-entry' : 'ivc-local-entry'
+  const flowCookie = cfg.secure
+    ? '__Host-ivc-invitation'
+    : 'ivc-local-invitation'
+  const invitationCookie = (token = '', remove = false) =>
+    `${flowCookie}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 900}`
+  function cookieValue(req, name) {
+    const values = (req.headers.cookie ?? '')
+      .split(';')
+      .map((x) => x.trim())
+      .filter((x) => x.startsWith(name + '='))
+    return values.length === 1 ? values[0].slice(name.length + 1) : null
+  }
   const cookie = (token, remove = false) =>
     `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 28800}`
   function readSession(req) {
@@ -1172,8 +1277,8 @@ export async function createAccessServer(input) {
       })
       res.end(body)
     }
-    function fail(code, message) {
-      json(code, { error: message })
+    function fail(code, message, reason) {
+      json(code, { error: message, ...(reason ? { code: reason } : {}) })
     }
     try {
       if (!acceptedHost(req, cfg)) return fail(421, '접속 주소를 확인하세요.')
@@ -1198,9 +1303,11 @@ export async function createAccessServer(input) {
         '/api/login',
         '/api/logout',
         '/api/accept-invite',
+        '/api/begin-invite',
         '/api/change-password',
         '/api/admin/invite',
         '/api/admin/revoke',
+        '/api/admin/reset',
       ])
       if (req.method === 'POST' && authActions.has(path)) {
         const action = path.slice('/api/'.length)
@@ -1315,18 +1422,43 @@ export async function createAccessServer(input) {
           store.audit(current.id, 'login.success')
           return json(200, { ok: true })
         }
-        if (path === '/api/accept-invite') {
+        if (path === '/api/begin-invite' || path === '/api/accept-invite') {
           if (!rate('invite-ip:' + ip, 15) || !rate('invite-global', 60))
             return fail(429, '시도가 많습니다. 잠시 후 다시 시도하세요.')
+          if (user)
+            return fail(
+              409,
+              '이미 로그인되어 있습니다. 초대받은 계정을 설정하려면 먼저 로그아웃하세요.',
+              'ALREADY_SIGNED_IN',
+            )
+          if (path === '/api/begin-invite') {
+            const flow = store.beginInvite(body.token)
+            if (!flow)
+              return fail(
+                410,
+                '초대가 만료·사용·회수되었거나 새 초대로 교체되었습니다. 관리자에게 새 초대를 요청하세요.',
+                'INVITATION_EXPIRED',
+              )
+            res.setHeader('Set-Cookie', invitationCookie(flow.token))
+            return json(200, { email: flow.email, expires: flow.expires })
+          }
           if (!validEmail(email) || !validPassword(body.password))
             return fail(400, '이메일과 12~128자 비밀번호를 입력하세요.')
-          const ok = await store.accept(body.token, email, body.password)
-          return ok
-            ? json(200, { ok: true })
-            : fail(
-                400,
-                '초대가 유효하지 않거나 만료되었습니다. 관리자에게 새 초대를 요청하세요.',
-              )
+          const flow = cookieValue(req, flowCookie)
+          const session = body.token
+            ? await store.accept(body.token, email, body.password, true)
+            : await store.acceptFlow(flow, email, body.password, true)
+          if (!session)
+            return fail(
+              body.token ? 400 : 410,
+              '초대가 유효하지 않거나 만료되었습니다. 링크를 다시 열거나 관리자에게 새 초대를 요청하세요.',
+              'INVITATION_EXPIRED',
+            )
+          res.setHeader('Set-Cookie', [
+            cookie(session.token),
+            invitationCookie('', true),
+          ])
+          return json(200, { ok: true })
         }
         if (!user) return fail(401, '로그인이 필요합니다.')
         if (req.headers['x-csrf-token'] !== user.csrf)
@@ -1371,13 +1503,34 @@ export async function createAccessServer(input) {
             res.setHeader('Set-Cookie', cookie('', true))
             return json(200, { ok: true })
           }
-          if (path === '/api/admin/invite') {
-            if (!validEmail(email))
+          if (path === '/api/admin/invite' || path === '/api/admin/reset') {
+            if (path === '/api/admin/invite' && !validEmail(email))
               return fail(400, '올바른 이메일을 입력하세요.')
+            // GitHub's private port gate runs before IVC. Do not issue unusable Codespaces links.
+            if (cfg.codespaces && !(await sharing()).reachable)
+              return fail(
+                409,
+                '다른 사용자에게 공유할 수 없는 주소입니다. Sharing에서 포트를 Public으로 바꾼 뒤 Check connection을 누르세요.',
+                'SHARING_UNAVAILABLE',
+              )
+            const fresh = readSession(req)
+            if (
+              !fresh ||
+              !store.isOwner(fresh) ||
+              fresh.password !== user.password
+            )
+              return fail(401, '다시 로그인하세요.')
             try {
-              const token = store.invite(email, user.id)
+              const token =
+                path === '/api/admin/reset'
+                  ? store.resetInvite(
+                      typeof body.id === 'string' ? body.id : '',
+                      user.id,
+                    )
+                  : store.invite(email, user.id)
               return json(201, {
                 url: `${cfg.origin}/#invite=${token}`,
+                code: token,
                 expiresHours: 48,
               })
             } catch (e) {
@@ -1404,8 +1557,27 @@ export async function createAccessServer(input) {
         return json(200, {
           service: 'IVC',
           api: '/ivc-auth',
-          version: 'auth-v3',
+          version: AUTH_VERSION,
+          accessControl: 'invite-only',
+          instance,
         })
+      if (path === '/api/invitation') {
+        const token = cookieValue(req, flowCookie)
+        const flow = store.flowInfo(token)
+        if (!flow) {
+          if (token) res.setHeader('Set-Cookie', invitationCookie('', true))
+          return token
+            ? fail(
+                410,
+                '계정 설정 시간이 지났거나 초대가 변경되었습니다. 원래 링크나 초대 코드를 다시 여세요.',
+                'INVITATION_EXPIRED',
+              )
+            : json(200, { invitation: null })
+        }
+        return json(200, {
+          invitation: { email: flow.email, expires: flow.flowExpires },
+        })
+      }
       if (path === '/api/session')
         return user
           ? json(200, {
@@ -1417,16 +1589,33 @@ export async function createAccessServer(input) {
               csrf: user.csrf,
             })
           : fail(401, '로그인이 필요합니다.')
-      if (path === '/api/admin/users') {
+      if (path === '/api/admin/sharing' || path === '/api/admin/users') {
         if (!user) return fail(401, '로그인이 필요합니다.')
         if (!store.isOwner(user))
           return fail(403, '최고 관리자 권한이 필요합니다.')
+        if (path === '/api/admin/sharing') {
+          const result = await sharing(true)
+          const fresh = readSession(req)
+          if (!fresh || !store.isOwner(fresh))
+            return fail(401, '다시 로그인하세요.')
+          return json(200, result)
+        }
         return json(200, {
           users: store.db
             .prepare(
-              'SELECT id,email,role,active,created,password IS NOT NULL AS activated FROM users ORDER BY created',
+              'SELECT u.id,u.email,u.role,u.active,u.created,u.password IS NOT NULL AS activated,i.expires AS invitationExpires FROM users u LEFT JOIN invites i ON i.user_id=u.id ORDER BY u.created',
             )
-            .all(),
+            .all()
+            .map((row) => ({
+              ...row,
+              status: !row.active
+                ? 'revoked'
+                : row.activated
+                  ? 'active'
+                  : row.invitationExpires > store.now()
+                    ? 'invited'
+                    : 'expired',
+            })),
         })
       }
       if (path.startsWith('/api/')) return fail(404, '요청을 찾을 수 없습니다.')
@@ -1498,11 +1687,12 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 22줄 · SHA-256: `ea60b9b4df0094cad692ffb377fb5f91b350feda74c0c913a75fc5482234954c`
+원본: [server/start.mjs](../../server/start.mjs) · 23줄 · SHA-256: `5981d1975f412375d52d19a8fda96ba03382c0751b20263b934d913cc73d20cf`
 
 ```javascript
 import { runtimeConfig } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
+import { AUTH_VERSION } from './sharing.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
 const port = Number(at >= 0 ? args[at + 1] : (process.env.PORT ?? 5173))
@@ -1512,7 +1702,7 @@ const cfg = runtimeConfig(process.env, port)
 const { server } = await createAccessServer(cfg)
 server.listen(port, process.env.HOST ?? '127.0.0.1', () =>
   console.log(
-    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (auth-v3)\n로그인 후 계산기에 접속할 수 있습니다.`,
+    `IVC secure server: ${cfg.origin}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? '\n타인 초대 전: 새 터미널에서 npm run share:codespaces 또는 Ports → Port Visibility → Public' : ''}`,
   ),
 )
 server.on('error', (e) => {
@@ -1529,7 +1719,7 @@ server.on('error', (e) => {
 
 ## server/runtime-config.mjs
 
-원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 66줄 · SHA-256: `057a3139f81dc2c7704dccbfb3a5f9ebd5cd6e79844e26c108d8eb27e1fa757c`
+원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 67줄 · SHA-256: `89d53320807d188ae6e886a111c6d0a2008276cc3539fd1a2e4b61a7bc97bf4d`
 
 ```javascript
 import { resolve } from 'node:path'
@@ -1555,6 +1745,7 @@ export function runtimeConfig(env, port) {
     )
   return {
     origin,
+    codespaces,
     production: env.NODE_ENV === 'production',
     proxyHost: env.IVC_PROXY_HOST,
     // Codespaces replaces Host with an internal loopback authority.
@@ -1601,6 +1792,204 @@ export function proxyRewrittenOrigin(req, cfg) {
 ```
 
 <a id="source-12"></a>
+
+## server/sharing.mjs
+
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 97줄 · SHA-256: `4d6f3a900511f419b1e2b96cd9739eb468d05e8f7fdae6a5b2d243f8e5716dc4`
+
+```javascript
+import { isIP } from 'node:net'
+
+export const AUTH_VERSION = 'auth-v4'
+export function localOrigin(origin) {
+  const host = new URL(origin).hostname.replace(/^\[|\]$/g, '')
+  return (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === '::1' ||
+    (isIP(host) === 4 && host.startsWith('127.'))
+  )
+}
+
+/** Anonymous probe of the configured origin only; never follow a GitHub login redirect. */
+export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
+  if (localOrigin(origin))
+    return {
+      state: 'local',
+      reachable: false,
+      message:
+        '현재 주소는 이 컴퓨터에서만 열립니다. 다른 사람과 공유하려면 공개 HTTPS 주소가 필요합니다.',
+    }
+  try {
+    const response = await fetchImpl(new URL('/ivc-auth/status', origin), {
+      redirect: 'manual',
+      credentials: 'omit',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(6500),
+      headers: { Accept: 'application/json' },
+    })
+    if (response.status >= 300 && response.status < 400) {
+      await response.body?.cancel()
+      return {
+        state: 'blocked',
+        reachable: false,
+        status: response.status,
+        message:
+          '주소가 IVC 대신 다른 로그인 화면으로 이동합니다. Codespaces의 Ports → 5173 → Port Visibility를 Public으로 변경하세요. 다른 GitHub 계정으로 로그인하는 것만으로 Private 포트에 접근할 수는 없습니다.',
+      }
+    }
+    if (!response.ok) {
+      await response.body?.cancel()
+      return {
+        state: 'blocked',
+        reachable: false,
+        status: response.status,
+        message: `외부에서 IVC에 직접 접속하지 못했습니다(HTTP ${response.status}). 포트 Public 설정, 실행 중인 서버와 공유 주소를 확인하세요.`,
+      }
+    }
+    // Keep intermediary error pages bounded; no credential or response body is logged.
+    const reader = response.body?.getReader()
+    let size = 0
+    const chunks = []
+    if (reader)
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        size += value.length
+        if (size > 16384) {
+          await reader.cancel()
+          throw Error('response size')
+        }
+        chunks.push(value)
+      }
+    let data
+    try {
+      data = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    } catch {
+      return {
+        state: 'mismatch',
+        reachable: false,
+        message:
+          '공유 주소가 IVC 상태 응답을 반환하지 않습니다. GitHub 로그인 화면이나 다른 서버에 연결되는지 확인하세요.',
+      }
+    }
+    if (data.service !== 'IVC' || data.instance !== instance)
+      return {
+        state: 'mismatch',
+        reachable: false,
+        message:
+          '공유 주소가 현재 서버와 다릅니다. APP_ORIGIN과 포트에서 실행 중인 서버를 확인하세요.',
+      }
+    return {
+      state: 'ready',
+      reachable: true,
+      message:
+        '로그인하지 않은 외부 요청이 이 IVC 서버까지 도착했습니다. 계산기는 계속 IVC 로그인이 필요합니다.',
+    }
+  } catch {
+    return {
+      state: 'unavailable',
+      reachable: false,
+      message:
+        '공유 주소 연결을 확인하지 못했습니다. Codespace가 실행 중인지, 포트가 Public인지와 HTTPS 주소를 확인하세요.',
+    }
+  }
+}
+```
+
+<a id="source-13"></a>
+
+## scripts/share-codespaces.mjs
+
+원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 83줄 · SHA-256: `f2309ae346142b0d675a702d5d9e2a206c19eef942bfb75375d66aee348915e2`
+
+```javascript
+import { spawnSync } from 'node:child_process'
+import { pathToFileURL } from 'node:url'
+import { runtimeConfig } from '../server/runtime-config.mjs'
+import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
+
+/** Explicit operator action; never opens a port automatically at server startup. */
+export async function shareCodespaces(
+  env = process.env,
+  run = spawnSync,
+  fetchImpl = fetch,
+) {
+  const port = Number(env.PORT ?? 5173)
+  if (!Number.isInteger(port) || port < 1 || port > 65535)
+    throw Error('PORT는 유효한 포트 번호여야 합니다.')
+  const cfg = runtimeConfig(env, port)
+  if (!cfg.codespaces)
+    throw Error('이 명령은 실행 중인 Codespaces 터미널에서 사용하세요.')
+  if (!/^[a-zA-Z0-9-]+$/.test(env.CODESPACE_NAME))
+    throw Error('Codespace 이름을 확인하세요.')
+  const local = `http://127.0.0.1:${port}`
+  const options = {
+    redirect: 'manual',
+    credentials: 'omit',
+    signal: AbortSignal.timeout(4000),
+  }
+  let status
+  try {
+    const response = await fetchImpl(local + '/ivc-auth/status', options)
+    if (!response.ok) throw Error('status')
+    status = await response.json()
+    const protectedFile = await fetchImpl(local + '/solver.wasm', options)
+    await protectedFile.body?.cancel()
+    if (
+      status.service !== 'IVC' ||
+      status.version !== AUTH_VERSION ||
+      status.accessControl !== 'invite-only' ||
+      typeof status.instance !== 'string' ||
+      protectedFile.status !== 401
+    )
+      throw Error('guard')
+  } catch {
+    throw Error(
+      `${port} 포트에서 최신 IVC 보호 서버를 확인하지 못했습니다. 먼저 npm run dev -- --port ${port}를 실행하세요. 공개 설정은 변경하지 않았습니다.`,
+    )
+  }
+  const result = run(
+    'gh',
+    [
+      'codespace',
+      'ports',
+      'visibility',
+      `${port}:public`,
+      '--codespace',
+      env.CODESPACE_NAME,
+    ],
+    { stdio: 'inherit' },
+  )
+  if (result.error || result.status !== 0)
+    throw Error(
+      `GitHub에서 Public 설정을 적용하지 못했습니다. Ports → ${port} → Port Visibility → Public으로 변경하세요. 조직 정책이 제한하면 상시 HTTPS 서버에 배포해야 합니다.`,
+    )
+  const probe = await probePublicAccess(cfg.origin, status.instance, fetchImpl)
+  if (!probe.reachable)
+    throw Error(
+      probe.message +
+        ' 설정 반영 후 Manage Access → Check connection으로 다시 확인하세요.',
+    )
+  return cfg.origin
+}
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  try {
+    const origin = await shareCodespaces()
+    console.log(
+      `공유 연결 확인: ${origin}\nGitHub 로그인 없이 IVC 소개 화면에 도달합니다. Manage Access에서 초대 링크·코드를 만드세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
+    )
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 1
+  }
+}
+```
+
+<a id="source-14"></a>
 
 ## server/setup.mjs
 
@@ -1672,7 +2061,7 @@ try {
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-15"></a>
 
 ## server/dev.mjs
 
@@ -1686,7 +2075,7 @@ if (built.status !== 0) process.exit(built.status ?? 1)
 await import('./start.mjs')
 ```
 
-<a id="source-14"></a>
+<a id="source-16"></a>
 
 ## src/equation-count.ts
 
@@ -1727,7 +2116,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-17"></a>
 
 ## src/csv.ts
 
@@ -1750,7 +2139,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-18"></a>
 
 ## src/engine/sweep.ts
 
@@ -1941,7 +2330,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-19"></a>
 
 ## src/engine/branches.ts
 
@@ -2466,7 +2855,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-20"></a>
 
 ## src/engine/branch-events.ts
 
@@ -2549,7 +2938,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-21"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -3103,7 +3492,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-22"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -3180,7 +3569,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-23"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -3257,7 +3646,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-24"></a>
 
 ## src/engine/default-overview.ts
 
@@ -3383,7 +3772,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-25"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -3799,7 +4188,7 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-26"></a>
 
 ## src/App.tsx
 

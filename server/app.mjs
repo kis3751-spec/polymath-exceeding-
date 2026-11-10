@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
 import { acceptedHost, proxyRewrittenOrigin } from './runtime-config.mjs'
+import { AUTH_VERSION, probePublicAccess } from './sharing.mjs'
 import { readFile, realpath } from 'node:fs/promises'
 import { resolve, sep, extname } from 'node:path'
 import {
@@ -43,8 +44,44 @@ export async function createAccessServer(input) {
   if (!store.owner())
     throw Error('먼저 npm run auth:setup으로 최고 관리자를 설정하세요.')
   const dummy = await hashPassword('unused-' + crypto.randomUUID())
+  const instance = crypto.randomUUID()
+  let sharingCheck = null,
+    sharingAt = 0,
+    sharingPending = false
+  function sharing(force = false) {
+    if (
+      (!sharingCheck || force || Date.now() - sharingAt > 10_000) &&
+      !sharingPending
+    ) {
+      sharingAt = Date.now()
+      sharingPending = true
+      sharingCheck = probePublicAccess(cfg.origin, instance, input.fetchSharing)
+        .then((result) => ({
+          ...result,
+          origin: cfg.origin,
+          codespaces: !!cfg.codespaces,
+          checkedAt: Date.now(),
+        }))
+        .finally(() => {
+          sharingPending = false
+        })
+    }
+    return sharingCheck
+  }
   const cookieName = cfg.secure ? '__Host-ivc-session' : 'ivc-local-session'
   const entryCookie = cfg.secure ? '__Host-ivc-entry' : 'ivc-local-entry'
+  const flowCookie = cfg.secure
+    ? '__Host-ivc-invitation'
+    : 'ivc-local-invitation'
+  const invitationCookie = (token = '', remove = false) =>
+    `${flowCookie}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 900}`
+  function cookieValue(req, name) {
+    const values = (req.headers.cookie ?? '')
+      .split(';')
+      .map((x) => x.trim())
+      .filter((x) => x.startsWith(name + '='))
+    return values.length === 1 ? values[0].slice(name.length + 1) : null
+  }
   const cookie = (token, remove = false) =>
     `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 28800}`
   function readSession(req) {
@@ -84,8 +121,8 @@ export async function createAccessServer(input) {
       })
       res.end(body)
     }
-    function fail(code, message) {
-      json(code, { error: message })
+    function fail(code, message, reason) {
+      json(code, { error: message, ...(reason ? { code: reason } : {}) })
     }
     try {
       if (!acceptedHost(req, cfg)) return fail(421, '접속 주소를 확인하세요.')
@@ -110,9 +147,11 @@ export async function createAccessServer(input) {
         '/api/login',
         '/api/logout',
         '/api/accept-invite',
+        '/api/begin-invite',
         '/api/change-password',
         '/api/admin/invite',
         '/api/admin/revoke',
+        '/api/admin/reset',
       ])
       if (req.method === 'POST' && authActions.has(path)) {
         const action = path.slice('/api/'.length)
@@ -227,18 +266,43 @@ export async function createAccessServer(input) {
           store.audit(current.id, 'login.success')
           return json(200, { ok: true })
         }
-        if (path === '/api/accept-invite') {
+        if (path === '/api/begin-invite' || path === '/api/accept-invite') {
           if (!rate('invite-ip:' + ip, 15) || !rate('invite-global', 60))
             return fail(429, '시도가 많습니다. 잠시 후 다시 시도하세요.')
+          if (user)
+            return fail(
+              409,
+              '이미 로그인되어 있습니다. 초대받은 계정을 설정하려면 먼저 로그아웃하세요.',
+              'ALREADY_SIGNED_IN',
+            )
+          if (path === '/api/begin-invite') {
+            const flow = store.beginInvite(body.token)
+            if (!flow)
+              return fail(
+                410,
+                '초대가 만료·사용·회수되었거나 새 초대로 교체되었습니다. 관리자에게 새 초대를 요청하세요.',
+                'INVITATION_EXPIRED',
+              )
+            res.setHeader('Set-Cookie', invitationCookie(flow.token))
+            return json(200, { email: flow.email, expires: flow.expires })
+          }
           if (!validEmail(email) || !validPassword(body.password))
             return fail(400, '이메일과 12~128자 비밀번호를 입력하세요.')
-          const ok = await store.accept(body.token, email, body.password)
-          return ok
-            ? json(200, { ok: true })
-            : fail(
-                400,
-                '초대가 유효하지 않거나 만료되었습니다. 관리자에게 새 초대를 요청하세요.',
-              )
+          const flow = cookieValue(req, flowCookie)
+          const session = body.token
+            ? await store.accept(body.token, email, body.password, true)
+            : await store.acceptFlow(flow, email, body.password, true)
+          if (!session)
+            return fail(
+              body.token ? 400 : 410,
+              '초대가 유효하지 않거나 만료되었습니다. 링크를 다시 열거나 관리자에게 새 초대를 요청하세요.',
+              'INVITATION_EXPIRED',
+            )
+          res.setHeader('Set-Cookie', [
+            cookie(session.token),
+            invitationCookie('', true),
+          ])
+          return json(200, { ok: true })
         }
         if (!user) return fail(401, '로그인이 필요합니다.')
         if (req.headers['x-csrf-token'] !== user.csrf)
@@ -283,13 +347,34 @@ export async function createAccessServer(input) {
             res.setHeader('Set-Cookie', cookie('', true))
             return json(200, { ok: true })
           }
-          if (path === '/api/admin/invite') {
-            if (!validEmail(email))
+          if (path === '/api/admin/invite' || path === '/api/admin/reset') {
+            if (path === '/api/admin/invite' && !validEmail(email))
               return fail(400, '올바른 이메일을 입력하세요.')
+            // GitHub's private port gate runs before IVC. Do not issue unusable Codespaces links.
+            if (cfg.codespaces && !(await sharing()).reachable)
+              return fail(
+                409,
+                '다른 사용자에게 공유할 수 없는 주소입니다. Sharing에서 포트를 Public으로 바꾼 뒤 Check connection을 누르세요.',
+                'SHARING_UNAVAILABLE',
+              )
+            const fresh = readSession(req)
+            if (
+              !fresh ||
+              !store.isOwner(fresh) ||
+              fresh.password !== user.password
+            )
+              return fail(401, '다시 로그인하세요.')
             try {
-              const token = store.invite(email, user.id)
+              const token =
+                path === '/api/admin/reset'
+                  ? store.resetInvite(
+                      typeof body.id === 'string' ? body.id : '',
+                      user.id,
+                    )
+                  : store.invite(email, user.id)
               return json(201, {
                 url: `${cfg.origin}/#invite=${token}`,
+                code: token,
                 expiresHours: 48,
               })
             } catch (e) {
@@ -316,8 +401,27 @@ export async function createAccessServer(input) {
         return json(200, {
           service: 'IVC',
           api: '/ivc-auth',
-          version: 'auth-v3',
+          version: AUTH_VERSION,
+          accessControl: 'invite-only',
+          instance,
         })
+      if (path === '/api/invitation') {
+        const token = cookieValue(req, flowCookie)
+        const flow = store.flowInfo(token)
+        if (!flow) {
+          if (token) res.setHeader('Set-Cookie', invitationCookie('', true))
+          return token
+            ? fail(
+                410,
+                '계정 설정 시간이 지났거나 초대가 변경되었습니다. 원래 링크나 초대 코드를 다시 여세요.',
+                'INVITATION_EXPIRED',
+              )
+            : json(200, { invitation: null })
+        }
+        return json(200, {
+          invitation: { email: flow.email, expires: flow.flowExpires },
+        })
+      }
       if (path === '/api/session')
         return user
           ? json(200, {
@@ -329,16 +433,33 @@ export async function createAccessServer(input) {
               csrf: user.csrf,
             })
           : fail(401, '로그인이 필요합니다.')
-      if (path === '/api/admin/users') {
+      if (path === '/api/admin/sharing' || path === '/api/admin/users') {
         if (!user) return fail(401, '로그인이 필요합니다.')
         if (!store.isOwner(user))
           return fail(403, '최고 관리자 권한이 필요합니다.')
+        if (path === '/api/admin/sharing') {
+          const result = await sharing(true)
+          const fresh = readSession(req)
+          if (!fresh || !store.isOwner(fresh))
+            return fail(401, '다시 로그인하세요.')
+          return json(200, result)
+        }
         return json(200, {
           users: store.db
             .prepare(
-              'SELECT id,email,role,active,created,password IS NOT NULL AS activated FROM users ORDER BY created',
+              'SELECT u.id,u.email,u.role,u.active,u.created,u.password IS NOT NULL AS activated,i.expires AS invitationExpires FROM users u LEFT JOIN invites i ON i.user_id=u.id ORDER BY u.created',
             )
-            .all(),
+            .all()
+            .map((row) => ({
+              ...row,
+              status: !row.active
+                ? 'revoked'
+                : row.activated
+                  ? 'active'
+                  : row.invitationExpires > store.now()
+                    ? 'invited'
+                    : 'expired',
+            })),
         })
       }
       if (path.startsWith('/api/')) return fail(404, '요청을 찾을 수 없습니다.')

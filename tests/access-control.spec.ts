@@ -47,6 +47,18 @@ test('owner can invite, member activates and uses calculator; revocation locks a
 }) => {
   await logIn(page)
   await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+  await expect(page.locator('#sharing-state')).toHaveText('Local only')
+  await page
+    .locator('#admin-panel')
+    .screenshot({ path: '/tmp/ivc-sharing-desktop.png' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390)
+  await page
+    .locator('#admin-panel')
+    .screenshot({ path: '/tmp/ivc-sharing-mobile.png' })
+  await page.setViewportSize({ width: 1440, height: 1100 })
   const form = page.locator('#invite-user-form')
   await form.getByLabel('Allowed Email').fill('browser-member@example.test')
   await form.getByLabel('Admin Password').fill(owner.password)
@@ -56,13 +68,24 @@ test('owner can invite, member activates and uses calculator; revocation locks a
   expect(url).toContain('/#invite=')
   const memberContext = await browser.newContext({
     baseURL: new URL(url).origin,
+    storageState: { cookies: [], origins: [] },
+    ignoreHTTPSErrors: true,
   })
   const member = await memberContext.newPage()
   await member.goto(url)
   const activation = member.locator('#invite-form')
-  await activation
-    .getByLabel('Email', { exact: true })
-    .fill('browser-member@example.test')
+  await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
+    'browser-member@example.test',
+  )
+  await expect(activation.getByLabel('Email', { exact: true })).toHaveAttribute(
+    'readonly',
+    '',
+  )
+  await expect(member).toHaveURL(new URL(url).origin + '/')
+  await member.reload()
+  await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
+    'browser-member@example.test',
+  )
   await activation
     .getByLabel('New Password', { exact: true })
     .fill('Member-browser-password!')
@@ -70,15 +93,6 @@ test('owner can invite, member activates and uses calculator; revocation locks a
     .getByLabel('Confirm Password', { exact: true })
     .fill('Member-browser-password!')
   await activation.getByRole('button', { name: 'Activate account' }).click()
-  await expect(member.locator('#feedback')).toContainText('활성화')
-  const login = member.locator('#login-form')
-  await login
-    .getByLabel('Email', { exact: true })
-    .fill('browser-member@example.test')
-  await login
-    .getByLabel('Password', { exact: true })
-    .fill('Member-browser-password!')
-  await login.getByRole('button', { name: 'Log in', exact: true }).click()
   await expect(member.locator('.module-grid')).toBeVisible()
   await expect(
     member.getByRole('link', { name: 'Manage Access', exact: true }),
@@ -185,4 +199,154 @@ test('browser login remains protected when a local forwarder rewrites the Origin
   await expect(page.locator('.module-grid')).toBeVisible()
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(page).toHaveURL('/')
+})
+
+test('invitation code recovers a lost link, owner can reset an active account, and old credentials stop working', async ({
+  page,
+  browser,
+}) => {
+  await logIn(page)
+  await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+  await expect(page.locator('#sharing-state')).toHaveText('Local only')
+  const form = page.locator('#invite-user-form')
+  const email = 'code-member@example.test'
+  await form.getByLabel('Allowed Email').fill(email)
+  await form.getByLabel('Admin Password').fill(owner.password)
+  await form.getByRole('button', { name: 'Create invitation' }).click()
+  await expect(page.locator('#invitation-code')).toHaveValue(/^[\w-]{43}$/)
+  const code = await page.locator('#invitation-code').inputValue()
+  const memberContext = await browser.newContext({
+    baseURL: new URL(page.url()).origin,
+    storageState: { cookies: [], origins: [] },
+    ignoreHTTPSErrors: true,
+  })
+  const member = await memberContext.newPage()
+  await member.goto('/')
+  await member
+    .getByRole('button', { name: 'Log in to IVC', exact: true })
+    .click()
+  await member.getByRole('button', { name: 'Have an invitation code?' }).click()
+  await member.locator('#invitation-code-form input').fill(code)
+  await member
+    .getByRole('button', { name: 'Open invitation', exact: true })
+    .click()
+  const activation = member.locator('#invite-form')
+  await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
+    email,
+  )
+  await activation
+    .getByLabel('New Password', { exact: true })
+    .fill('Code-member-password 51!')
+  await activation
+    .getByLabel('Confirm Password', { exact: true })
+    .fill('Code-member-password 51!')
+  await activation.getByRole('button', { name: 'Activate account' }).click()
+  await expect(member.locator('.module-grid')).toBeVisible()
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click()
+  await expect(page.locator('#user-list')).toContainText('Active')
+  await form.getByLabel('Admin Password').fill(owner.password)
+  page.once('dialog', (d) => d.accept())
+  await page
+    .getByRole('button', { name: `Reset ${email}`, exact: true })
+    .click()
+  await expect(page.locator('#invitation-code')).not.toHaveValue(code)
+  const newUrl = await page.locator('#invitation-link').inputValue()
+  expect((await memberContext.request.get('/ivc-auth/session')).status()).toBe(
+    401,
+  )
+  const denied = await memberContext.request.post('/ivc-auth/login', {
+    headers: { Origin: new URL(page.url()).origin },
+    data: { email, password: 'Code-member-password 51!' },
+  })
+  expect(denied.status()).toBe(401)
+  await member.goto(newUrl)
+  await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
+    email,
+  )
+  await activation
+    .getByLabel('New Password', { exact: true })
+    .fill('Replacement-password 52!')
+  await activation
+    .getByLabel('Confirm Password', { exact: true })
+    .fill('Replacement-password 52!')
+  await activation.getByRole('button', { name: 'Activate account' }).click()
+  await expect(member.locator('.module-grid')).toBeVisible()
+  const old = await memberContext.request.post('/ivc-auth/begin-invite', {
+    headers: { Origin: new URL(page.url()).origin },
+    data: { token: code },
+  })
+  expect(old.status()).toBe(409) // An active account cannot be replaced by an invitation.
+  await memberContext.close()
+})
+
+test('reissued and expired invitations show recovery instructions instead of an empty account setup', async ({
+  page,
+  browser,
+}) => {
+  await logIn(page)
+  await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+  const form = page.locator('#invite-user-form'),
+    email = 'reissue-browser@example.test'
+  await form.getByLabel('Allowed Email').fill(email)
+  await form.getByLabel('Admin Password').fill(owner.password)
+  await form.getByRole('button', { name: 'Create invitation' }).click()
+  await expect(page.locator('#invitation-link')).toHaveValue(/#invite=/)
+  const oldUrl = await page.locator('#invitation-link').inputValue()
+  await form.getByLabel('Admin Password').fill(owner.password)
+  page.once('dialog', (d) => d.accept())
+  await page
+    .getByRole('button', { name: `Reissue ${email}`, exact: true })
+    .click()
+  await expect(page.locator('#invitation-link')).not.toHaveValue(oldUrl)
+  const context = await browser.newContext({
+    baseURL: new URL(page.url()).origin,
+    storageState: { cookies: [], origins: [] },
+    ignoreHTTPSErrors: true,
+  })
+  const member = await context.newPage()
+  await member.goto(oldUrl)
+  await expect(member.locator('#feedback')).toContainText('새 초대')
+  await expect(member.locator('#invite-panel')).toBeHidden()
+  await expect(
+    member.getByRole('button', { name: 'Have an invitation code?' }),
+  ).toBeVisible()
+  await context.close()
+})
+
+test('a browser that cannot retain the login cookie gets an explanation before calculator navigation', async ({
+  page,
+}) => {
+  await page.route('**/ivc-auth/session', (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: '로그인이 필요합니다.' }),
+    }),
+  )
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Log in to IVC', exact: true }).click()
+  const form = page.locator('#login-form')
+  await form.getByLabel('Email', { exact: true }).fill(owner.email)
+  await form.getByLabel('Password', { exact: true }).fill(owner.password)
+  await form.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(page.locator('#feedback')).toContainText('쿠키')
+  await expect(page).toHaveURL('/')
+  await expect(page.locator('.module-grid')).toHaveCount(0)
+})
+
+test('proxy JSON without a validated session cannot be treated as a successful login', async ({
+  page,
+}) => {
+  await page.route('**/ivc-auth/session', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
+  )
+  await page.goto('/')
+  await expect(page.locator('#feedback')).toContainText('세션 응답')
+  const form = page.locator('#login-form')
+  await form.getByLabel('Email', { exact: true }).fill(owner.email)
+  await form.getByLabel('Password', { exact: true }).fill(owner.password)
+  await form.getByRole('button', { name: 'Log in', exact: true }).click()
+  await expect(page.locator('#feedback')).toContainText('세션 응답')
+  await expect(page).toHaveURL('/')
+  await expect(page.locator('.module-grid')).toHaveCount(0)
 })
