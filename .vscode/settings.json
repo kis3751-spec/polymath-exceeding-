@@ -1,0 +1,9 @@
+{
+  "remote.portsAttributes": {
+    "5173": {
+      "label": "IVC secure server",
+      "protocol": "http",
+      "onAutoForward": "notify"
+    }
+  }
+}

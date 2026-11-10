@@ -44,7 +44,10 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
         state: 'blocked',
         reachable: false,
         status: response.status,
-        message: `외부에서 IVC에 직접 접속하지 못했습니다(HTTP ${response.status}). 포트 Public 설정, 실행 중인 서버와 공유 주소를 확인하세요.`,
+        message:
+          response.status === 404
+            ? '공유 주소에서 HTTP 404가 반환되었습니다. Public 설정만으로 해결되지 않을 수 있습니다. npm run diagnose:codespaces로 로컬 서버를 확인하고 Ports의 포트 전달 · HTTP 프로토콜 · 현재 주소를 확인하세요.'
+            : `외부에서 IVC에 직접 접속하지 못했습니다(HTTP ${response.status}). 포트 Public 설정, 실행 중인 서버와 공유 주소를 확인하세요.`,
       }
     }
     // Keep intermediary error pages bounded; no credential or response body is logged.

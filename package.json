@@ -15,6 +15,7 @@
     "start": "node server/start.mjs",
     "auth:setup": "node server/setup.mjs",
     "share:codespaces": "node scripts/share-codespaces.mjs",
+    "diagnose:codespaces": "node scripts/diagnose-codespaces.mjs",
     "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs"
   },
   "dependencies": {

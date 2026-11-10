@@ -899,3 +899,84 @@ test('Codespaces rewritten Origin requires browser nonce proof and preserves cro
     await new Promise((r) => proxy.server.close(r))
   }
 })
+
+test('Codespaces listens on the container interface while keeping anonymous files and untrusted hosts gated', async () => {
+  const { runtimeConfig } = await import('../server/runtime-config.mjs')
+  const { networkInterfaces } = await import('node:os')
+  const cfg = runtimeConfig(
+    {
+      CODESPACE_NAME: 'network-space',
+      GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+    },
+    5173,
+  )
+  assert.equal(cfg.host, '0.0.0.0')
+  assert.equal(runtimeConfig({}, 5173).host, '127.0.0.1')
+  assert.equal(
+    runtimeConfig(
+      { NODE_ENV: 'production', APP_ORIGIN: 'https://ivc.example.test' },
+      5173,
+    ).host,
+    '127.0.0.1',
+  )
+  assert.equal(
+    runtimeConfig(
+      {
+        CODESPACE_NAME: 'network-space',
+        GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+        HOST: '127.0.0.1',
+      },
+      5173,
+    ).host,
+    '127.0.0.1',
+  )
+  assert.throws(() => runtimeConfig({ HOST: '0.0.0.0' }, 5173), /loopback/)
+  const application = await createAccessServer({
+    ...cfg,
+    store: app.store,
+    dist: resolve(root, 'dist'),
+  })
+  await new Promise((r) => application.server.listen(0, cfg.host, r))
+  const target =
+    Object.values(networkInterfaces())
+      .flat()
+      .find((x) => x && !x.internal && x.family === 'IPv4')?.address ??
+    '127.0.0.1'
+  async function get(path, host = new URL(cfg.origin).host) {
+    return new Promise((resolve, reject) => {
+      const req = httpRequest(
+        {
+          host: target,
+          port: application.server.address().port,
+          path,
+          headers: { Host: host },
+        },
+        (response) => {
+          const chunks = []
+          response.on('data', (chunk) => chunks.push(chunk))
+          response.on('end', () =>
+            resolve({
+              status: response.statusCode,
+              body: Buffer.concat(chunks).toString(),
+            }),
+          )
+        },
+      )
+      req.setTimeout(3000, () => req.destroy(Error('timeout')))
+      req.on('error', reject)
+      req.end()
+    })
+  }
+  try {
+    assert.equal(application.server.address().address, '0.0.0.0')
+    assert.equal((await get('/')).status, 200)
+    const status = await get('/ivc-auth/status')
+    assert.equal(JSON.parse(status.body).service, 'IVC')
+    assert.equal((await get('/solver.wasm')).status, 401)
+    assert.equal((await get('/ivc-auth/admin/users')).status, 401)
+    assert.equal((await get('/', 'attacker.invalid')).status, 421)
+  } finally {
+    application.server.closeAllConnections()
+    await new Promise((r) => application.server.close(r))
+  }
+})

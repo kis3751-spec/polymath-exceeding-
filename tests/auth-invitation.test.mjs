@@ -714,3 +714,57 @@ test('an existing account database gains invitation continuation without replaci
     upgraded.close()
   }
 })
+
+test('connection diagnosis separates a stopped server, missing gateway, exposed files and platform 404', async () => {
+  const { diagnoseCodespaces } = await import(
+    '../scripts/diagnose-codespaces.mjs'
+  )
+  const env = {
+    CODESPACE_NAME: 'doctor-space',
+    GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
+  }
+  let mode = 'ready'
+  const fetchImpl = async (input, options) => {
+    assert.equal(options.credentials, 'omit')
+    assert.equal(options.redirect, 'manual')
+    if (mode === 'offline') throw Error('ECONNREFUSED')
+    const url = new URL(input)
+    if (url.protocol === 'https:') return new Response('', { status: 404 })
+    if (url.pathname === '/') {
+      assert.equal(options.method, 'HEAD')
+      return new Response(null, {
+        status: mode === 'gateway' ? 404 : 200,
+        headers: { 'Content-Type': 'text/html' },
+      })
+    }
+    if (url.pathname === '/solver.wasm')
+      return new Response('', { status: mode === 'unprotected' ? 200 : 401 })
+    return new Response(
+      JSON.stringify({
+        service: 'IVC',
+        version: AUTH_VERSION,
+        accessControl: 'invite-only',
+        instance: 'test-instance',
+      }),
+    )
+  }
+  const forwarded = await diagnoseCodespaces(env, fetchImpl)
+  assert.equal(forwarded.local.state, 'ready')
+  assert.equal(forwarded.external.status, 404)
+  assert.match(forwarded.external.message, /포트 전달/)
+  mode = 'offline'
+  assert.equal(
+    (await diagnoseCodespaces(env, fetchImpl)).local.state,
+    'unavailable',
+  )
+  mode = 'gateway'
+  assert.equal(
+    (await diagnoseCodespaces(env, fetchImpl)).local.state,
+    'gateway-error',
+  )
+  mode = 'unprotected'
+  assert.equal(
+    (await diagnoseCodespaces(env, fetchImpl)).local.state,
+    'unprotected',
+  )
+})

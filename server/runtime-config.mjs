@@ -10,17 +10,21 @@ export function runtimeConfig(env, port) {
     (codespaces
       ? `https://${env.CODESPACE_NAME}-${port}.${env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
       : `http://127.0.0.1:${port}`)
+  // Codespaces forwards through its container network. Local/production installs
+  // keep the loopback default; an explicit operator override still wins.
+  const host = env.HOST ?? (codespaces ? '0.0.0.0' : '127.0.0.1')
   if (env.NODE_ENV === 'production' && !env.APP_ORIGIN)
     throw Error('운영 APP_ORIGIN을 명시하세요.')
   if (
     origin.startsWith('http:') &&
-    !['127.0.0.1', 'localhost', '::1'].includes(env.HOST ?? '127.0.0.1')
+    !['127.0.0.1', 'localhost', '::1'].includes(host)
   )
     throw Error(
       'HTTP 개발 서버는 loopback에서만 열 수 있습니다. HTTPS 프록시와 APP_ORIGIN을 설정하세요.',
     )
   return {
     origin,
+    host,
     codespaces,
     production: env.NODE_ENV === 'production',
     proxyHost: env.IVC_PROXY_HOST,

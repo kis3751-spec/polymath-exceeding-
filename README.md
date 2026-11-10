@@ -27,6 +27,8 @@ npm run share:codespaces
 
 `npm run dev`와 `npm run preview` 모두 보호 서버를 사용합니다. 개발 명령은 빌드 후 서버를 시작하므로 소스 수정 후 다시 실행하세요. 운영은 `npm run build` 후 HTTPS 원점을 설정하고 `npm start`로 실행합니다. **dist만 정적 호스팅에 올리면 로그인 보안이 적용되지 않습니다.** 영구 DB·HTTPS·프록시·Codespaces 공유 설정과 보안 경계는 [Access Control & Deployment](docs/ACCESS_CONTROL.md)에 상세히 설명했습니다.
 
+Public 설정 후에도 404이면 서버 시작 로그의 `IVC local check`와 `IVC public check`를 확인하세요. Codespaces에서는 컨테이너 포트 전달을 위해 기본 수신 주소를 `0.0.0.0`으로 사용하고, 브라우저의 HTTPS 주소와 별개로 **Port Protocol은 HTTP**입니다. `.vscode/settings.json`에도 이 전달 프로토콜을 명시했습니다. 설정 항목은 포트를 자동 공개하지 않습니다. 서버를 켜둔 채 새 터미널에서 `npm run diagnose:codespaces`로 같은 검사를 다시 실행할 수 있습니다. 로컬 검사는 정상이고 공개 주소만 404이면 Ports의 기존 5173 전달을 중지하고 다시 추가한 뒤 HTTP·Public을 설정하고 **Open in Browser**의 현재 주소를 사용하세요.
+
 모듈별 입력부터 결과 해석까지는 [IVC User Textbook](docs/IVC_USER_TEXTBOOK.md)에 정리했습니다. 화면의 **User Guide**에서도 각 모듈의 교재를 독립 탭으로 읽을 수 있습니다.
 
 ## 계산기 구성과 저장
