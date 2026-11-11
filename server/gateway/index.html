@@ -159,21 +159,22 @@
       </section>
       <section id="invitation-code-panel" class="access-card" hidden>
         <div>
-          <h2>Invitation code</h2>
+          <h2>Invitation link or code</h2>
           <p>
-            GitHub 로그인 중 초대 화면을 잃었다면 관리자가 준 1회용 코드를
-            입력하세요. 이메일만 등록되어서는 계정이 활성화되지 않습니다.
+            관리자가 전달한 초대 링크 전체 또는 일회용 코드를 붙여넣으세요.
+            이메일 주소를 넣는 칸이 아닙니다. 초대를 연 다음 본인의 IVC
+            비밀번호를 설정합니다.
           </p>
         </div>
         <form id="invitation-code-form">
           <label
-            >Invitation code<input
+            >Invitation link or code<input
               name="token"
               autocomplete="off"
               spellcheck="false"
               required
-              minlength="43"
-              maxlength="43" /></label
+              placeholder="https://…/#invite=… 또는 43자리 코드"
+              maxlength="4096" /></label
           ><button class="primary">Open invitation</button>
         </form>
       </section>

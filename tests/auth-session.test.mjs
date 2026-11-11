@@ -346,3 +346,48 @@ test('activity renews seven-day idle time without extending the thirty-day absol
     store.close()
   }
 })
+
+test('one stale session response is confirmed with the current cookie before declaring expiry', async () => {
+  const paths = []
+  const client = createAuthRequests(async (path, options) => {
+    paths.push(path)
+    assert.equal(options.credentials, 'same-origin')
+    assert.equal(options.cache, 'no-store')
+    return paths.length === 1
+      ? jsonResponse({ error: 'old request', code: 'SESSION_REQUIRED' }, 401)
+      : jsonResponse(sessionData())
+  })
+  assert.equal((await client.session()).user.id, 'fixture-owner')
+  assert.equal(paths.length, 2)
+  assert.match(paths[1], /^\/ivc-auth\/session\?_ivc_check=/)
+})
+test('confirmed missing sessions fail closed without a mutation', async () => {
+  let reads = 0,
+    writes = 0
+  const client = createAuthRequests(async (path, options) => {
+    if (options.method === 'POST') writes++
+    else reads++
+    return jsonResponse({ error: 'revoked', code: 'SESSION_REQUIRED' }, 401)
+  })
+  await assert.rejects(
+    client.post('/api/admin/invite', {}, 'fixture-owner'),
+    isSessionRequired,
+  )
+  assert.equal(reads, 2)
+  assert.equal(writes, 0)
+})
+test('a pre-mutation session rejection recovers only under the same account', async () => {
+  let writes = 0
+  const client = createAuthRequests(async (path, options) => {
+    if (options.method === 'GET') return jsonResponse(sessionData())
+    writes++
+    return writes === 1
+      ? jsonResponse({ error: 'old cookie', code: 'SESSION_REQUIRED' }, 401)
+      : jsonResponse({ ok: true })
+  })
+  assert.deepEqual(
+    await client.post('/api/admin/invite', {}, 'fixture-owner'),
+    { ok: true },
+  )
+  assert.equal(writes, 2)
+})

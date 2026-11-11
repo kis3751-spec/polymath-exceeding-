@@ -9,6 +9,7 @@ import type {
 export type SolverMode = 'linear' | 'nonlinear'
 
 export type Project = {
+  axisTransforms?: import('./components/AxisTransforms').AxisPreferences
   mode?: SolverMode
   title: string
   description: string
@@ -20,6 +21,9 @@ export type Project = {
     min: number
     max: number
     step: number
+    hidden?: boolean
+    definitionValue?: number
+    autoConstant?: boolean
   }>
   sweepName: string
   conditionNorm?: ConditionNorm

@@ -226,7 +226,17 @@ test('invitation code recovers a lost link, owner can reset an active account, a
     .getByRole('button', { name: 'Log in to IVC', exact: true })
     .click()
   await member.getByRole('button', { name: 'Have an invitation code?' }).click()
-  await member.locator('#invitation-code-form input').fill(code)
+  await member.locator('#invitation-code-form input').fill(email)
+  await member
+    .getByRole('button', { name: 'Open invitation', exact: true })
+    .click()
+  await expect(member.locator('#feedback')).toContainText(
+    '이메일을 입력하는 칸이 아닙니다',
+  )
+  await expect(member.locator('#invite-panel')).toBeHidden()
+  await member
+    .locator('#invitation-code-form input')
+    .fill(new URL('/#invite=' + code, page.url()).href)
   await member
     .getByRole('button', { name: 'Open invitation', exact: true })
     .click()
@@ -316,7 +326,7 @@ test('reissued and expired invitations show recovery instructions instead of an 
 test('a browser that cannot retain the login cookie gets an explanation before calculator navigation', async ({
   page,
 }) => {
-  await page.route('**/ivc-auth/session', (route) =>
+  await page.route('**/ivc-auth/session**', (route) =>
     route.fulfill({
       status: 401,
       contentType: 'application/json',
@@ -340,7 +350,7 @@ test('a browser that cannot retain the login cookie gets an explanation before c
 test('proxy JSON without a validated session cannot be treated as a successful login', async ({
   page,
 }) => {
-  await page.route('**/ivc-auth/session', (route) =>
+  await page.route('**/ivc-auth/session**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
   )
   await page.goto('/')
@@ -492,10 +502,9 @@ test.describe('session recovery', () => {
           })
         : route.continue()
     })
-    let first = true
-    await page.route('**/ivc-auth/session', (route) => {
-      if (!first) return route.continue()
-      first = false
+    let failures = 2
+    await page.route('**/ivc-auth/session**', (route) => {
+      if (failures-- <= 0) return route.continue()
       return route.fulfill({
         status: 401,
         contentType: 'application/json',
@@ -562,7 +571,7 @@ test.describe('session recovery', () => {
     })
     await editor.fill('2*x=6')
     let failures = 2
-    await page.route('**/ivc-auth/session', (route) =>
+    await page.route('**/ivc-auth/session**', (route) =>
       failures-- > 0
         ? route.fulfill({
             status: 401,
@@ -582,5 +591,54 @@ test.describe('session recovery', () => {
     await expect(editor).toHaveValue('2*x=6')
     await expect(page.locator('.account-bar')).toContainText(owner.email)
     expect((await context.request.get('/ivc-auth/session')).status()).toBe(200)
+  })
+  test('a single coded 401 never navigates away from a valid calculator session', async ({
+    page,
+  }) => {
+    await logIn(page)
+    await page
+      .getByRole('button', { name: 'Equation Solver 열기', exact: true })
+      .click()
+    const editor = page.getByRole('textbox', {
+      name: '방정식 입력',
+      exact: true,
+    })
+    await editor.fill('2*x=6')
+    let failures = 1
+    await page.route('**/ivc-auth/session**', (route) =>
+      failures-- > 0
+        ? route.fulfill({
+            status: 401,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'old cookie',
+              code: 'SESSION_REQUIRED',
+            }),
+          })
+        : route.continue(),
+    )
+    const confirmed = page.waitForResponse(
+      (r) => r.url().includes('_ivc_check=') && r.status() === 200,
+    )
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await confirmed
+    await expect(editor).toHaveValue('2*x=6')
+    await expect(page).toHaveURL(/\/calculator$/)
+    const notificationCheck = page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname === '/ivc-auth/session' && r.status() === 200,
+    )
+    await page.evaluate(() => {
+      const channel = new BroadcastChannel('ivc-session')
+      channel.postMessage('logout')
+      channel.close()
+    })
+    await notificationCheck
+    await expect(page.locator('.account-reconnect')).toBeHidden()
+    await expect(editor).toHaveValue('2*x=6')
+    await expect(page).toHaveURL(/\/calculator$/)
+    await expect(page.locator('.account-bar')).toContainText(owner.email)
+    await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+    await expect(page.locator('#admin-panel')).toBeVisible()
   })
 })

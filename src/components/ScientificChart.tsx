@@ -1,3 +1,9 @@
+import AxisTransforms, { useAxisTransform } from './AxisTransforms'
+import {
+  identityAxes,
+  transformSeries,
+  type AxisTransform,
+} from '../axis-transform'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ScientificSeries } from '../engine/scientific/types'
 import {
@@ -19,6 +25,9 @@ const num = (x: number) =>
     : Number(x.toPrecision(5)).toString()
 type Props = {
   series: ScientificSeries[]
+  axisValue?: AxisTransform
+  hideAxisControls?: boolean
+  onSelectPoint?: (seriesIndex: number, pointIndex: number) => void
   xLabel?: string
   yLabel?: string
   area?: { from: number; to: number; seriesName?: string }
@@ -27,14 +36,56 @@ type Props = {
   onSelectIndex?: (i: number) => void
 }
 export default function ScientificChart({
-  series,
+  series: rawSeries,
+  axisValue,
+  hideAxisControls = false,
+  onSelectPoint,
   xLabel = '',
   yLabel = '',
-  area,
-  identityLine = false,
+  area: rawArea,
+  identityLine: rawIdentityLine = false,
   cursorIndex,
   onSelectIndex,
 }: Props) {
+  const [savedAxes, setAxes] = useAxisTransform(
+    `science:${xLabel}:${yLabel}:${rawSeries.map((s) => s.name).join('|')}`,
+  )
+  const axes = axisValue ?? savedAxes
+  const changedAxes = !identityAxes(axes)
+  const area = changedAxes ? undefined : rawArea
+  const identityLine = !changedAxes && rawIdentityLine
+  const series = useMemo(() => {
+    if (!changedAxes) return rawSeries
+    let data = rawSeries
+    if (rawIdentityLine) {
+      const finite = rawSeries
+        .flatMap((s) => [...s.x, ...s.y])
+        .filter(Number.isFinite)
+      const lo = finite.reduce((a, b) => Math.min(a, b), Infinity),
+        hi = finite.reduce((a, b) => Math.max(a, b), -Infinity)
+      if (Number.isFinite(lo) && Number.isFinite(hi)) {
+        const v = Array.from(
+          { length: 201 },
+          (_, i) => lo * (1 - i / 200) + (hi * i) / 200,
+        )
+        data = [...data, { name: 'Reference: original y=x', x: v, y: v }]
+      }
+    }
+    return transformSeries(data, axes)
+  }, [rawSeries, axes.x, axes.y, changedAxes, rawIdentityLine])
+  const omitted = changedAxes
+    ? series.reduce(
+        (n, s) =>
+          n +
+          s.x.filter((x, i) => !Number.isFinite(x) || !Number.isFinite(s.y[i]))
+            .length,
+        0,
+      )
+    : 0
+  const displayX = changedAxes
+    ? `${axes.x} [x: ${xLabel || 'x'}, y: ${yLabel || 'y'}]`
+    : xLabel
+  const displayY = changedAxes ? axes.y : yLabel
   const container = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null)
   const clip = `science-plot-${useId()}`
@@ -278,6 +329,16 @@ export default function ScientificChart({
       : null
   return (
     <div className="scientific-chart">
+      {!hideAxisControls && <AxisTransforms value={axes} onChange={setAxes} />}
+      {changedAxes && (
+        <p className="science-help" role="status">
+          Display transform · 원본 결과 유지
+          {omitted ? ` · 정의역 밖 ${omitted}개 지점은 표시하지 않습니다.` : ''}
+          {rawArea
+            ? ' · 변환된 좌표의 면적은 원래 적분이 아니므로 음영을 생략합니다.'
+            : ''}
+        </p>
+      )}
       <div className="science-chart-tools">
         <div className="science-chart-legend">
           {series.map((s, i) => (
@@ -321,7 +382,7 @@ export default function ScientificChart({
         <svg
           ref={svg}
           role="img"
-          aria-label={`X: ${xLabel || 'x'}, Y: ${yLabel || 'y'}${identityLine ? ', y = x reference' : ''}`}
+          aria-label={`X: ${displayX || 'x'}, Y: ${displayY || 'y'}${identityLine ? ', y = x reference' : ''}`}
           tabIndex={0}
           width={width}
           height={height}
@@ -334,7 +395,12 @@ export default function ScientificChart({
             cancelHoverFrame()
             const p = locate(e.clientX, e.clientY)
             selectHover(p)
-            if (p) onSelectIndex?.(p.i)
+            if (p) {
+              if (p.s < rawSeries.length) {
+                onSelectIndex?.(p.i)
+                onSelectPoint?.(p.s, p.i)
+              }
+            }
           }}
           onKeyDown={(e) => {
             if (
@@ -367,8 +433,8 @@ export default function ScientificChart({
           </defs>
           {geometry &&
             bounds &&
-            Array.from({ length: 5 }, (_, i) => {
-              const f = i / 4,
+            Array.from({ length: width < 500 ? 3 : 5 }, (_, i) => {
+              const f = i / (width < 500 ? 2 : 4),
                 x = left + f * plotWidth,
                 y = bottom - f * plotHeight
               return (
@@ -497,10 +563,10 @@ export default function ScientificChart({
             y={height - 8}
             textAnchor="middle"
           >
-            X: {xLabel || 'x'}
+            X: {displayX || 'x'}
           </text>
           <text className="science-axis-label" x={left} y={15}>
-            Y: {yLabel || 'y'}
+            Y: {displayY || 'y'}
           </text>
           {!bounds && (
             <text x={width / 2} y={height / 2} textAnchor="middle">
@@ -511,11 +577,17 @@ export default function ScientificChart({
         {hovered && (
           <div className="science-chart-tooltip">
             <strong>{hovered.name}</strong>
+            {changedAxes && hover && rawSeries[hover.s] && (
+              <span>
+                Original: x={num(rawSeries[hover.s].x[hover.i])}, y=
+                {num(rawSeries[hover.s].y[hover.i])}
+              </span>
+            )}
             <span>
-              {xLabel || 'x'} {num(hovered.x)}
+              {displayX || 'x'} {num(hovered.x)}
             </span>
             <span>
-              {yLabel || 'y'} {num(hovered.y)}
+              {displayY || 'y'} {num(hovered.y)}
             </span>
           </div>
         )}

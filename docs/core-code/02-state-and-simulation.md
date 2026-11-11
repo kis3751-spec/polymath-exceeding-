@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `b6432f7a06b7dfcf9c1bc8be5b09606dc190c396ba2020ff5ce3405db4837f13`
+소스 묶음 SHA-256: `8970fbf5cb4eb58b897ff4301802a44720fde2cd00afe131e5c31843be24b104`
 
 ## 다른 코드 묶음
 
@@ -30,28 +30,29 @@
 - [src/models.ts](#source-3) · [저장소 원본](../../src/models.ts)
 - [src/showcase-examples.ts](#source-4) · [저장소 원본](../../src/showcase-examples.ts)
 - [src/solver-input.ts](#source-5) · [저장소 원본](../../src/solver-input.ts)
-- [src/use-project-persistence.ts](#source-6) · [저장소 원본](../../src/use-project-persistence.ts)
-- [src/account-storage.ts](#source-7) · [저장소 원본](../../src/account-storage.ts)
-- [server/store.mjs](#source-8) · [저장소 원본](../../server/store.mjs)
-- [server/app.mjs](#source-9) · [저장소 원본](../../server/app.mjs)
-- [server/start.mjs](#source-10) · [저장소 원본](../../server/start.mjs)
-- [server/runtime-config.mjs](#source-11) · [저장소 원본](../../server/runtime-config.mjs)
-- [server/sharing.mjs](#source-12) · [저장소 원본](../../server/sharing.mjs)
-- [scripts/share-codespaces.mjs](#source-13) · [저장소 원본](../../scripts/share-codespaces.mjs)
-- [scripts/diagnose-codespaces.mjs](#source-14) · [저장소 원본](../../scripts/diagnose-codespaces.mjs)
-- [server/setup.mjs](#source-15) · [저장소 원본](../../server/setup.mjs)
-- [server/dev.mjs](#source-16) · [저장소 원본](../../server/dev.mjs)
-- [src/equation-count.ts](#source-17) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-18) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-19) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-20) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-21) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-22) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-23) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-24) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-25) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-26) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-27) · [저장소 원본](../../src/App.tsx)
+- [src/model-constants.ts](#source-6) · [저장소 원본](../../src/model-constants.ts)
+- [src/use-project-persistence.ts](#source-7) · [저장소 원본](../../src/use-project-persistence.ts)
+- [src/account-storage.ts](#source-8) · [저장소 원본](../../src/account-storage.ts)
+- [server/store.mjs](#source-9) · [저장소 원본](../../server/store.mjs)
+- [server/app.mjs](#source-10) · [저장소 원본](../../server/app.mjs)
+- [server/start.mjs](#source-11) · [저장소 원본](../../server/start.mjs)
+- [server/runtime-config.mjs](#source-12) · [저장소 원본](../../server/runtime-config.mjs)
+- [server/sharing.mjs](#source-13) · [저장소 원본](../../server/sharing.mjs)
+- [scripts/share-codespaces.mjs](#source-14) · [저장소 원본](../../scripts/share-codespaces.mjs)
+- [scripts/diagnose-codespaces.mjs](#source-15) · [저장소 원본](../../scripts/diagnose-codespaces.mjs)
+- [server/setup.mjs](#source-16) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-17) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-18) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-19) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-20) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-21) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-22) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-23) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-24) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-25) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-26) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-27) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-28) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -192,7 +193,7 @@ export function equationProject(project: Project): Project {
 
 ## src/models.ts
 
-원본: [src/models.ts](../../src/models.ts) · 173줄 · SHA-256: `dbfb55abce3f381f8ebf93105a7d07588b6c1840c89709057654c36b06b93a49`
+원본: [src/models.ts](../../src/models.ts) · 177줄 · SHA-256: `40568d7c6cee9839e4f96d2153ae1e28e4642daf7efc6b2cc9bb6abc9ebce205`
 
 ```typescript
 import type { VariableBounds } from './engine/search-analysis'
@@ -206,6 +207,7 @@ import type {
 export type SolverMode = 'linear' | 'nonlinear'
 
 export type Project = {
+  axisTransforms?: import('./components/AxisTransforms').AxisPreferences
   mode?: SolverMode
   title: string
   description: string
@@ -217,6 +219,9 @@ export type Project = {
     min: number
     max: number
     step: number
+    hidden?: boolean
+    definitionValue?: number
+    autoConstant?: boolean
   }>
   sweepName: string
   conditionNorm?: ConditionNorm
@@ -640,19 +645,22 @@ export const SHOWCASE_EXAMPLES: NonlinearExample[] = [
 
 ## src/solver-input.ts
 
-원본: [src/solver-input.ts](../../src/solver-input.ts) · 37줄 · SHA-256: `6fda7923fd60c1b156e308d09ea165e63ef4b00acc3804a5d80ce40b4bc1af57`
+원본: [src/solver-input.ts](../../src/solver-input.ts) · 40줄 · SHA-256: `ee92540d9b81a32f43573c6b55c752a507e1c1da57cc987413bda84ca0c3e936`
 
 ```typescript
+import { parameterizedSource } from './model-constants'
 import type { Project } from './models'
 
 /** Only inputs that affect a calculation belong in this request. */
 export function createSolverInput(project: Project) {
-  const sweep = project.parameters.find((p) => p.name === project.sweepName)
+  const sweep = project.parameters.find(
+    (p) => p.name === project.sweepName && !p.hidden,
+  )
   return {
     defaultOverview:
       project.mode === 'nonlinear' &&
       (project.nonlinearSearch ?? 'auto') === 'auto',
-    source: project.source,
+    source: parameterizedSource(project),
     conditionNorm: project.conditionNorm ?? 'infinity',
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',
@@ -683,6 +691,139 @@ export const solverInputKey = (project: Project, revision: number) =>
 ```
 
 <a id="source-6"></a>
+
+## src/model-constants.ts
+
+원본: [src/model-constants.ts](../../src/model-constants.ts) · 124줄 · SHA-256: `a58e7dd99c19f09858e2fc694254a7964729672b28fb8243c20da98c87819c59`
+
+```typescript
+import type { Project } from './models'
+import { normalizeEquationSource } from './engine/source-statements'
+function normalized(project: Project) {
+  try {
+    return normalizeEquationSource(
+      project.source,
+      project.parameters.map((p) => p.name),
+    )
+  } catch {
+    return project.source
+  }
+}
+export function numericConstants(source: string) {
+  let table = false
+  const list: { name: string; value: number }[] = []
+  for (const raw of source.split('\n')) {
+    const line = raw.split('#')[0].trim()
+    if (line === '[') {
+      table = true
+      continue
+    }
+    if (line === ']') {
+      table = false
+      continue
+    }
+    if (table) continue
+    const m =
+      /^([A-Za-z][A-Za-z0-9_]*)\s*=\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.exec(
+        line,
+      )
+    if (m && Number.isFinite(Number(m[2])))
+      list.push({ name: m[1], value: Number(m[2]) })
+  }
+  return list
+}
+export function defaultParameterRange(value: number) {
+  const span = Math.max(Math.abs(value), 1)
+  const min = Math.max(-Number.MAX_VALUE / 4, value - span),
+    max = Math.min(Number.MAX_VALUE / 4, value + span)
+  if (!(min < max)) return { min: -1, max: 1, step: 0.02 }
+  return { min, max, step: Number(((max - min) / 100).toPrecision(4)) }
+}
+/** Numeric definitions consumed by another equation are designated constants.
+ * A standalone x=2 remains an equation; the solver grammar is unchanged. */
+export function withAutomaticConstants(project: Project): Project {
+  const source = normalized(project)
+  const constants = numericConstants(source)
+  const candidates = constants.filter((c) => {
+    if (
+      ['e', 'pi'].includes(c.name) ||
+      constants.filter((p) => p.name === c.name).length !== 1
+    )
+      return false
+    return source.split('\n').some((raw) => {
+      const line = raw.split('#')[0].trim()
+      if (!line || numericConstants(line).some((p) => p.name === c.name))
+        return false
+      return new RegExp(`\\b${c.name}\\b`).test(line)
+    })
+  })
+  let parameters = project.parameters.filter(
+    (p) => !p.autoConstant || candidates.some((c) => c.name === p.name),
+  )
+  for (const c of candidates) {
+    const existing = parameters.find((p) => p.name === c.name)
+    if (existing?.autoConstant && existing.definitionValue !== c.value) {
+      parameters = parameters.map((p) =>
+        p === existing
+          ? {
+              ...p,
+              value: c.value,
+              definitionValue: c.value,
+              min: Math.min(p.min, c.value),
+              max: Math.max(p.max, c.value),
+            }
+          : p,
+      )
+    }
+    if (!existing && parameters.length < 24)
+      parameters = [
+        ...parameters,
+        {
+          id: `constant-${c.name}`,
+          name: c.name,
+          value: c.value,
+          ...defaultParameterRange(c.value),
+          autoConstant: true,
+          definitionValue: c.value,
+        },
+      ]
+  }
+  const sweepName = parameters.some(
+    (p) => p.name === project.sweepName && !p.hidden,
+  )
+    ? project.sweepName
+    : (parameters.find((p) => !p.hidden)?.name ?? '')
+  if (
+    JSON.stringify(parameters) === JSON.stringify(project.parameters) &&
+    sweepName === project.sweepName
+  )
+    return project
+  return { ...project, parameters, sweepName }
+}
+/** Remove only the literal definition already represented by an explicit UI
+ * parameter; all other equations, helpers and conditions remain untouched. */
+export function parameterizedSource(project: Project) {
+  const source = normalized(project)
+  const definitions = numericConstants(source)
+  const names = new Set(
+    project.parameters
+      .filter((p) => definitions.filter((c) => c.name === p.name).length === 1)
+      .map((p) => p.name),
+  )
+  if (!names.size) return project.source
+  return source
+    .split('\n')
+    .map((line) => {
+      const c = numericConstants(line)[0]
+      return c && names.has(c.name)
+        ? `# Fixed parameter definition: ${line}`
+        : line
+    })
+    .join('\n')
+}
+```
+
+<a id="source-7"></a>
 
 ## src/use-project-persistence.ts
 
@@ -745,7 +886,7 @@ export function useProjectPersistence(
 }
 ```
 
-<a id="source-7"></a>
+<a id="source-8"></a>
 
 ## src/account-storage.ts
 
@@ -775,7 +916,7 @@ export function accountStorageKey(key: string) {
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-9"></a>
 
 ## server/store.mjs
 
@@ -1152,7 +1293,7 @@ export class AccessStore {
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-10"></a>
 
 ## server/app.mjs
 
@@ -1705,7 +1846,7 @@ export async function createAccessServer(input) {
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-11"></a>
 
 ## server/start.mjs
 
@@ -1758,7 +1899,7 @@ server.on('error', (e) => {
 })
 ```
 
-<a id="source-11"></a>
+<a id="source-12"></a>
 
 ## server/runtime-config.mjs
 
@@ -1846,7 +1987,7 @@ export function proxyRewrittenOrigin(req, cfg) {
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-13"></a>
 
 ## server/sharing.mjs
 
@@ -2057,7 +2198,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-14"></a>
 
 ## scripts/share-codespaces.mjs
 
@@ -2149,7 +2290,7 @@ if (
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-15"></a>
 
 ## scripts/diagnose-codespaces.mjs
 
@@ -2271,7 +2412,7 @@ if (
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-16"></a>
 
 ## server/setup.mjs
 
@@ -2343,7 +2484,7 @@ try {
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-17"></a>
 
 ## server/dev.mjs
 
@@ -2357,7 +2498,7 @@ if (built.status !== 0) process.exit(built.status ?? 1)
 await import('./start.mjs')
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## src/equation-count.ts
 
@@ -2398,7 +2539,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-19"></a>
 
 ## src/csv.ts
 
@@ -2421,7 +2562,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-20"></a>
 
 ## src/engine/sweep.ts
 
@@ -2612,7 +2753,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-21"></a>
 
 ## src/engine/branches.ts
 
@@ -3137,7 +3278,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-22"></a>
 
 ## src/engine/branch-events.ts
 
@@ -3220,7 +3361,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-23"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -3774,7 +3915,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-24"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -3851,7 +3992,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-25"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -3928,7 +4069,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-26"></a>
 
 ## src/engine/default-overview.ts
 
@@ -4054,7 +4195,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-27"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -4470,13 +4611,15 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-28"></a>
 
 ## src/App.tsx
 
-원본: [src/App.tsx](../../src/App.tsx) · 3,582줄 · SHA-256: `c227405c0dbc976d5db93b7f5afd93a7debc2707e6f41b8809fc65ddb4e4c953`
+원본: [src/App.tsx](../../src/App.tsx) · 3,735줄 · SHA-256: `c93c377737e54d1b023fa23abda1bc9a91f7ebd77acc0a9b615c7dabe50b34a3`
 
 ```tsx
+import { withAutomaticConstants, parameterizedSource } from './model-constants'
+import { AxisTransformProvider } from './components/AxisTransforms'
 import { accountStorageKey } from './account-storage'
 import CertificationReport from './components/CertificationReport'
 import { currentCertificate } from './components/certification-view'
@@ -4506,7 +4649,18 @@ import type { VariableBounds, SearchWindow } from './engine/search-analysis'
 import { sameComputedRoot } from './engine/root-comparison'
 import { normalizeEquationPaste } from './editor-input'
 import ExampleWalkthrough from './components/ExampleWalkthrough'
-import { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  createContext,
+  useContext,
+  lazy,
+  Suspense,
+  type SetStateAction,
+} from 'react'
 import {
   Activity,
   ArrowDownToLine,
@@ -4733,10 +4887,24 @@ const ScientificWorkspace = lazy(
   () => import('./components/ScientificWorkspace'),
 )
 
+const ParameterEditContext = createContext<{
+  all: Parameter[]
+  edit: (parameter: Parameter) => void
+  toggle: (id: string) => void
+}>({ all: [], edit: () => {}, toggle: () => {} })
 export default function App() {
   const [scientificModule, setScientificModule] =
     useState<ScientificModule | null>(null)
-  const [project, setProject] = useState<Project>(initialProject)
+  const [project, setProjectState] = useState<Project>(() =>
+    withAutomaticConstants(initialProject()),
+  )
+  const setProject = useCallback(
+    (next: SetStateAction<Project>) =>
+      setProjectState((p) =>
+        withAutomaticConstants(typeof next === 'function' ? next(p) : next),
+      ),
+    [],
+  )
   const [basePayload, setPayload] = useState<SolvePayload | null>(null)
   const [computeError, setError] = useState('')
   const [overview, setOverview] = useState<{
@@ -4749,7 +4917,7 @@ export default function App() {
     setOverview(null)
     setOverviewHidden(false)
     setOverviewExcluded([])
-  }, [project.source, project.mode])
+  }, [parameterizedSource(project), project.mode])
   const [manualAnchor, setManualAnchor] = useState<SimulationAnchor | null>(
     null,
   )
@@ -4829,7 +4997,7 @@ export default function App() {
     !result && automatic
       ? currentCertificate(
           searchInfo?.certification,
-          project.source,
+          parameterizedSource(project),
           Object.fromEntries(project.parameters.map((p) => [p.name, p.value])),
         )
       : undefined
@@ -4869,25 +5037,28 @@ export default function App() {
   const conditionNorm = project.conditionNorm ?? 'infinity'
   const sensitivity = result ? classifyCondition(result.condition) : null
   const sweepParam = project.parameters.find(
-    (p) => p.name === project.sweepName,
+    (p) => p.name === project.sweepName && !p.hidden,
   )
   const boundsVariables = useMemo(() => {
     try {
       return normalizeAutomaticModel(
-        project.source,
+        parameterizedSource(project),
         project.parameters.map((p) => p.name),
       ).variables
     } catch {
       return Object.keys(project.variableBounds ?? {})
     }
-  }, [project.source, project.parameters.map((p) => p.name).join('|')])
+  }, [
+    parameterizedSource(project),
+    project.parameters.map((p) => p.name).join('|'),
+  ])
   const sourceLines = project.source.replace(/\r\n?/g, '\n').split('\n')
   const editorHeight = Math.min(
     420,
     Math.max(164, sourceLines.length * 28 + 24),
   )
   const equationCount = countEquations(
-    project.source,
+    parameterizedSource(project),
     nonlinear,
     project.parameters.map((p) => p.name),
   )
@@ -4965,12 +5136,12 @@ export default function App() {
     }
     adoptedReplyKey.current = ''
     const sourceChanged =
-      previousRequest.current.source !== project.source ||
+      previousRequest.current.source !== parameterizedSource(project) ||
       previousRequest.current.mode !== mode ||
       previousRequest.current.search !== nonlinearSearch
     const explicitSolve = previousRequest.current.revision !== revision
     previousRequest.current = {
-      source: project.source,
+      source: parameterizedSource(project),
       mode,
       search: nonlinearSearch,
       revision,
@@ -5007,7 +5178,7 @@ export default function App() {
     )
     return () => clearTimeout(timer)
   }, [
-    project.source,
+    parameterizedSource(project),
     project.parameters,
     project.sweepName,
     conditionNorm,
@@ -5436,7 +5607,7 @@ export default function App() {
     const isEvaluation = target.kind === 'evaluation'
     const diagnostics = reportDiagnostics(
       target,
-      project.source,
+      parameterizedSource(project),
       Object.fromEntries(project.parameters.map((p) => [p.name, p.value])),
       coverage,
     )
@@ -5585,353 +5756,305 @@ export default function App() {
       </Suspense>
     )
   return (
-    <div
-      className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
+    <AxisTransformProvider
+      value={project.axisTransforms}
+      onChange={(axisTransforms) =>
+        setProject((p) => ({ ...p, axisTransforms }))
+      }
     >
-      <div className="workspace">
-        <header className="ivc-toolbar">
-          {screen !== 'home' && (
-            <button
-              type="button"
-              className="ivc-home"
-              onClick={() => navigate('home')}
-            >
-              <ArrowRight size={16} className="ivc-back-arrow" /> Home
-            </button>
-          )}
-          <strong className="ivc-brand">
-            {screen === 'home' ? 'IVC' : 'Equation Solver'}
-            {screen === 'home' && <span>Interaction Visual Calculator</span>}
-          </strong>
-          <div className="ivc-toolbar-actions">
-            {screen !== 'home' && (
-              <>
-                <button type="button" onClick={newModel}>
-                  <Plus size={15} /> New
-                </button>
-                <button
-                  type="button"
-                  onClick={() => importRef.current?.click()}
-                >
-                  <FolderOpen size={15} /> Import
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    downloadFile(
-                      'ivc-project.json',
-                      JSON.stringify(project, null, 2),
-                      'application/json',
-                    )
-                    setToast('프로젝트를 JSON 파일로 저장했습니다.')
-                  }}
-                >
-                  <Download size={15} /> Save Project
-                </button>
-              </>
-            )}
-            <span className="local-status">
-              <i />
-              {storageOk ? 'Autosaved' : 'Save unavailable'}
-            </span>
-            <button
-              className="quiet-button"
-              aria-label="User Guide"
-              onClick={() => setGuide(true)}
-            >
-              <BookOpen size={16} />
-              <span>User Guide</span>
-            </button>
-            <a
-              className="github-link"
-              href="https://github.com/kis3751-spec/polymath-exceeding-"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="GitHub 저장소"
-            >
-              <Code2 size={19} />
-            </a>
-          </div>
-          <input
-            ref={importRef}
-            type="file"
-            accept=".json,application/json"
-            hidden
-            onChange={(e) => {
-              void importProject(e.target.files?.[0])
-              e.target.value = ''
-            }}
-          />
-        </header>
-        {screen === 'home' && (
-          <main className="module-home-page" data-screen="home">
-            <LandingModules
-              onOpenEquationSolver={() => navigate('model')}
-              onOpenScientific={setScientificModule}
-            />
-          </main>
-        )}
-        {screen !== 'home' && (
-          <div className="workspace-nav-container">
-            <WorkspaceNavigation screen={screen} onNavigate={navigate} />
-          </div>
-        )}
-        <main
-          hidden={screen === 'home'}
-          data-screen={screen}
-          className={`workspace-content workspace-screen-${screen}`}
+      <ParameterEditContext.Provider
+        value={{
+          all: project.parameters,
+          edit: (parameter) =>
+            setProject((p) => ({
+              ...p,
+              parameters: p.parameters.map((v) =>
+                v.id === parameter.id ? { ...v, ...parameter } : v,
+              ),
+            })),
+          toggle: (id) =>
+            setProject((p) => ({
+              ...p,
+              parameters: p.parameters.map((v) =>
+                v.id === id ? { ...v, hidden: !v.hidden } : v,
+              ),
+            })),
+        }}
+      >
+        <div
+          className={`app-shell ${screen === 'simulation' ? 'simulation-focused' : ''}`}
         >
-          <div
-            className="problem-tabs"
-            hidden={screen !== 'model'}
-            role="tablist"
-            aria-label="Equation Solver 유형"
-          >
-            <button
-              role="tab"
-              aria-label="Linear"
-              aria-selected={!nonlinear}
-              className={`problem-tab ${!nonlinear ? 'selected' : ''}`}
-              onClick={() => switchMode('linear')}
+          <div className="workspace">
+            <header className="ivc-toolbar">
+              {screen !== 'home' && (
+                <button
+                  type="button"
+                  className="ivc-home"
+                  onClick={() => navigate('home')}
+                >
+                  <ArrowRight size={16} className="ivc-back-arrow" /> Home
+                </button>
+              )}
+              <strong className="ivc-brand">
+                {screen === 'home' ? 'IVC' : 'Equation Solver'}
+                {screen === 'home' && (
+                  <span>Interaction Visual Calculator</span>
+                )}
+              </strong>
+              <div className="ivc-toolbar-actions">
+                {screen !== 'home' && (
+                  <>
+                    <button type="button" onClick={newModel}>
+                      <Plus size={15} /> New
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => importRef.current?.click()}
+                    >
+                      <FolderOpen size={15} /> Import
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        downloadFile(
+                          'ivc-project.json',
+                          JSON.stringify(project, null, 2),
+                          'application/json',
+                        )
+                        setToast('프로젝트를 JSON 파일로 저장했습니다.')
+                      }}
+                    >
+                      <Download size={15} /> Save Project
+                    </button>
+                  </>
+                )}
+                <span className="local-status">
+                  <i />
+                  {storageOk ? 'Autosaved' : 'Save unavailable'}
+                </span>
+                <button
+                  className="quiet-button"
+                  aria-label="User Guide"
+                  onClick={() => setGuide(true)}
+                >
+                  <BookOpen size={16} />
+                  <span>User Guide</span>
+                </button>
+                <a
+                  className="github-link"
+                  href="https://github.com/kis3751-spec/polymath-exceeding-"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="GitHub 저장소"
+                >
+                  <Code2 size={19} />
+                </a>
+              </div>
+              <input
+                ref={importRef}
+                type="file"
+                accept=".json,application/json"
+                hidden
+                onChange={(e) => {
+                  void importProject(e.target.files?.[0])
+                  e.target.value = ''
+                }}
+              />
+            </header>
+            {screen === 'home' && (
+              <main className="module-home-page" data-screen="home">
+                <LandingModules
+                  onOpenEquationSolver={() => navigate('model')}
+                  onOpenScientific={setScientificModule}
+                />
+              </main>
+            )}
+            {screen !== 'home' && (
+              <div className="workspace-nav-container">
+                <WorkspaceNavigation screen={screen} onNavigate={navigate} />
+              </div>
+            )}
+            <main
+              hidden={screen === 'home'}
+              data-screen={screen}
+              className={`workspace-content workspace-screen-${screen}`}
             >
-              <Grid2X2 size={16} />
-              Linear
-            </button>
-            <button
-              role="tab"
-              aria-label="Nonlinear"
-              aria-selected={nonlinear}
-              className={`problem-tab ${nonlinear ? 'selected' : ''}`}
-              onClick={() => switchMode('nonlinear')}
-            >
-              <Activity size={16} />
-              Nonlinear
-            </button>
-          </div>
-          {activeExample && !expanded && (
-            <ExampleWalkthrough
-              key={activeExample.id}
-              example={activeExample}
-            />
-          )}
-          <div
-            className={`studio-grid sectioned-workspace ${expanded ? 'results-expanded' : ''}`}
-            data-screen={screen}
-            role={expanded ? 'dialog' : undefined}
-            aria-modal={expanded ? true : undefined}
-            aria-label={expanded ? 'Simulation 전체화면' : undefined}
-          >
-            <div className="model-column" hidden={screen !== 'model'}>
-              <section className="panel model-panel">
-                <div className="panel-heading">
-                  <div className="section-label">
-                    <span className="step-number">01</span>
-                    <h2>Model</h2>
-                  </div>
-                  {nonlinear && (
-                    <div className="examples-wrap" ref={examplesRef}>
-                      <button
-                        className="text-button"
-                        aria-expanded={examplesOpen}
-                        onClick={() => setExamplesOpen((v) => !v)}
-                      >
-                        Examples
-                        <ChevronDown size={14} />
-                      </button>
-                      {examplesOpen && (
-                        <div className="examples-menu">
-                          <span className="menu-label">
-                            Examples · Mathematics & Science
-                          </span>
-                          {NONLINEAR_EXAMPLES.map((ex) => (
-                            <button
-                              key={ex.id}
-                              onClick={() => loadExample(ex.project)}
-                            >
-                              <span className="example-icon">
-                                <Grid2X2 size={17} />
+              <div
+                className="problem-tabs"
+                hidden={screen !== 'model'}
+                role="tablist"
+                aria-label="Equation Solver 유형"
+              >
+                <button
+                  role="tab"
+                  aria-label="Linear"
+                  aria-selected={!nonlinear}
+                  className={`problem-tab ${!nonlinear ? 'selected' : ''}`}
+                  onClick={() => switchMode('linear')}
+                >
+                  <Grid2X2 size={16} />
+                  Linear
+                </button>
+                <button
+                  role="tab"
+                  aria-label="Nonlinear"
+                  aria-selected={nonlinear}
+                  className={`problem-tab ${nonlinear ? 'selected' : ''}`}
+                  onClick={() => switchMode('nonlinear')}
+                >
+                  <Activity size={16} />
+                  Nonlinear
+                </button>
+              </div>
+              {activeExample && !expanded && (
+                <ExampleWalkthrough
+                  key={activeExample.id}
+                  example={activeExample}
+                />
+              )}
+              <div
+                className={`studio-grid sectioned-workspace ${expanded ? 'results-expanded' : ''}`}
+                data-screen={screen}
+                role={expanded ? 'dialog' : undefined}
+                aria-modal={expanded ? true : undefined}
+                aria-label={expanded ? 'Simulation 전체화면' : undefined}
+              >
+                <div className="model-column" hidden={screen !== 'model'}>
+                  <section className="panel model-panel">
+                    <div className="panel-heading">
+                      <div className="section-label">
+                        <span className="step-number">01</span>
+                        <h2>Model</h2>
+                      </div>
+                      {nonlinear && (
+                        <div className="examples-wrap" ref={examplesRef}>
+                          <button
+                            className="text-button"
+                            aria-expanded={examplesOpen}
+                            onClick={() => setExamplesOpen((v) => !v)}
+                          >
+                            Examples
+                            <ChevronDown size={14} />
+                          </button>
+                          {examplesOpen && (
+                            <div className="examples-menu">
+                              <span className="menu-label">
+                                Examples · Mathematics & Science
                               </span>
-                              <span>
-                                <b>{ex.project.title}</b>
-                                <small>{ex.category}</small>
-                              </span>
-                              <ChevronRight size={14} />
-                            </button>
-                          ))}
+                              {NONLINEAR_EXAMPLES.map((ex) => (
+                                <button
+                                  key={ex.id}
+                                  onClick={() => loadExample(ex.project)}
+                                >
+                                  <span className="example-icon">
+                                    <Grid2X2 size={17} />
+                                  </span>
+                                  <span>
+                                    <b>{ex.project.title}</b>
+                                    <small>{ex.category}</small>
+                                  </span>
+                                  <ChevronRight size={14} />
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-                <div className="model-title">
-                  <input
-                    aria-label="모델 이름"
-                    value={project.title}
-                    maxLength={120}
-                    onChange={(e) =>
-                      setProject((p) => ({ ...p, title: e.target.value }))
-                    }
-                  />
-                  <span className="model-tag">
-                    {nonlinear ? 'NONLINEAR SYSTEM' : 'LINEAR SYSTEM'}
-                  </span>
-                </div>
-                <p className="model-description">
-                  {project.description.replace(
-                    '방정식을 한 줄씩 입력하고 조절할 값을 파라미터로 추가하세요.',
-                    '방정식을 입력하고 조절할 값을 Parameter로 추가하세요.',
-                  )}
-                </p>
-                <div className="editor-toolbar">
-                  <span>
-                    <Code2 size={14} />
-                    Input
-                  </span>
-                  <span>
-                    {nonlinear
-                      ? automatic
-                        ? '식만 입력 · 실수 해 자동 탐색'
-                        : '등식 입력 · 초기값 또는 범위로 한 해 탐색'
-                      : 'Linear equations'}
-                  </span>
-                </div>
-                <div
-                  className={`equation-editor ${error ? 'editor-error' : ''}`}
-                >
-                  <div
-                    className="line-numbers"
-                    ref={lineNumbersRef}
-                    style={{ height: editorHeight }}
-                    aria-hidden="true"
-                  >
-                    {sourceLines.map((_, i) => (
-                      <span key={i}>{String(i + 1).padStart(2, '0')}</span>
-                    ))}
-                  </div>
-                  <textarea
-                    ref={editorRef}
-                    wrap="off"
-                    style={{ height: editorHeight }}
-                    onScroll={(e) => {
-                      if (lineNumbersRef.current)
-                        lineNumbersRef.current.scrollTop =
-                          e.currentTarget.scrollTop
-                    }}
-                    onPaste={(e) => {
-                      e.preventDefault()
-                      const el = e.currentTarget,
-                        start = el.selectionStart,
-                        end = el.selectionEnd
-                      const pasted = normalizeEquationPaste(
-                        e.clipboardData.getData('text/plain'),
-                      )
-                      const available = Math.max(
-                        0,
-                        30000 - project.source.length + (end - start),
-                      )
-                      const insertion = pasted.slice(0, available)
-                      setProject((p) => ({
-                        ...p,
-                        source:
-                          p.source.slice(0, start) +
-                          insertion +
-                          p.source.slice(end),
-                        selectedSolution: 0,
-                        selectedAnchor: undefined,
-                        simulations: [],
-                        mergedSets: [],
-                        individualIds: [],
-                      }))
-                      requestAnimationFrame(() => {
-                        el.selectionStart = el.selectionEnd =
-                          start + insertion.length
-                        if (lineNumbersRef.current)
-                          lineNumbersRef.current.scrollTop = el.scrollTop
-                      })
-                    }}
-                    aria-label="방정식 입력"
-                    spellCheck={false}
-                    maxLength={30000}
-                    value={project.source}
-                    onChange={(e) =>
-                      setProject((p) => ({
-                        ...p,
-                        source: e.target.value,
-                        selectedSolution: 0,
-                        selectedAnchor: undefined,
-                        simulations: [],
-                        mergedSets: [],
-                        individualIds: [],
-                      }))
-                    }
-                    placeholder={
-                      nonlinear
-                        ? automatic
-                          ? 'x^2 = 4'
-                          : 'x^2 = 4\nx(0) = 1'
-                        : '방정식을 입력하세요\n예: 2x + y = 10'
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === 'Tab') {
-                        e.preventDefault()
-                        const el = e.currentTarget,
-                          start = el.selectionStart,
-                          end = el.selectionEnd
-                        setProject((p) => ({
-                          ...p,
-                          source:
-                            p.source.slice(0, start) +
-                            '  ' +
-                            p.source.slice(end),
-                          selectedSolution: 0,
-                          selectedAnchor: undefined,
-                          simulations: [],
-                          mergedSets: [],
-                          individualIds: [],
-                        }))
-                        requestAnimationFrame(() => {
-                          el.selectionStart = el.selectionEnd = start + 2
-                        })
-                      }
-                    }}
-                  />
-                </div>
-                <div className="editor-footer">
-                  <span>
-                    <i
-                      className={error ? 'status-dot error-dot' : 'status-dot'}
-                    />
-                    {evaluation
-                      ? `명시식·표현식 ${result.variables.length}개`
-                      : `${equationCount}개 방정식${result && !error ? ` · ${result.variables.length}개 미지수` : ''}`}
-                  </span>
-                  <button
-                    className="text-button syntax-button"
-                    onClick={() => setGuide(true)}
-                  >
-                    Syntax Guide
-                    <ArrowRight size={13} />
-                  </button>
-                </div>
-                {nonlinear && (
-                  <details className="nonlinear-settings">
-                    <summary>
-                      <Settings2 size={14} />
-                      Solver Settings
-                      <ChevronDown size={13} />
-                    </summary>
-                    <div className="nonlinear-settings-body">
-                      <label htmlFor="nonlinear-search">해 탐색 방식</label>
-                      <select
-                        id="nonlinear-search"
-                        aria-label="해 탐색 방식"
-                        value={nonlinearSearch}
+                    <div className="model-title">
+                      <input
+                        aria-label="모델 이름"
+                        value={project.title}
+                        maxLength={120}
+                        onChange={(e) =>
+                          setProject((p) => ({ ...p, title: e.target.value }))
+                        }
+                      />
+                      <span className="model-tag">
+                        {nonlinear ? 'NONLINEAR SYSTEM' : 'LINEAR SYSTEM'}
+                      </span>
+                    </div>
+                    <p className="model-description">
+                      {project.description.replace(
+                        '방정식을 한 줄씩 입력하고 조절할 값을 파라미터로 추가하세요.',
+                        '방정식을 입력하고 조절할 값을 Parameter로 추가하세요.',
+                      )}
+                    </p>
+                    <div className="editor-toolbar">
+                      <span>
+                        <Code2 size={14} />
+                        Input
+                      </span>
+                      <span>
+                        {nonlinear
+                          ? automatic
+                            ? '식만 입력 · 실수 해 자동 탐색'
+                            : '등식 입력 · 초기값 또는 범위로 한 해 탐색'
+                          : 'Linear equations'}
+                      </span>
+                    </div>
+                    <div
+                      className={`equation-editor ${error ? 'editor-error' : ''}`}
+                    >
+                      <div
+                        className="line-numbers"
+                        ref={lineNumbersRef}
+                        style={{ height: editorHeight }}
+                        aria-hidden="true"
+                      >
+                        {sourceLines.map((_, i) => (
+                          <span key={i}>{String(i + 1).padStart(2, '0')}</span>
+                        ))}
+                      </div>
+                      <textarea
+                        ref={editorRef}
+                        wrap="off"
+                        style={{ height: editorHeight }}
+                        onScroll={(e) => {
+                          if (lineNumbersRef.current)
+                            lineNumbersRef.current.scrollTop =
+                              e.currentTarget.scrollTop
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault()
+                          const el = e.currentTarget,
+                            start = el.selectionStart,
+                            end = el.selectionEnd
+                          const pasted = normalizeEquationPaste(
+                            e.clipboardData.getData('text/plain'),
+                          )
+                          const available = Math.max(
+                            0,
+                            30000 - project.source.length + (end - start),
+                          )
+                          const insertion = pasted.slice(0, available)
+                          setProject((p) => ({
+                            ...p,
+                            source:
+                              p.source.slice(0, start) +
+                              insertion +
+                              p.source.slice(end),
+                            selectedSolution: 0,
+                            selectedAnchor: undefined,
+                            simulations: [],
+                            mergedSets: [],
+                            individualIds: [],
+                          }))
+                          requestAnimationFrame(() => {
+                            el.selectionStart = el.selectionEnd =
+                              start + insertion.length
+                            if (lineNumbersRef.current)
+                              lineNumbersRef.current.scrollTop = el.scrollTop
+                          })
+                        }}
+                        aria-label="방정식 입력"
+                        spellCheck={false}
+                        maxLength={30000}
+                        value={project.source}
                         onChange={(e) =>
                           setProject((p) => ({
                             ...p,
-                            nonlinearSearch: e.target.value as
-                              | 'auto'
-                              | 'manual',
+                            source: e.target.value,
                             selectedSolution: 0,
                             selectedAnchor: undefined,
                             simulations: [],
@@ -5939,1440 +6062,1586 @@ export default function App() {
                             individualIds: [],
                           }))
                         }
+                        placeholder={
+                          nonlinear
+                            ? automatic
+                              ? 'x^2 = 4'
+                              : 'x^2 = 4\nx(0) = 1'
+                            : '방정식을 입력하세요\n예: 2x + y = 10'
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Tab') {
+                            e.preventDefault()
+                            const el = e.currentTarget,
+                              start = el.selectionStart,
+                              end = el.selectionEnd
+                            setProject((p) => ({
+                              ...p,
+                              source:
+                                p.source.slice(0, start) +
+                                '  ' +
+                                p.source.slice(end),
+                              selectedSolution: 0,
+                              selectedAnchor: undefined,
+                              simulations: [],
+                              mergedSets: [],
+                              individualIds: [],
+                            }))
+                            requestAnimationFrame(() => {
+                              el.selectionStart = el.selectionEnd = start + 2
+                            })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="editor-footer">
+                      <span>
+                        <i
+                          className={
+                            error ? 'status-dot error-dot' : 'status-dot'
+                          }
+                        />
+                        {evaluation
+                          ? `명시식·표현식 ${result.variables.length}개`
+                          : `${equationCount}개 방정식${result && !error ? ` · ${result.variables.length}개 미지수` : ''}`}
+                      </span>
+                      <button
+                        className="text-button syntax-button"
+                        onClick={() => setGuide(true)}
                       >
-                        <option value="auto">자동으로 여러 실수 해 찾기</option>
-                        <option value="manual">초기 조건으로 한 해 찾기</option>
-                      </select>
-                      {automatic ? (
-                        <>
-                          <label className="certification-toggle">
-                            <input
-                              type="checkbox"
-                              checked={project.certifyRoots ?? false}
-                              onChange={(e) =>
-                                setProject((p) => ({
-                                  ...p,
-                                  certifyRoots: e.target.checked,
+                        Syntax Guide
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
+                    {nonlinear && (
+                      <details className="nonlinear-settings">
+                        <summary>
+                          <Settings2 size={14} />
+                          Solver Settings
+                          <ChevronDown size={13} />
+                        </summary>
+                        <div className="nonlinear-settings-body">
+                          <label htmlFor="nonlinear-search">해 탐색 방식</label>
+                          <select
+                            id="nonlinear-search"
+                            aria-label="해 탐색 방식"
+                            value={nonlinearSearch}
+                            onChange={(e) =>
+                              setProject((p) => ({
+                                ...p,
+                                nonlinearSearch: e.target.value as
+                                  | 'auto'
+                                  | 'manual',
+                                selectedSolution: 0,
+                                selectedAnchor: undefined,
+                                simulations: [],
+                                mergedSets: [],
+                                individualIds: [],
+                              }))
+                            }
+                          >
+                            <option value="auto">
+                              자동으로 여러 실수 해 찾기
+                            </option>
+                            <option value="manual">
+                              초기 조건으로 한 해 찾기
+                            </option>
+                          </select>
+                          {automatic ? (
+                            <>
+                              <label className="certification-toggle">
+                                <input
+                                  type="checkbox"
+                                  checked={project.certifyRoots ?? false}
+                                  onChange={(e) =>
+                                    setProject((p) => ({
+                                      ...p,
+                                      certifyRoots: e.target.checked,
+                                    }))
+                                  }
+                                />
+                                구간 검증 사용 (단일 변수·추가 계산)
+                              </label>
+                              <SearchBoundsEditor
+                                bounds={project.searchBounds}
+                                variables={boundsVariables}
+                                variableBounds={project.variableBounds}
+                                window={
+                                  searchInfo?.window ??
+                                  basePayload?.search?.window
+                                }
+                                onApply={(bounds, variableBounds) =>
+                                  setProject((p) => ({
+                                    ...p,
+                                    searchBounds: bounds,
+                                    variableBounds,
+                                    selectedAnchor: undefined,
+                                    selectedSolution: 0,
+                                  }))
+                                }
+                              />
+                            </>
+                          ) : (
+                            <p>
+                              x^2=4처럼 등식을 입력하고 x(0)=1로 초기값을
+                              지정하세요. x(min)·x(max)로 범위를 지정할 수도
+                              있습니다. 연립식은 각 미지수의 초기값을 적습니다.
+                              이름=수식 계산도 지원합니다.
+                            </p>
+                          )}
+                        </div>
+                      </details>
+                    )}
+                    {automatic &&
+                      /^\s*[A-Za-z][A-Za-z0-9_]*\(\s*(min|max|0)\s*\)\s*=/m.test(
+                        parameterizedSource(project),
+                      ) && (
+                        <p className="legacy-conditions-note">
+                          자동 모드에서는 수식에 적힌 초기값·구간 대신 자동 탐색
+                          설정을 사용합니다. 기존 조건으로 풀려면 고급 설정에서
+                          방식을 바꾸세요.
+                        </p>
+                      )}
+                    <div className="model-run-row">
+                      <span>
+                        <span className="keycap">⌘</span> / Ctrl + Enter
+                      </span>
+                      <button
+                        className="primary-button"
+                        onClick={() => {
+                          setRevision((v) => v + 1)
+                          navigate('simulation')
+                        }}
+                        disabled={pending || !hasSource}
+                      >
+                        {pending ? (
+                          <LoaderCircle size={15} className="spin" />
+                        ) : (
+                          <Play size={14} fill="currentColor" />
+                        )}
+                        {pending ? '계산 중' : 'Solve'}
+                        <span className="button-arrow" aria-hidden="true">
+                          ↗
+                        </span>
+                      </button>
+                    </div>
+                  </section>
+                  <section className="panel parameter-panel">
+                    <div className="panel-heading">
+                      <div className="section-label">
+                        <span className="step-number">02</span>
+                        <h2>Parameters</h2>
+                        <span className="count-badge">
+                          {project.parameters.length}
+                        </span>
+                      </div>
+                      <button
+                        className={`icon-button ${rangeEditor ? 'is-selected' : ''}`}
+                        aria-label="파라미터 범위 설정"
+                        title="파라미터 범위 설정"
+                        onClick={() => setRangeEditor((v) => !v)}
+                      >
+                        <Settings2 size={16} />
+                      </button>
+                    </div>
+                    <p className="section-description">
+                      다른 식에서 사용하는 숫자 지정 상수는 자동으로 Parameter에
+                      등록됩니다. Range 설정에서 Remove하면 현재 값은 고정하고
+                      슬라이더만 숨깁니다. 단독 x=2는 계속 방정식으로 풉니다.
+                    </p>
+                    <div className="parameter-list">
+                      {project.parameters.map((p, i) => (
+                        <div className="parameter" key={p.id}>
+                          <div className="parameter-top">
+                            <div>
+                              <label
+                                htmlFor={`param-${p.id}`}
+                                className="parameter-name"
+                              >
+                                {p.name}
+                              </label>
+                              <span className="parameter-role">
+                                {p.hidden
+                                  ? 'Fixed · 슬라이더 숨김'
+                                  : p.name === project.sweepName
+                                    ? 'Sweep'
+                                    : 'Constant'}
+                              </span>
+                            </div>
+                            <div className="parameter-input-wrap">
+                              <span className="parameter-current-value">
+                                현재 {fmt(p.value, 10)}
+                              </span>
+                              {rangeEditor && (
+                                <button
+                                  className="delete-param"
+                                  title={`${p.name} ${p.hidden ? 'Restore' : 'Remove'} Parameter`}
+                                  aria-label={`${p.name} ${p.hidden ? 'Restore' : 'Remove'} Parameter`}
+                                  onClick={() =>
+                                    setProject((prev) => ({
+                                      ...prev,
+                                      parameters: prev.parameters.map((v) =>
+                                        v.id === p.id
+                                          ? { ...v, hidden: !v.hidden }
+                                          : v,
+                                      ),
+                                      selectedAnchor: undefined,
+                                      simulations: [],
+                                      mergedSets: [],
+                                      individualIds: [],
+                                    }))
+                                  }
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="range-labels">
+                            <span>{fmt(p.min)}</span>
+                            <span>Sample Spacing {String(p.step)}</span>
+                            <span>{fmt(p.max)}</span>
+                          </div>
+                          {rangeEditor && (
+                            <RangeEditor
+                              parameter={p}
+                              onChange={(next) =>
+                                setProject((prev) => ({
+                                  ...prev,
+                                  parameters: prev.parameters.map((v) =>
+                                    v.id === p.id ? next : v,
+                                  ),
                                 }))
                               }
                             />
-                            구간 검증 사용 (단일 변수·추가 계산)
-                          </label>
-                          <SearchBoundsEditor
-                            bounds={project.searchBounds}
-                            variables={boundsVariables}
-                            variableBounds={project.variableBounds}
-                            window={
-                              searchInfo?.window ?? basePayload?.search?.window
-                            }
-                            onApply={(bounds, variableBounds) =>
-                              setProject((p) => ({
-                                ...p,
-                                searchBounds: bounds,
-                                variableBounds,
-                                selectedAnchor: undefined,
-                                selectedSolution: 0,
-                              }))
-                            }
-                          />
-                        </>
-                      ) : (
-                        <p>
-                          x^2=4처럼 등식을 입력하고 x(0)=1로 초기값을
-                          지정하세요. x(min)·x(max)로 범위를 지정할 수도
-                          있습니다. 연립식은 각 미지수의 초기값을 적습니다.
-                          이름=수식 계산도 지원합니다.
-                        </p>
-                      )}
-                    </div>
-                  </details>
-                )}
-                {automatic &&
-                  /^\s*[A-Za-z][A-Za-z0-9_]*\(\s*(min|max|0)\s*\)\s*=/m.test(
-                    project.source,
-                  ) && (
-                    <p className="legacy-conditions-note">
-                      자동 모드에서는 수식에 적힌 초기값·구간 대신 자동 탐색
-                      설정을 사용합니다. 기존 조건으로 풀려면 고급 설정에서
-                      방식을 바꾸세요.
-                    </p>
-                  )}
-                <div className="model-run-row">
-                  <span>
-                    <span className="keycap">⌘</span> / Ctrl + Enter
-                  </span>
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      setRevision((v) => v + 1)
-                      navigate('simulation')
-                    }}
-                    disabled={pending || !hasSource}
-                  >
-                    {pending ? (
-                      <LoaderCircle size={15} className="spin" />
-                    ) : (
-                      <Play size={14} fill="currentColor" />
-                    )}
-                    {pending ? '계산 중' : 'Solve'}
-                    <span className="button-arrow" aria-hidden="true">
-                      ↗
-                    </span>
-                  </button>
-                </div>
-              </section>
-              <section className="panel parameter-panel">
-                <div className="panel-heading">
-                  <div className="section-label">
-                    <span className="step-number">02</span>
-                    <h2>Parameters</h2>
-                    <span className="count-badge">
-                      {project.parameters.length}
-                    </span>
-                  </div>
-                  <button
-                    className={`icon-button ${rangeEditor ? 'is-selected' : ''}`}
-                    aria-label="파라미터 범위 설정"
-                    title="파라미터 범위 설정"
-                    onClick={() => setRangeEditor((v) => !v)}
-                  >
-                    <Settings2 size={16} />
-                  </button>
-                </div>
-                <p className="section-description">
-                  범위와 샘플 포인트 간격을 설정하세요. 값은 시뮬레이션 화면에서
-                  조절합니다.
-                </p>
-                <div className="parameter-list">
-                  {project.parameters.map((p, i) => (
-                    <div className="parameter" key={p.id}>
-                      <div className="parameter-top">
-                        <div>
-                          <label
-                            htmlFor={`param-${p.id}`}
-                            className="parameter-name"
-                          >
-                            {p.name}
-                          </label>
-                          <span className="parameter-role">
-                            {p.name === project.sweepName
-                              ? '탐색 변수'
-                              : '상수'}
-                          </span>
-                        </div>
-                        <div className="parameter-input-wrap">
-                          <span className="parameter-current-value">
-                            현재 {fmt(p.value, 10)}
-                          </span>
-                          {rangeEditor && (
-                            <button
-                              className="delete-param"
-                              title={`${p.name} 삭제`}
-                              aria-label={`${p.name} 삭제`}
-                              onClick={() =>
-                                setProject((prev) => ({
-                                  ...prev,
-                                  selectedAnchor: undefined,
-                                  simulations: [],
-                                  mergedSets: [],
-                                  individualIds: [],
-                                  parameters: prev.parameters.filter(
-                                    (v) => v.id !== p.id,
-                                  ),
-                                  sweepName:
-                                    prev.sweepName === p.name
-                                      ? prev.parameters.find(
-                                          (v) => v.id !== p.id,
-                                        )?.name || ''
-                                      : prev.sweepName,
-                                }))
-                              }
-                            >
-                              <Trash2 size={13} />
-                            </button>
                           )}
-                        </div>
-                      </div>
-                      <div className="range-labels">
-                        <span>{fmt(p.min)}</span>
-                        <span>Sample Spacing {String(p.step)}</span>
-                        <span>{fmt(p.max)}</span>
-                      </div>
-                      {rangeEditor && (
-                        <RangeEditor
-                          parameter={p}
-                          onChange={(next) =>
-                            setProject((prev) => ({
-                              ...prev,
-                              parameters: prev.parameters.map((v) =>
-                                v.id === p.id ? next : v,
-                              ),
-                            }))
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {project.parameters.length === 0 && (
-                  <div className="no-parameters">
-                    <SlidersHorizontal size={22} />
-                    <p>
-                      수식 속 상수를 파라미터로 등록하면
-                      <br />
-                      슬라이더로 해의 변화를 탐색할 수 있어요.
-                    </p>
-                  </div>
-                )}
-                <button
-                  className="add-parameter"
-                  disabled={project.parameters.length >= 24}
-                  onClick={() => {
-                    setParamOpen(true)
-                    setParamError('')
-                  }}
-                >
-                  <Plus size={15} />
-                  Add Parameter
-                </button>
-                <div className="live-note">
-                  <span className="live-dot" />
-                  시뮬레이션 화면에서 슬라이더와 그래프를 조작할 수 있습니다.
-                </div>
-              </section>
-              <div className="model-next-step">
-                <p role="status">
-                  {pending
-                    ? '수식을 확인하고 있습니다.'
-                    : computeError
-                      ? computeError
-                      : hasSource
-                        ? '설정을 마쳤다면 시뮬레이션으로 이동하세요.'
-                        : '방정식을 입력해 계산을 시작하세요.'}
-                </p>
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => navigate('simulation')}
-                >
-                  Open Simulation <ArrowRight size={15} />
-                </button>
-              </div>
-              <div className="tip-card">
-                <div className="tip-icon">
-                  <Sparkles size={17} />
-                </div>
-                <p>
-                  <b>작은 변화가 만드는 새로운 발견</b>
-                  <span>
-                    {nonlinear
-                      ? automatic
-                        ? '발견한 실수 해를 선택해 각 해의 리포트와 변화를 비교하세요.'
-                        : '구간이나 초기값을 바꿔 다른 해가 존재하는지 살펴보세요.'
-                      : '수식 속 상수를 파라미터로 등록해 해의 변화를 탐색해 보세요.'}
-                  </span>
-                </p>
-                <ArrowRight size={16} />
-              </div>
-            </div>
-            <div
-              className={`results-column ${pending ? 'is-computing' : ''}`}
-              hidden={screen !== 'simulation' && screen !== 'report'}
-            >
-              <section
-                className={`panel results-panel ${view === 'report' ? 'analysis-view' : ''} ${automatic && view === 'simulation' ? 'automatic-simulation-view' : ''} ${automatic && anchors.length > 0 && view === 'simulation' ? 'multi-simulation-view' : ''}`}
-              >
-                <div className="results-heading">
-                  <div className="section-label">
-                    <span className="step-number">03</span>
-                    <h2>{view === 'simulation' ? 'Simulation' : 'Report'}</h2>
-                  </div>
-                  <div className="results-heading-right">
-                    <span
-                      className={`engine-status ${error ? 'has-error' : ''}`}
-                    >
-                      {pending ? (
-                        <LoaderCircle size={12} className="spin" />
-                      ) : error ? (
-                        <X size={12} />
-                      ) : (
-                        <CheckCircle2 size={12} />
-                      )}{' '}
-                      {pending
-                        ? '계산 중'
-                        : error
-                          ? automatic && overview?.anchors.length
-                            ? '현재 해 미확인'
-                            : '입력 확인'
-                          : !result
-                            ? '입력 대기'
-                            : result?.engine === 'wasm'
-                              ? 'WebAssembly'
-                              : 'JavaScript'}
-                    </span>
-                    <button
-                      className="icon-button"
-                      title={expanded ? '기본 레이아웃' : '결과 화면 확대'}
-                      aria-label={expanded ? '기본 레이아웃' : '결과 화면 확대'}
-                      onClick={() => setExpanded((v) => !v)}
-                    >
-                      <Maximize2 size={16} />
-                    </button>
-                  </div>
-                </div>
-                {view === 'simulation' &&
-                  project.parameters.length > 0 &&
-                  !(
-                    automatic &&
-                    !overviewHidden &&
-                    overview?.anchors.length
-                  ) && (
-                    <ResultParameters
-                      parameters={project.parameters}
-                      onChange={updateParameter}
-                    />
-                  )}
-                {automatic && view === 'simulation' && (
-                  <div className="merge-actions">
-                    <button
-                      className="secondary-button"
-                      disabled={
-                        pending ||
-                        discoveryPending ||
-                        !solutions.length ||
-                        mergedSets.length >= 6
-                      }
-                      onClick={createMergedSet}
-                    >
-                      <Layers3 size={15} /> 시뮬레이션 병합 세트 추가
-                    </button>
-                    {overviewHidden && (
-                      <button
-                        className="secondary-button"
-                        onClick={() => setOverviewHidden(false)}
-                      >
-                        기본 병합 보기
-                      </button>
-                    )}
-                    <span>최대 6개 세트 · 해별 색상 비교</span>
-                  </div>
-                )}
-                {automatic && (solutions.length > 0 || discoveryPending) && (
-                  <details
-                    className="solutions-section"
-                    ref={solutionsRef}
-                    style={{
-                      minHeight:
-                        (pending || discoveryPending) && solutionsHeight
-                          ? solutionsHeight
-                          : undefined,
-                    }}
-                    onToggle={(e) => {
-                      if (!e.currentTarget.open) setSolutionsHeight(0)
-                    }}
-                  >
-                    <summary className="solutions-title">
-                      <h3 className="solution-count">
-                        {discoveryPending
-                          ? '해 목록 갱신 중'
-                          : basePayload?.search?.nonIsolated
-                            ? `구간 해 대표값 ${solutions.length}개`
-                            : `발견한 실수 해 ${solutions.length}개`}
-                      </h3>
-                      <span>
-                        해 선택 · 시뮬레이션 추가 <ChevronDown size={14} />
-                      </span>
-                    </summary>
-                    {automatic && discoveryPending && (
-                      <p className="discovery-status" role="status">
-                        현재 해를 표시하고 있습니다. 전체 해 목록을 갱신하는
-                        중입니다.
-                      </p>
-                    )}
-                    <div className="solution-list" aria-label="발견한 실수 해">
-                      {solutions.map((item, i) => (
-                        <div className="solution-item" key={i}>
-                          <button
-                            className={`solution-choice ${highlightedSolution === i ? 'selected' : ''}`}
-                            aria-pressed={highlightedSolution === i}
-                            aria-label={`해 ${i + 1} ${item.variables.map((name, j) => `${name} ${fmt(item.values[j], 10)}`).join(' ')}`}
-                            disabled={pending}
-                            onClick={() => selectRoot(item, i)}
-                          >
-                            <span>해 {i + 1}</span>
-                            <strong>
-                              {item.variables
-                                .map(
-                                  (name, j) =>
-                                    `${name} = ${fmt(item.values[j], 10)}`,
-                                )
-                                .join(' · ')}
-                            </strong>
-                          </button>
-                          <button
-                            className="add-simulation-button"
-                            aria-label={`해 ${i + 1} 시뮬레이션 추가`}
-                            disabled={
-                              pending ||
-                              (anchors.length >= 6 && !matchingPanel(item)) ||
-                              rootAlreadyOpen(item)
-                            }
-                            onClick={() => addSimulation(item, i)}
-                          >
-                            <Plus size={12} />
-                            {rootAlreadyOpen(item)
-                              ? '열린 시뮬레이션'
-                              : '시뮬레이션 추가'}
-                          </button>
                         </div>
                       ))}
                     </div>
-                    {searchInfo && <SearchCoverage search={searchInfo} />}
-                  </details>
-                )}
-                {view === 'simulation' &&
-                (selectedBranch ||
-                  (automatic &&
-                    !overviewHidden &&
-                    overview?.anchors.length)) ? null : error ? (
-                  <div
-                    className={`error-state${verifiedEmpty ? ' certified-empty-state' : ''}`}
-                    role={verifiedEmpty ? 'status' : 'alert'}
-                  >
-                    <div className="error-icon">
-                      <Sigma size={24} />
-                    </div>
-                    <h3>
-                      {verifiedEmpty
-                        ? '이 범위에는 실근이 없습니다.'
-                        : nonlinear
-                          ? '해를 구하지 못했습니다.'
-                          : '수식을 한 번 확인해 주세요.'}
-                    </h3>
-                    <p>
-                      {verifiedEmpty
-                        ? '아래에서 구간 검증과 입력 오차에 따른 근 개수 유지 확률을 확인할 수 있습니다.'
-                        : error}
-                    </p>
-                    {searchInfo && <SearchCoverage search={searchInfo} />}
-                    <button
-                      className="secondary-button"
-                      onClick={() => {
-                        setGuide(true)
-                      }}
-                    >
-                      입력 가이드 보기
-                      <ArrowRight size={14} />
-                    </button>
-                  </div>
-                ) : !hasSource ? (
-                  <div className="empty-workspace">
-                    <div className="empty-workspace-icon">
-                      <Sigma size={28} />
-                    </div>
-                    <span>
-                      {nonlinear ? 'NONLINEAR EQUATIONS' : 'LINEAR EQUATIONS'}
-                    </span>
-                    <h3>모델을 입력하면 해석을 시작합니다.</h3>
-                    <p>
-                      {nonlinear
-                        ? automatic
-                          ? '방정식을 그대로 입력하면 실수 해를 자동으로 탐색합니다. 초기값이나 구간을 입력하지 않아도 됩니다.'
-                          : '단일근은 탐색 구간을, 연립방정식은 초기 추정값을 함께 적어 주세요.'
-                        : '방정식을 입력하세요. 알려진 값은 Parameter로 등록할 수 있습니다.'}
-                    </p>
-                    {nonlinear && (
-                      <button
-                        className="secondary-button"
-                        onClick={() =>
-                          loadExample(NONLINEAR_EXAMPLES[0].project)
-                        }
-                      >
-                        <BookOpen size={15} />
-                        비선형 예제로 시작하기
-                      </button>
-                    )}
-                  </div>
-                ) : !result ? (
-                  <div className="loading-state">
-                    <LoaderCircle className="spin" size={26} />
-                    <h3>수식을 해석하고 있습니다.</h3>
-                    <p>잠시 후 모델의 해가 표시됩니다.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="solution-summary">
-                      <div className="summary-label">
-                        <span className="found-badge">
-                          <Check size={12} />
-                          {nonlinear
-                            ? evaluation
-                              ? '계산 완료'
-                              : automatic
-                                ? (project.selectedAnchor?.label ??
-                                  `해 ${solutionIndex + 1}`)
-                                : '수렴'
-                            : '유일해'}
-                        </span>
-                        <span>
-                          {evaluation
-                            ? `${result.variables.length}개 계산 결과`
-                            : `${result.variables.length}개 미지수의 해를 찾았습니다`}
-                        </span>
-                      </div>
-                      <div
-                        className={`solution-cards ${result.variables.length > 3 ? 'many-values' : ''} ${result.variables.length === 1 ? 'single-value' : ''}`}
-                      >
-                        {result.variables.map((v, i) => (
-                          <div className="solution-value" key={v}>
-                            <div>
-                              <i
-                                style={{
-                                  background: colors[i % colors.length],
-                                }}
-                              />
-                              <span>{v}</span>
-                            </div>
-                            <strong>
-                              {fmt(
-                                result.values[i],
-                                view === 'report' ? 17 : 7,
-                              )}
-                            </strong>
-                            <span className="value-caption">
-                              {nonlinear
-                                ? rootStructureLabel(result.rootStructure)
-                                : '계산된 값'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {displayWarnings.length > 0 && (
-                      <div className="warning-box">
-                        {displayWarnings.map((w, i) => (
-                          <p key={i}>{w}</p>
-                        ))}
-                      </div>
-                    )}
-                    {nonlinear && (
-                      <div className="nonlinear-status">
-                        <div>
-                          <span>{result.method}</span>
-                          {!evaluation && (
-                            <b>반복 {result.iterations ?? 0}회</b>
-                          )}
-                        </div>
+                    {project.parameters.length === 0 && (
+                      <div className="no-parameters">
+                        <SlidersHorizontal size={22} />
                         <p>
-                          {evaluation
-                            ? '명시식을 계산한 결과입니다.'
-                            : automatic
-                              ? searchConclusion(searchInfo)
-                              : '초기값·탐색 구간에 따라 다른 해에 수렴할 수 있습니다. 이 결과가 전체 해의 유일성을 뜻하지는 않습니다.'}
+                          수식 속 상수를 파라미터로 등록하면
+                          <br />
+                          슬라이더로 해의 변화를 탐색할 수 있어요.
                         </p>
                       </div>
                     )}
-                    {result.auxiliary &&
-                      Object.keys(result.auxiliary).length > 0 && (
-                        <div className="auxiliary-values">
-                          <span>보조식 계산값</span>
-                          {Object.entries(result.auxiliary).map(
-                            ([name, value]) => (
-                              <span key={name}>
-                                <code>{name}</code>
-                                <b>{fmt(value, 10)}</b>
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      )}
-                    {view === 'simulation' ? (
-                      <>
-                        {!automatic && !(nonlinear && selectedSimulation) && (
-                          <>
-                            <div className="chart-section">
-                              <div className="chart-heading">
-                                <div>
-                                  <h3>파라미터에 따른 해의 변화</h3>
-                                  <p>
-                                    한 변수를 움직이면, 해답은 어떻게
-                                    달라질까요?
-                                  </p>
-                                </div>
-                                <span className="chart-kicker">
-                                  PARAMETRIC EXPLORATION
-                                </span>
-                              </div>
-                              {sweepParam ? (
-                                <>
-                                  <div className="chart-controls">
-                                    <label htmlFor="sweep-param">
-                                      탐색 변수
-                                    </label>
-                                    <div className="select-wrap">
-                                      <select
-                                        id="sweep-param"
-                                        value={project.sweepName}
-                                        onChange={(e) =>
-                                          setProject((p) => ({
-                                            ...p,
-                                            sweepName: e.target.value,
-                                          }))
-                                        }
-                                      >
-                                        {project.parameters.map((p) => (
-                                          <option key={p.id} value={p.name}>
-                                            {p.name}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <ChevronDown size={12} />
-                                    </div>
-                                    <span className="sweep-domain">
-                                      {fmt(sweepParam.min)}
-                                      <ArrowRight size={12} />
-                                      {fmt(sweepParam.max)}
-                                    </span>
-                                  </div>
-                                  <SolutionChart
-                                    points={payload?.sweep || []}
-                                    expanded={expanded}
-                                    modelKind={
-                                      nonlinear ? 'nonlinear' : 'linear'
-                                    }
-                                    selectionPoints={payload?.dataset}
-                                    variables={result.variables}
-                                    parameterName={project.sweepName}
-                                    currentParameter={sweepParam.value}
-                                    currentValues={result.values}
-                                    onParameterChange={
-                                      payload?.sweepName === project.sweepName
-                                        ? (value) =>
-                                            updateParameter(
-                                              sweepParam.id,
-                                              value,
-                                            )
-                                        : undefined
-                                    }
-                                    selectedIndex={selectedIndex}
-                                    onSelectIndex={setSelectedIndex}
-                                    visibleVariables={visibleVariables}
-                                    onToggleVariable={(v) =>
-                                      setVisibleVariables((prev) =>
-                                        prev.includes(v)
-                                          ? prev.filter((n) => n !== v)
-                                          : [...prev, v],
-                                      )
-                                    }
-                                  />
-                                  {nonlinear && (
-                                    <p className="nonlinear-sweep-note">
-                                      {automatic
-                                        ? '선택한 해에서 이어지는 가지를 수치적으로 추적합니다. 가지가 끝나거나 추적에 실패한 지점은 빈 값으로 표시됩니다.'
-                                        : '각 지점은 같은 초기값·구간으로 다시 풉니다. 모든 해를 추적하는 그래프는 아닙니다.'}
-                                    </p>
-                                  )}
-                                  <p className="chart-footnote">
-                                    <span className="chart-current-dot" />
-                                    점선은 현재 설정값입니다. 그래프 위에
-                                    마우스를 올려 값을 확인하세요.
-                                  </p>
-                                </>
-                              ) : (
-                                <div className="empty-chart">
-                                  <Activity size={34} />
-                                  <h4>상수에 움직임을 더해 보세요.</h4>
-                                  <p>
-                                    파라미터를 추가하고 수식에 사용하면
-                                    <br />
-                                    해의 변화를 그래프로 탐색할 수 있습니다.
-                                  </p>
-                                  <button
-                                    className="text-button"
-                                    onClick={() => setParamOpen(true)}
-                                  >
-                                    Add Parameter
-                                    <Plus size={14} />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            <div className="data-section">
-                              <div className="data-toolbar">
-                                <h3 className="data-section-title">
-                                  <Grid2X2 size={13} />
-                                  데이터 표
-                                </h3>
-                                <button
-                                  className="text-button"
-                                  disabled={
-                                    pending ||
-                                    !!(sweepParam && payload?.datasetError)
-                                  }
-                                  onClick={exportCSV}
-                                >
-                                  <ArrowDownToLine size={13} />
-                                  CSV
-                                </button>
-                              </div>
-                              {sweepParam && payload ? (
-                                <SweepTable
-                                  payload={payload}
-                                  parameterStep={sweepParam.step}
-                                  selectedIndex={selectedIndex}
-                                  onSelectIndex={setSelectedIndex}
-                                />
-                              ) : (
-                                <div className="table-scroll">
-                                  <table className="result-table">
-                                    <thead>
-                                      <tr>
-                                        <th>변수</th>
-                                        <th>값</th>
-                                        {!evaluation && (
-                                          <th>방정식 최대 절대 등식 오차</th>
-                                        )}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {result.variables.map((v, i) => (
-                                        <tr key={v}>
-                                          <td>
-                                            <span
-                                              className="table-color"
-                                              style={{
-                                                background:
-                                                  colors[i % colors.length],
-                                              }}
-                                            />
-                                            {v}
-                                          </td>
-                                          <td>{fmt(result.values[i], 10)}</td>
-                                          {!evaluation && (
-                                            <td>
-                                              {result.maxResidual.toExponential(
-                                                2,
-                                              )}
-                                            </td>
-                                          )}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <div className="report-content">
-                        <div className="report-title">
-                          <div className="report-document-icon">
-                            <FileText size={22} />
-                          </div>
-                          <div>
-                            <span>ANALYSIS REPORT</span>
-                            <h3>{project.title}</h3>
-                          </div>
-                          <button
-                            className="secondary-button"
-                            disabled={pending}
-                            onClick={exportReport}
-                          >
-                            <Download size={14} />
-                            Save Report
-                          </button>
-                        </div>
-                        {automatic && solutions.length > 1 && (
-                          <button
-                            className="all-reports-button"
-                            disabled={pending}
-                            onClick={exportAllReports}
-                          >
-                            <Download size={14} />
-                            Save All Reports
-                            <span>{solutions.length}개 해</span>
-                          </button>
-                        )}
-                        {!evaluation && (
-                          <AnalysisSummary
-                            result={result}
-                            source={project.source}
-                            parameters={Object.fromEntries(
-                              project.parameters.map((p) => [p.name, p.value]),
-                            )}
-                            search={searchInfo}
-                            events={selectedBranch?.events}
-                            sweepName={project.sweepName}
-                            pending={pending || discoveryPending}
-                            inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
-                            onInputNoiseSigmaChange={(sigma) =>
-                              setProject((p) => ({
-                                ...p,
-                                inputNoiseSigma: sigma,
-                                certifyRoots: true,
-                              }))
-                            }
-                          />
-                        )}
-                        {!evaluation && (
-                          <div className="condition-controls">
-                            <div>
-                              <label htmlFor="condition-norm">
-                                {nonlinear
-                                  ? 'Local Condition Number'
-                                  : 'Condition Number'}
-                              </label>
-                              <details className="analysis-details condition-help">
-                                <summary>조건수는 어떻게 해석하나요?</summary>
-                                <p>
-                                  조건수는 같은 비율의 입력 변화가 해에 얼마나
-                                  큰 비율의 변화로 증폭될 수 있는지 보여주는
-                                  국소 지표입니다. 선형식은 계수 행렬,
-                                  비선형식은 현재 해 근처의 Jacobian을
-                                  사용합니다. 값이 클수록 입력의 작은 변화나
-                                  반올림에 취약한 방향이 있습니다. 실제 측정
-                                  오차나 해를 모두 찾았을 확률을 뜻하지
-                                  않습니다.
-                                </p>
-                                <p>
-                                  ∞-norm은 성분별 최대 오차와 행 합을 기준으로,
-                                  2-norm은 전체 벡터 길이와 최대·최소 특이값의
-                                  비율을 기준으로 계산합니다. 선택을 바꾸면 진단
-                                  기준이 달라집니다. 계산 자릿수가 늘어나거나
-                                  해가 더 정확해지는 설정은 아닙니다.
-                                </p>
-                                <p>
-                                  위의 ‘등식 오차 → 해 변화 증폭률’은 절대
-                                  오차가 해의 절대 변화로 바뀌는 크기이고,
-                                  조건수는 상대 변화와 방향 간 불균형을
-                                  나타냅니다. 단일 변수의 비특이 Jacobian
-                                  조건수는 항상 1이므로, 이 경우에는 증폭률과
-                                  파라미터별 영향으로 민감도를 판단하세요.
-                                  단위와 스케일이 같은 모델끼리 비교하는 것이
-                                  적절합니다.
-                                </p>
-                              </details>
-                            </div>
-                            <div className="condition-select-wrap">
-                              <select
-                                id="condition-norm"
-                                aria-label="조건수 계산 방식"
-                                value={conditionNorm}
-                                onChange={(e) =>
-                                  setProject((p) => ({
-                                    ...p,
-                                    conditionNorm: e.target
-                                      .value as ConditionNorm,
-                                  }))
-                                }
-                              >
-                                <option value="infinity">
-                                  ∞-norm · 행 합 기준
-                                </option>
-                                <option value="2">2-norm · SVD 기준</option>
-                              </select>
-                              <ChevronDown size={13} />
-                            </div>
-                          </div>
-                        )}
-                        <details className="analysis-details technical-diagnostics">
-                          <summary>Numerical Diagnostics</summary>
-                          <div
-                            className={`report-metrics ${evaluation ? 'evaluation-metrics' : ''}`}
-                          >
-                            <div>
-                              <span>
-                                {evaluation
-                                  ? '계산 항목'
-                                  : '최대 절대 등식 오차'}
-                              </span>
-                              <strong>
-                                {evaluation
-                                  ? `${result.variables.length}개`
-                                  : result.maxResidual.toExponential(3)}
-                              </strong>
-                            </div>
-                            {!evaluation && (
-                              <div>
-                                <span>
-                                  조건수 ·{' '}
-                                  {result.conditionNorm === '2'
-                                    ? '2-norm'
-                                    : '∞-norm'}
-                                  {nonlinear && !evaluation ? ' · 국소' : ''}
-                                </span>
-                                <strong className="condition-value">
-                                  {fmt(result.condition, 7)}
-                                </strong>
-                                <span
-                                  className="condition-badge"
-                                  data-level={sensitivity?.level}
-                                  role="status"
-                                  aria-live="polite"
-                                  aria-busy={pending}
-                                >
-                                  <i />
-                                  {sensitivity?.label}
-                                </span>
-                              </div>
-                            )}
-                            <div>
-                              <span>Runtime</span>
-                              <strong>
-                                {fmt(result.durationMs, 3)}
-                                <small> ms</small>
-                              </strong>
-                            </div>
-                          </div>
-                          {!evaluation && (
-                            <div
-                              className="condition-explanation"
-                              data-level={sensitivity?.level}
-                            >
-                              <p>
-                                {result.conditionError ||
-                                  sensitivity?.description}
-                              </p>
-                              <div
-                                className="condition-thresholds"
-                                aria-label="조건수 민감도 참고 범위"
-                              >
-                                <span>
-                                  <i className="condition-dot stable" />
-                                  <b>안정</b> κ &lt; 10⁴
-                                </span>
-                                <span>
-                                  <i className="condition-dot sensitive" />
-                                  <b>민감</b> 10⁴ ≤ κ &lt; 10⁸
-                                </span>
-                                <span>
-                                  <i className="condition-dot very-sensitive" />
-                                  <b>매우 민감</b> κ ≥ 10⁸
-                                </span>
-                              </div>
-                              {nonlinear && (
-                                <p className="local-condition-note">
-                                  {evaluation
-                                    ? '명시식 계산에는 조건수가 적용되지 않습니다.'
-                                    : '조건수는 수렴점의 Jacobian에 대한 국소 진단입니다. 1×1 비영 Jacobian의 조건수는 항상 1이므로 단일근의 민감도는 도함수 크기도 함께 확인하세요. 전체 영역의 안정성은 보장하지 않습니다.'}
-                                </p>
-                              )}
-                              <p className="condition-caveat">
-                                위 범위는 참고 기준입니다. 실제 신뢰도는 측정
-                                오차와 단위·스케일에 따라 달라지며, 작은 등식
-                                오차만으로 해의 정확도를 보장하지는 않습니다.
-                              </p>
-                              <details className="condition-guide">
-                                <summary>
-                                  계산 방식의 차이 알아보기
-                                  <ChevronDown size={12} />
-                                </summary>
-                                <p>
-                                  <b>∞-norm</b>은 A와 A⁻¹의 최대 절댓값 행 합을
-                                  곱합니다. <b>2-norm</b>은 직접 SVD로 구한
-                                  최대·최소 특이값의 비율 σmax / σmin입니다.
-                                </p>
-                                <p>
-                                  두 방식은 서로 다른 norm으로 민감도를
-                                  측정하므로 값이 달라질 수 있습니다. 2-norm
-                                  선택이 해 자체의 계산 정밀도를 높이는 것은
-                                  아닙니다.
-                                </p>
-                                <p>
-                                  {nonlinear
-                                    ? '조건수는 수렴점에서 계산한 Jacobian J를 기준으로 합니다.'
-                                    : '조건수는 수식에서 추출한 계수 행렬 A를 기준으로 합니다.'}{' '}
-                                  식이나 변수의 단위를 바꾸면 값이 달라질 수
-                                  있습니다. 계산 방식 선택은 진단에 적용되며,
-                                  해를 구하는 솔버는 동일합니다.
-                                </p>
-                              </details>
-                            </div>
-                          )}
-                        </details>
-                        <details className="analysis-details">
-                          <summary>Model & Calculation Details</summary>
-                          <h4>Source</h4>
-                          <pre>{project.source}</pre>
-                          <h4>Parameters</h4>
-                          <div className="report-param-list">
-                            {project.parameters.length ? (
-                              project.parameters.map((p) => (
-                                <span key={p.id}>
-                                  {p.name}
-                                  <b>{fmt(p.value, 10)}</b>
-                                </span>
-                              ))
-                            ) : (
-                              <p>별도로 정의된 파라미터가 없습니다.</p>
-                            )}
-                          </div>
-                          <h4>Numerical Method</h4>
-                          <p className="report-explanation">
-                            {nonlinear
-                              ? evaluation
-                                ? '명시식의 의존 관계를 확인하여 순서대로 계산합니다.'
-                                : '등식 오차는 구한 해를 넣었을 때 좌변과 우변의 차이입니다. 아래 Jacobian은 해 주변의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
-                              : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 등식 오차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
-                          </p>
-                          {!evaluation && (
-                            <details className="matrix-details">
-                              <summary>
-                                <Grid2X2 size={14} />
-                                <span>
-                                  {nonlinear
-                                    ? 'Jacobian·수치 검증 자세히 보기'
-                                    : '행렬·수치 검증 자세히 보기'}
-                                </span>
-                                <ChevronDown size={15} />
-                              </summary>
-                              <p>
-                                {nonlinear
-                                  ? '해 주변의 Jacobian J와 각 방정식의 좌변·우변 차이를 확인합니다. 수치 계산의 수렴과 민감도를 검토할 수 있습니다.'
-                                  : '수식을 A·x = b로 변환한 계수와 우변을 확인합니다. 부호나 누락된 항을 검토할 때 활용하세요.'}
-                              </p>
-                              <MatrixView result={result} />
-                              <div className="residual-list">
-                                {result.residuals.map((r, i) => (
-                                  <div key={i}>
-                                    <span>방정식 {i + 1}</span>
-                                    <code>{r.toExponential(3)}</code>
-                                    <CheckCircle2 size={13} />
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-                        </details>
-                      </div>
-                    )}
-                    <div className="result-footer">
-                      <span>
-                        <span className="status-dot" />
-                        {pending ? '새 설정으로 계산 중…' : '계산 완료'}
-                        <i>·</i>
-                        {fmt(result.durationMs, 3)} ms
-                      </span>
-                      <span>
-                        {nonlinear ? result.method : '부분 피벗팅'}
-                        {!evaluation && (
-                          <>
-                            {' '}
-                            · {result.matrix.length} × {result.variables.length}
-                          </>
-                        )}
-                      </span>
+                    <button
+                      className="add-parameter"
+                      disabled={project.parameters.length >= 24}
+                      onClick={() => {
+                        setParamOpen(true)
+                        setParamError('')
+                      }}
+                    >
+                      <Plus size={15} />
+                      Add Parameter
+                    </button>
+                    <div className="live-note">
+                      <span className="live-dot" />
+                      시뮬레이션 화면에서 슬라이더와 그래프를 조작할 수
+                      있습니다.
                     </div>
-                  </>
-                )}
-                {view === 'report' && certificateWithoutRoot && (
-                  <section className="report-without-root">
-                    <CertificationReport
-                      certificate={certificateWithoutRoot}
-                      pending={pending || discoveryPending}
-                      truncated={searchInfo?.truncated}
-                      inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
-                      onInputNoiseSigmaChange={(sigma) =>
-                        setProject((p) => ({
-                          ...p,
-                          inputNoiseSigma: sigma,
-                          certifyRoots: true,
-                        }))
-                      }
-                    />
+                  </section>
+                  <div className="model-next-step">
+                    <p role="status">
+                      {pending
+                        ? '수식을 확인하고 있습니다.'
+                        : computeError
+                          ? computeError
+                          : hasSource
+                            ? '설정을 마쳤다면 시뮬레이션으로 이동하세요.'
+                            : '방정식을 입력해 계산을 시작하세요.'}
+                    </p>
                     <button
                       type="button"
-                      className="secondary-button"
-                      disabled={pending || discoveryPending}
-                      onClick={() =>
-                        downloadFile(
-                          'ivc-verification-report.md',
-                          `# ${project.title}\n\n${certificateReport(certificateWithoutRoot)}\n\n## 입력 모델\n\n\`\`\`text\n${project.source}\n\`\`\``,
-                          'text/markdown;charset=utf-8',
-                        )
-                      }
+                      className="primary-button"
+                      onClick={() => navigate('simulation')}
                     >
-                      Save Verification Report
+                      Open Simulation <ArrowRight size={15} />
                     </button>
-                  </section>
-                )}
-                {nonlinear &&
-                  !automatic &&
-                  view === 'simulation' &&
-                  selectedSimulation &&
-                  manualAnchor && (
-                    <SimulationPanelView
-                      panel={selectedSimulation}
-                      anchor={manualAnchor}
-                      parameters={project.parameters}
-                      onSweepNameChange={updateSweepName}
-                      expanded={expanded}
-                      pending={pending}
-                      closable={false}
-                      onClose={() => {}}
-                      onParameterChange={
-                        sweepParam
-                          ? (value) => updateParameter(sweepParam.id, value)
-                          : undefined
-                      }
-                      onReport={() => navigate('report')}
-                    />
-                  )}
-                {automatic &&
-                  view === 'simulation' &&
-                  anchors.length === 0 &&
-                  (!overview || overviewHidden) &&
-                  selectedBranch &&
-                  project.selectedAnchor && (
-                    <div className="selected-simulation-workspace">
-                      <div className="selected-simulation-toolbar">
-                        <span>선택한 해의 고정된 곡선</span>
-                        {project.parameters.length > 0 && (
-                          <label>
-                            탐색 변수{' '}
-                            <select
-                              aria-label="탐색 변수"
-                              value={project.sweepName}
-                              onChange={(e) =>
-                                setProject((p) => ({
-                                  ...p,
-                                  sweepName: e.target.value,
-                                }))
-                              }
-                            >
-                              {project.parameters.map((p) => (
-                                <option key={p.id} value={p.name}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                  </div>
+                  <div className="tip-card">
+                    <div className="tip-icon">
+                      <Sparkles size={17} />
+                    </div>
+                    <p>
+                      <b>작은 변화가 만드는 새로운 발견</b>
+                      <span>
+                        {nonlinear
+                          ? automatic
+                            ? '발견한 실수 해를 선택해 각 해의 리포트와 변화를 비교하세요.'
+                            : '구간이나 초기값을 바꿔 다른 해가 존재하는지 살펴보세요.'
+                          : '수식 속 상수를 파라미터로 등록해 해의 변화를 탐색해 보세요.'}
+                      </span>
+                    </p>
+                    <ArrowRight size={16} />
+                  </div>
+                </div>
+                <div
+                  className={`results-column ${pending ? 'is-computing' : ''}`}
+                  hidden={screen !== 'simulation' && screen !== 'report'}
+                >
+                  <section
+                    className={`panel results-panel ${view === 'report' ? 'analysis-view' : ''} ${automatic && view === 'simulation' ? 'automatic-simulation-view' : ''} ${automatic && anchors.length > 0 && view === 'simulation' ? 'multi-simulation-view' : ''}`}
+                  >
+                    <div className="results-heading">
+                      <div className="section-label">
+                        <span className="step-number">03</span>
+                        <h2>
+                          {view === 'simulation' ? 'Simulation' : 'Report'}
+                        </h2>
+                      </div>
+                      <div className="results-heading-right">
+                        <span
+                          className={`engine-status ${error ? 'has-error' : ''}`}
+                        >
+                          {pending ? (
+                            <LoaderCircle size={12} className="spin" />
+                          ) : error ? (
+                            <X size={12} />
+                          ) : (
+                            <CheckCircle2 size={12} />
+                          )}{' '}
+                          {pending
+                            ? '계산 중'
+                            : error
+                              ? automatic && overview?.anchors.length
+                                ? '현재 해 미확인'
+                                : '입력 확인'
+                              : !result
+                                ? '입력 대기'
+                                : result?.engine === 'wasm'
+                                  ? 'WebAssembly'
+                                  : 'JavaScript'}
+                        </span>
+                        <button
+                          className="icon-button"
+                          title={expanded ? '기본 레이아웃' : '결과 화면 확대'}
+                          aria-label={
+                            expanded ? '기본 레이아웃' : '결과 화면 확대'
+                          }
+                          onClick={() => setExpanded((v) => !v)}
+                        >
+                          <Maximize2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    {view === 'simulation' &&
+                      project.parameters.length > 0 &&
+                      !(
+                        automatic &&
+                        !overviewHidden &&
+                        overview?.anchors.length
+                      ) && (
+                        <ResultParameters
+                          parameters={project.parameters.filter(
+                            (p) => !p.hidden,
+                          )}
+                          onChange={updateParameter}
+                        />
+                      )}
+                    {automatic && view === 'simulation' && (
+                      <div className="merge-actions">
+                        <button
+                          className="secondary-button"
+                          disabled={
+                            pending ||
+                            discoveryPending ||
+                            !solutions.length ||
+                            mergedSets.length >= 6
+                          }
+                          onClick={createMergedSet}
+                        >
+                          <Layers3 size={15} /> 시뮬레이션 병합 세트 추가
+                        </button>
+                        {overviewHidden && (
+                          <button
+                            className="secondary-button"
+                            onClick={() => setOverviewHidden(false)}
+                          >
+                            기본 병합 보기
+                          </button>
+                        )}
+                        <span>최대 6개 세트 · 해별 색상 비교</span>
+                      </div>
+                    )}
+                    {automatic &&
+                      (solutions.length > 0 || discoveryPending) && (
+                        <details
+                          className="solutions-section"
+                          ref={solutionsRef}
+                          style={{
+                            minHeight:
+                              (pending || discoveryPending) && solutionsHeight
+                                ? solutionsHeight
+                                : undefined,
+                          }}
+                          onToggle={(e) => {
+                            if (!e.currentTarget.open) setSolutionsHeight(0)
+                          }}
+                        >
+                          <summary className="solutions-title">
+                            <h3 className="solution-count">
+                              {discoveryPending
+                                ? '해 목록 갱신 중'
+                                : basePayload?.search?.nonIsolated
+                                  ? `구간 해 대표값 ${solutions.length}개`
+                                  : `발견한 실수 해 ${solutions.length}개`}
+                            </h3>
+                            <span>
+                              해 선택 · 시뮬레이션 추가{' '}
+                              <ChevronDown size={14} />
+                            </span>
+                          </summary>
+                          {automatic && discoveryPending && (
+                            <p className="discovery-status" role="status">
+                              현재 해를 표시하고 있습니다. 전체 해 목록을
+                              갱신하는 중입니다.
+                            </p>
+                          )}
+                          <div
+                            className="solution-list"
+                            aria-label="발견한 실수 해"
+                          >
+                            {solutions.map((item, i) => (
+                              <div className="solution-item" key={i}>
+                                <button
+                                  className={`solution-choice ${highlightedSolution === i ? 'selected' : ''}`}
+                                  aria-pressed={highlightedSolution === i}
+                                  aria-label={`해 ${i + 1} ${item.variables.map((name, j) => `${name} ${fmt(item.values[j], 10)}`).join(' ')}`}
+                                  disabled={pending}
+                                  onClick={() => selectRoot(item, i)}
+                                >
+                                  <span>해 {i + 1}</span>
+                                  <strong>
+                                    {item.variables
+                                      .map(
+                                        (name, j) =>
+                                          `${name} = ${fmt(item.values[j], 10)}`,
+                                      )
+                                      .join(' · ')}
+                                  </strong>
+                                </button>
+                                <button
+                                  className="add-simulation-button"
+                                  aria-label={`해 ${i + 1} 시뮬레이션 추가`}
+                                  disabled={
+                                    pending ||
+                                    (anchors.length >= 6 &&
+                                      !matchingPanel(item)) ||
+                                    rootAlreadyOpen(item)
+                                  }
+                                  onClick={() => addSimulation(item, i)}
+                                >
+                                  <Plus size={12} />
+                                  {rootAlreadyOpen(item)
+                                    ? '열린 시뮬레이션'
+                                    : '시뮬레이션 추가'}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          {searchInfo && <SearchCoverage search={searchInfo} />}
+                        </details>
+                      )}
+                    {view === 'simulation' &&
+                    (selectedBranch ||
+                      (automatic &&
+                        !overviewHidden &&
+                        overview?.anchors.length)) ? null : error ? (
+                      <div
+                        className={`error-state${verifiedEmpty ? ' certified-empty-state' : ''}`}
+                        role={verifiedEmpty ? 'status' : 'alert'}
+                      >
+                        <div className="error-icon">
+                          <Sigma size={24} />
+                        </div>
+                        <h3>
+                          {verifiedEmpty
+                            ? '이 범위에는 실근이 없습니다.'
+                            : nonlinear
+                              ? '해를 구하지 못했습니다.'
+                              : '수식을 한 번 확인해 주세요.'}
+                        </h3>
+                        <p>
+                          {verifiedEmpty
+                            ? '아래에서 구간 검증과 입력 오차에 따른 근 개수 유지 확률을 확인할 수 있습니다.'
+                            : error}
+                        </p>
+                        {searchInfo && <SearchCoverage search={searchInfo} />}
+                        <button
+                          className="secondary-button"
+                          onClick={() => {
+                            setGuide(true)
+                          }}
+                        >
+                          입력 가이드 보기
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    ) : !hasSource ? (
+                      <div className="empty-workspace">
+                        <div className="empty-workspace-icon">
+                          <Sigma size={28} />
+                        </div>
+                        <span>
+                          {nonlinear
+                            ? 'NONLINEAR EQUATIONS'
+                            : 'LINEAR EQUATIONS'}
+                        </span>
+                        <h3>모델을 입력하면 해석을 시작합니다.</h3>
+                        <p>
+                          {nonlinear
+                            ? automatic
+                              ? '방정식을 그대로 입력하면 실수 해를 자동으로 탐색합니다. 초기값이나 구간을 입력하지 않아도 됩니다.'
+                              : '단일근은 탐색 구간을, 연립방정식은 초기 추정값을 함께 적어 주세요.'
+                            : '방정식을 입력하세요. 알려진 값은 Parameter로 등록할 수 있습니다.'}
+                        </p>
+                        {nonlinear && (
+                          <button
+                            className="secondary-button"
+                            onClick={() =>
+                              loadExample(NONLINEAR_EXAMPLES[0].project)
+                            }
+                          >
+                            <BookOpen size={15} />
+                            비선형 예제로 시작하기
+                          </button>
                         )}
                       </div>
-                      <SimulationPanelView
-                        panel={selectedBranch}
-                        anchor={project.selectedAnchor}
-                        parameters={project.parameters}
-                        onSweepNameChange={updateSweepName}
-                        expanded={expanded}
-                        pending={pending}
-                        closable={false}
-                        onClose={() => {}}
-                        onParameterChange={
-                          sweepParam &&
-                          selectedBranch.sweepName === project.sweepName
-                            ? (value) => updateParameter(sweepParam.id, value)
-                            : undefined
-                        }
-                        onReport={() => navigate('report')}
-                      />
-                    </div>
-                  )}
-                {automatic &&
-                  view === 'simulation' &&
-                  !overviewHidden &&
-                  overview &&
-                  overview.anchors.length > 0 && (
-                    <div className="default-overview">
-                      <MergedSimulationSetView
-                        mergedSet={{
-                          id: 'default-overview',
-                          name: '전체 해 탐색',
-                          anchorIds: overview.anchors
-                            .filter((a) => !overviewExcluded.includes(a.id))
-                            .map((a) => a.id),
-                        }}
-                        anchors={overview.anchors}
-                        selectedAnchorId={project.selectedAnchor?.id}
-                        panels={overview.panels}
-                        parameters={project.parameters}
-                        sweepName={project.sweepName}
-                        onSweepNameChange={updateSweepName}
-                        controls={
-                          <ResultParameters
-                            parameters={project.parameters}
-                            onChange={updateParameter}
-                          />
-                        }
-                        expanded={expanded}
-                        large
-                        pending={pending}
-                        onRemoveSet={() => setOverviewHidden(true)}
-                        onToggleAnchorInSet={(id) =>
-                          setOverviewExcluded((ids) =>
-                            ids.includes(id)
-                              ? ids.filter((v) => v !== id)
-                              : [...ids, id],
-                          )
-                        }
-                        onParameterChange={
-                          sweepParam
-                            ? (value) => updateParameter(sweepParam.id, value)
-                            : undefined
-                        }
-                        onSelectAnchor={(anchor) =>
-                          setProject((p) => ({ ...p, selectedAnchor: anchor }))
-                        }
-                        onReportAnchor={openSimulationReport}
-                      />
-                    </div>
-                  )}
-                {automatic &&
-                  view === 'simulation' &&
-                  mergedSets.length > 0 && (
-                    <div className="merged-sets-grid">
-                      {mergedSets.map((set) => (
-                        <MergedSimulationSetView
-                          key={set.id}
-                          mergedSet={set}
-                          anchors={anchors}
-                          panels={simulationResults}
-                          parameters={project.parameters}
-                          sweepName={project.sweepName}
-                          onSweepNameChange={updateSweepName}
-                          controls={
-                            <ResultParameters
-                              parameters={project.parameters}
-                              onChange={updateParameter}
-                              idPrefix={set.id}
-                            />
-                          }
-                          expanded={expanded}
-                          pending={pending}
-                          onRemoveSet={() => removeMergedSet(set.id)}
-                          onToggleAnchorInSet={(id) =>
+                    ) : !result ? (
+                      <div className="loading-state">
+                        <LoaderCircle className="spin" size={26} />
+                        <h3>수식을 해석하고 있습니다.</h3>
+                        <p>잠시 후 모델의 해가 표시됩니다.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="solution-summary">
+                          <div className="summary-label">
+                            <span className="found-badge">
+                              <Check size={12} />
+                              {nonlinear
+                                ? evaluation
+                                  ? '계산 완료'
+                                  : automatic
+                                    ? (project.selectedAnchor?.label ??
+                                      `해 ${solutionIndex + 1}`)
+                                    : '수렴'
+                                : '유일해'}
+                            </span>
+                            <span>
+                              {evaluation
+                                ? `${result.variables.length}개 계산 결과`
+                                : `${result.variables.length}개 미지수의 해를 찾았습니다`}
+                            </span>
+                          </div>
+                          <div
+                            className={`solution-cards ${result.variables.length > 3 ? 'many-values' : ''} ${result.variables.length === 1 ? 'single-value' : ''}`}
+                          >
+                            {result.variables.map((v, i) => (
+                              <div className="solution-value" key={v}>
+                                <div>
+                                  <i
+                                    style={{
+                                      background: colors[i % colors.length],
+                                    }}
+                                  />
+                                  <span>{v}</span>
+                                </div>
+                                <strong>
+                                  {fmt(
+                                    result.values[i],
+                                    view === 'report' ? 17 : 7,
+                                  )}
+                                </strong>
+                                <span className="value-caption">
+                                  {nonlinear
+                                    ? rootStructureLabel(result.rootStructure)
+                                    : '계산된 값'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        {displayWarnings.length > 0 && (
+                          <div className="warning-box">
+                            {displayWarnings.map((w, i) => (
+                              <p key={i}>{w}</p>
+                            ))}
+                          </div>
+                        )}
+                        {nonlinear && (
+                          <div className="nonlinear-status">
+                            <div>
+                              <span>{result.method}</span>
+                              {!evaluation && (
+                                <b>반복 {result.iterations ?? 0}회</b>
+                              )}
+                            </div>
+                            <p>
+                              {evaluation
+                                ? '명시식을 계산한 결과입니다.'
+                                : automatic
+                                  ? searchConclusion(searchInfo)
+                                  : '초기값·탐색 구간에 따라 다른 해에 수렴할 수 있습니다. 이 결과가 전체 해의 유일성을 뜻하지는 않습니다.'}
+                            </p>
+                          </div>
+                        )}
+                        {result.auxiliary &&
+                          Object.keys(result.auxiliary).length > 0 && (
+                            <div className="auxiliary-values">
+                              <span>보조식 계산값</span>
+                              {Object.entries(result.auxiliary).map(
+                                ([name, value]) => (
+                                  <span key={name}>
+                                    <code>{name}</code>
+                                    <b>{fmt(value, 10)}</b>
+                                  </span>
+                                ),
+                              )}
+                            </div>
+                          )}
+                        {view === 'simulation' ? (
+                          <>
+                            {!automatic &&
+                              !(nonlinear && selectedSimulation) && (
+                                <>
+                                  <div className="chart-section">
+                                    <div className="chart-heading">
+                                      <div>
+                                        <h3>파라미터에 따른 해의 변화</h3>
+                                        <p>
+                                          한 변수를 움직이면, 해답은 어떻게
+                                          달라질까요?
+                                        </p>
+                                      </div>
+                                      <span className="chart-kicker">
+                                        PARAMETRIC EXPLORATION
+                                      </span>
+                                    </div>
+                                    {sweepParam ? (
+                                      <>
+                                        <div className="chart-controls">
+                                          <label htmlFor="sweep-param">
+                                            탐색 변수
+                                          </label>
+                                          <div className="select-wrap">
+                                            <select
+                                              id="sweep-param"
+                                              value={project.sweepName}
+                                              onChange={(e) =>
+                                                setProject((p) => ({
+                                                  ...p,
+                                                  sweepName: e.target.value,
+                                                }))
+                                              }
+                                            >
+                                              {project.parameters.map((p) => (
+                                                <option
+                                                  key={p.id}
+                                                  value={p.name}
+                                                >
+                                                  {p.name}
+                                                </option>
+                                              ))}
+                                            </select>
+                                            <ChevronDown size={12} />
+                                          </div>
+                                          <span className="sweep-domain">
+                                            {fmt(sweepParam.min)}
+                                            <ArrowRight size={12} />
+                                            {fmt(sweepParam.max)}
+                                          </span>
+                                        </div>
+                                        <SolutionChart
+                                          points={payload?.sweep || []}
+                                          expanded={expanded}
+                                          modelKind={
+                                            nonlinear ? 'nonlinear' : 'linear'
+                                          }
+                                          selectionPoints={payload?.dataset}
+                                          variables={result.variables}
+                                          parameterName={project.sweepName}
+                                          currentParameter={sweepParam.value}
+                                          currentValues={result.values}
+                                          onParameterChange={
+                                            payload?.sweepName ===
+                                            project.sweepName
+                                              ? (value) =>
+                                                  updateParameter(
+                                                    sweepParam.id,
+                                                    value,
+                                                  )
+                                              : undefined
+                                          }
+                                          selectedIndex={selectedIndex}
+                                          onSelectIndex={setSelectedIndex}
+                                          visibleVariables={visibleVariables}
+                                          onToggleVariable={(v) =>
+                                            setVisibleVariables((prev) =>
+                                              prev.includes(v)
+                                                ? prev.filter((n) => n !== v)
+                                                : [...prev, v],
+                                            )
+                                          }
+                                        />
+                                        {nonlinear && (
+                                          <p className="nonlinear-sweep-note">
+                                            {automatic
+                                              ? '선택한 해에서 이어지는 가지를 수치적으로 추적합니다. 가지가 끝나거나 추적에 실패한 지점은 빈 값으로 표시됩니다.'
+                                              : '각 지점은 같은 초기값·구간으로 다시 풉니다. 모든 해를 추적하는 그래프는 아닙니다.'}
+                                          </p>
+                                        )}
+                                        <p className="chart-footnote">
+                                          <span className="chart-current-dot" />
+                                          점선은 현재 설정값입니다. 그래프 위에
+                                          마우스를 올려 값을 확인하세요.
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <div className="empty-chart">
+                                        <Activity size={34} />
+                                        <h4>상수에 움직임을 더해 보세요.</h4>
+                                        <p>
+                                          파라미터를 추가하고 수식에 사용하면
+                                          <br />
+                                          해의 변화를 그래프로 탐색할 수
+                                          있습니다.
+                                        </p>
+                                        <button
+                                          className="text-button"
+                                          onClick={() => setParamOpen(true)}
+                                        >
+                                          Add Parameter
+                                          <Plus size={14} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="data-section">
+                                    <div className="data-toolbar">
+                                      <h3 className="data-section-title">
+                                        <Grid2X2 size={13} />
+                                        데이터 표
+                                      </h3>
+                                      <button
+                                        className="text-button"
+                                        disabled={
+                                          pending ||
+                                          !!(
+                                            sweepParam && payload?.datasetError
+                                          )
+                                        }
+                                        onClick={exportCSV}
+                                      >
+                                        <ArrowDownToLine size={13} />
+                                        CSV
+                                      </button>
+                                    </div>
+                                    {sweepParam && payload ? (
+                                      <SweepTable
+                                        payload={payload}
+                                        parameterStep={sweepParam.step}
+                                        selectedIndex={selectedIndex}
+                                        onSelectIndex={setSelectedIndex}
+                                      />
+                                    ) : (
+                                      <div className="table-scroll">
+                                        <table className="result-table">
+                                          <thead>
+                                            <tr>
+                                              <th>변수</th>
+                                              <th>값</th>
+                                              {!evaluation && (
+                                                <th>
+                                                  방정식 최대 절대 등식 오차
+                                                </th>
+                                              )}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {result.variables.map((v, i) => (
+                                              <tr key={v}>
+                                                <td>
+                                                  <span
+                                                    className="table-color"
+                                                    style={{
+                                                      background:
+                                                        colors[
+                                                          i % colors.length
+                                                        ],
+                                                    }}
+                                                  />
+                                                  {v}
+                                                </td>
+                                                <td>
+                                                  {fmt(result.values[i], 10)}
+                                                </td>
+                                                {!evaluation && (
+                                                  <td>
+                                                    {result.maxResidual.toExponential(
+                                                      2,
+                                                    )}
+                                                  </td>
+                                                )}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                          </>
+                        ) : (
+                          <div className="report-content">
+                            <div className="report-title">
+                              <div className="report-document-icon">
+                                <FileText size={22} />
+                              </div>
+                              <div>
+                                <span>ANALYSIS REPORT</span>
+                                <h3>{project.title}</h3>
+                              </div>
+                              <button
+                                className="secondary-button"
+                                disabled={pending}
+                                onClick={exportReport}
+                              >
+                                <Download size={14} />
+                                Save Report
+                              </button>
+                            </div>
+                            {automatic && solutions.length > 1 && (
+                              <button
+                                className="all-reports-button"
+                                disabled={pending}
+                                onClick={exportAllReports}
+                              >
+                                <Download size={14} />
+                                Save All Reports
+                                <span>{solutions.length}개 해</span>
+                              </button>
+                            )}
+                            {!evaluation && (
+                              <AnalysisSummary
+                                result={result}
+                                source={project.source}
+                                parameters={Object.fromEntries(
+                                  project.parameters.map((p) => [
+                                    p.name,
+                                    p.value,
+                                  ]),
+                                )}
+                                search={searchInfo}
+                                events={selectedBranch?.events}
+                                sweepName={project.sweepName}
+                                pending={pending || discoveryPending}
+                                inputNoiseSigma={
+                                  project.inputNoiseSigma ?? 1e-6
+                                }
+                                onInputNoiseSigmaChange={(sigma) =>
+                                  setProject((p) => ({
+                                    ...p,
+                                    inputNoiseSigma: sigma,
+                                    certifyRoots: true,
+                                  }))
+                                }
+                              />
+                            )}
+                            {!evaluation && (
+                              <div className="condition-controls">
+                                <div>
+                                  <label htmlFor="condition-norm">
+                                    {nonlinear
+                                      ? 'Local Condition Number'
+                                      : 'Condition Number'}
+                                  </label>
+                                  <details className="analysis-details condition-help">
+                                    <summary>
+                                      조건수는 어떻게 해석하나요?
+                                    </summary>
+                                    <p>
+                                      조건수는 같은 비율의 입력 변화가 해에
+                                      얼마나 큰 비율의 변화로 증폭될 수 있는지
+                                      보여주는 국소 지표입니다. 선형식은 계수
+                                      행렬, 비선형식은 현재 해 근처의 Jacobian을
+                                      사용합니다. 값이 클수록 입력의 작은 변화나
+                                      반올림에 취약한 방향이 있습니다. 실제 측정
+                                      오차나 해를 모두 찾았을 확률을 뜻하지
+                                      않습니다.
+                                    </p>
+                                    <p>
+                                      ∞-norm은 성분별 최대 오차와 행 합을
+                                      기준으로, 2-norm은 전체 벡터 길이와
+                                      최대·최소 특이값의 비율을 기준으로
+                                      계산합니다. 선택을 바꾸면 진단 기준이
+                                      달라집니다. 계산 자릿수가 늘어나거나 해가
+                                      더 정확해지는 설정은 아닙니다.
+                                    </p>
+                                    <p>
+                                      위의 ‘등식 오차 → 해 변화 증폭률’은 절대
+                                      오차가 해의 절대 변화로 바뀌는 크기이고,
+                                      조건수는 상대 변화와 방향 간 불균형을
+                                      나타냅니다. 단일 변수의 비특이 Jacobian
+                                      조건수는 항상 1이므로, 이 경우에는
+                                      증폭률과 파라미터별 영향으로 민감도를
+                                      판단하세요. 단위와 스케일이 같은 모델끼리
+                                      비교하는 것이 적절합니다.
+                                    </p>
+                                  </details>
+                                </div>
+                                <div className="condition-select-wrap">
+                                  <select
+                                    id="condition-norm"
+                                    aria-label="조건수 계산 방식"
+                                    value={conditionNorm}
+                                    onChange={(e) =>
+                                      setProject((p) => ({
+                                        ...p,
+                                        conditionNorm: e.target
+                                          .value as ConditionNorm,
+                                      }))
+                                    }
+                                  >
+                                    <option value="infinity">
+                                      ∞-norm · 행 합 기준
+                                    </option>
+                                    <option value="2">2-norm · SVD 기준</option>
+                                  </select>
+                                  <ChevronDown size={13} />
+                                </div>
+                              </div>
+                            )}
+                            <details className="analysis-details technical-diagnostics">
+                              <summary>Numerical Diagnostics</summary>
+                              <div
+                                className={`report-metrics ${evaluation ? 'evaluation-metrics' : ''}`}
+                              >
+                                <div>
+                                  <span>
+                                    {evaluation
+                                      ? '계산 항목'
+                                      : '최대 절대 등식 오차'}
+                                  </span>
+                                  <strong>
+                                    {evaluation
+                                      ? `${result.variables.length}개`
+                                      : result.maxResidual.toExponential(3)}
+                                  </strong>
+                                </div>
+                                {!evaluation && (
+                                  <div>
+                                    <span>
+                                      조건수 ·{' '}
+                                      {result.conditionNorm === '2'
+                                        ? '2-norm'
+                                        : '∞-norm'}
+                                      {nonlinear && !evaluation
+                                        ? ' · 국소'
+                                        : ''}
+                                    </span>
+                                    <strong className="condition-value">
+                                      {fmt(result.condition, 7)}
+                                    </strong>
+                                    <span
+                                      className="condition-badge"
+                                      data-level={sensitivity?.level}
+                                      role="status"
+                                      aria-live="polite"
+                                      aria-busy={pending}
+                                    >
+                                      <i />
+                                      {sensitivity?.label}
+                                    </span>
+                                  </div>
+                                )}
+                                <div>
+                                  <span>Runtime</span>
+                                  <strong>
+                                    {fmt(result.durationMs, 3)}
+                                    <small> ms</small>
+                                  </strong>
+                                </div>
+                              </div>
+                              {!evaluation && (
+                                <div
+                                  className="condition-explanation"
+                                  data-level={sensitivity?.level}
+                                >
+                                  <p>
+                                    {result.conditionError ||
+                                      sensitivity?.description}
+                                  </p>
+                                  <div
+                                    className="condition-thresholds"
+                                    aria-label="조건수 민감도 참고 범위"
+                                  >
+                                    <span>
+                                      <i className="condition-dot stable" />
+                                      <b>안정</b> κ &lt; 10⁴
+                                    </span>
+                                    <span>
+                                      <i className="condition-dot sensitive" />
+                                      <b>민감</b> 10⁴ ≤ κ &lt; 10⁸
+                                    </span>
+                                    <span>
+                                      <i className="condition-dot very-sensitive" />
+                                      <b>매우 민감</b> κ ≥ 10⁸
+                                    </span>
+                                  </div>
+                                  {nonlinear && (
+                                    <p className="local-condition-note">
+                                      {evaluation
+                                        ? '명시식 계산에는 조건수가 적용되지 않습니다.'
+                                        : '조건수는 수렴점의 Jacobian에 대한 국소 진단입니다. 1×1 비영 Jacobian의 조건수는 항상 1이므로 단일근의 민감도는 도함수 크기도 함께 확인하세요. 전체 영역의 안정성은 보장하지 않습니다.'}
+                                    </p>
+                                  )}
+                                  <p className="condition-caveat">
+                                    위 범위는 참고 기준입니다. 실제 신뢰도는
+                                    측정 오차와 단위·스케일에 따라 달라지며,
+                                    작은 등식 오차만으로 해의 정확도를
+                                    보장하지는 않습니다.
+                                  </p>
+                                  <details className="condition-guide">
+                                    <summary>
+                                      계산 방식의 차이 알아보기
+                                      <ChevronDown size={12} />
+                                    </summary>
+                                    <p>
+                                      <b>∞-norm</b>은 A와 A⁻¹의 최대 절댓값 행
+                                      합을 곱합니다. <b>2-norm</b>은 직접 SVD로
+                                      구한 최대·최소 특이값의 비율 σmax /
+                                      σmin입니다.
+                                    </p>
+                                    <p>
+                                      두 방식은 서로 다른 norm으로 민감도를
+                                      측정하므로 값이 달라질 수 있습니다. 2-norm
+                                      선택이 해 자체의 계산 정밀도를 높이는 것은
+                                      아닙니다.
+                                    </p>
+                                    <p>
+                                      {nonlinear
+                                        ? '조건수는 수렴점에서 계산한 Jacobian J를 기준으로 합니다.'
+                                        : '조건수는 수식에서 추출한 계수 행렬 A를 기준으로 합니다.'}{' '}
+                                      식이나 변수의 단위를 바꾸면 값이 달라질 수
+                                      있습니다. 계산 방식 선택은 진단에
+                                      적용되며, 해를 구하는 솔버는 동일합니다.
+                                    </p>
+                                  </details>
+                                </div>
+                              )}
+                            </details>
+                            <details className="analysis-details">
+                              <summary>Model & Calculation Details</summary>
+                              <h4>Source</h4>
+                              <pre>{project.source}</pre>
+                              <h4>Parameters</h4>
+                              <div className="report-param-list">
+                                {project.parameters.length ? (
+                                  project.parameters.map((p) => (
+                                    <span key={p.id}>
+                                      {p.name}
+                                      <b>{fmt(p.value, 10)}</b>
+                                    </span>
+                                  ))
+                                ) : (
+                                  <p>별도로 정의된 파라미터가 없습니다.</p>
+                                )}
+                              </div>
+                              <h4>Numerical Method</h4>
+                              <p className="report-explanation">
+                                {nonlinear
+                                  ? evaluation
+                                    ? '명시식의 의존 관계를 확인하여 순서대로 계산합니다.'
+                                    : '등식 오차는 구한 해를 넣었을 때 좌변과 우변의 차이입니다. 아래 Jacobian은 해 주변의 국소 변화율이며, 조건수가 클수록 작은 입력 변화에 해가 민감할 수 있습니다.'
+                                  : '부분 피벗팅 가우스 소거법으로 A·x = b를 풉니다. 등식 오차는 입력 방정식의 좌변과 우변 차이입니다. 조건수가 클수록 작은 입력 오차에 해가 민감할 수 있습니다.'}
+                              </p>
+                              {!evaluation && (
+                                <details className="matrix-details">
+                                  <summary>
+                                    <Grid2X2 size={14} />
+                                    <span>
+                                      {nonlinear
+                                        ? 'Jacobian·수치 검증 자세히 보기'
+                                        : '행렬·수치 검증 자세히 보기'}
+                                    </span>
+                                    <ChevronDown size={15} />
+                                  </summary>
+                                  <p>
+                                    {nonlinear
+                                      ? '해 주변의 Jacobian J와 각 방정식의 좌변·우변 차이를 확인합니다. 수치 계산의 수렴과 민감도를 검토할 수 있습니다.'
+                                      : '수식을 A·x = b로 변환한 계수와 우변을 확인합니다. 부호나 누락된 항을 검토할 때 활용하세요.'}
+                                  </p>
+                                  <MatrixView result={result} />
+                                  <div className="residual-list">
+                                    {result.residuals.map((r, i) => (
+                                      <div key={i}>
+                                        <span>방정식 {i + 1}</span>
+                                        <code>{r.toExponential(3)}</code>
+                                        <CheckCircle2 size={13} />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </details>
+                              )}
+                            </details>
+                          </div>
+                        )}
+                        <div className="result-footer">
+                          <span>
+                            <span className="status-dot" />
+                            {pending ? '새 설정으로 계산 중…' : '계산 완료'}
+                            <i>·</i>
+                            {fmt(result.durationMs, 3)} ms
+                          </span>
+                          <span>
+                            {nonlinear ? result.method : '부분 피벗팅'}
+                            {!evaluation && (
+                              <>
+                                {' '}
+                                · {result.matrix.length} ×{' '}
+                                {result.variables.length}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {view === 'report' && certificateWithoutRoot && (
+                      <section className="report-without-root">
+                        <CertificationReport
+                          certificate={certificateWithoutRoot}
+                          pending={pending || discoveryPending}
+                          truncated={searchInfo?.truncated}
+                          inputNoiseSigma={project.inputNoiseSigma ?? 1e-6}
+                          onInputNoiseSigmaChange={(sigma) =>
                             setProject((p) => ({
                               ...p,
-                              mergedSets: p.mergedSets?.map((item) =>
-                                item.id !== set.id
-                                  ? item
-                                  : {
-                                      ...item,
-                                      anchorIds: item.anchorIds.includes(id)
-                                        ? item.anchorIds.filter(
-                                            (value) => value !== id,
-                                          )
-                                        : [...item.anchorIds, id],
-                                    },
-                              ),
+                              inputNoiseSigma: sigma,
+                              certifyRoots: true,
                             }))
                           }
+                        />
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={pending || discoveryPending}
+                          onClick={() =>
+                            downloadFile(
+                              'ivc-verification-report.md',
+                              `# ${project.title}\n\n${certificateReport(certificateWithoutRoot)}\n\n## 입력 모델\n\n\`\`\`text\n${project.source}\n\`\`\``,
+                              'text/markdown;charset=utf-8',
+                            )
+                          }
+                        >
+                          Save Verification Report
+                        </button>
+                      </section>
+                    )}
+                    {nonlinear &&
+                      !automatic &&
+                      view === 'simulation' &&
+                      selectedSimulation &&
+                      manualAnchor && (
+                        <SimulationPanelView
+                          panel={selectedSimulation}
+                          anchor={manualAnchor}
+                          parameters={project.parameters.filter(
+                            (p) => !p.hidden,
+                          )}
+                          onSweepNameChange={updateSweepName}
+                          expanded={expanded}
+                          pending={pending}
+                          closable={false}
+                          onClose={() => {}}
                           onParameterChange={
                             sweepParam
                               ? (value) => updateParameter(sweepParam.id, value)
                               : undefined
                           }
+                          onReport={() => navigate('report')}
                         />
-                      ))}
-                    </div>
-                  )}
-                {automatic &&
-                  view === 'simulation' &&
-                  individualAnchors.length > 0 && (
-                    <div className="multi-simulation-workspace">
-                      <div className="multi-simulation-toolbar">
-                        <div>
-                          <h3>
-                            동시 시뮬레이션{' '}
-                            <span>{individualAnchors.length} / 6</span>
-                          </h3>
-                          <p>
-                            오른쪽 위 파라미터 조절은 열린 모든 시뮬레이션에
-                            함께 적용됩니다.
-                          </p>
+                      )}
+                    {automatic &&
+                      view === 'simulation' &&
+                      anchors.length === 0 &&
+                      (!overview || overviewHidden) &&
+                      selectedBranch &&
+                      project.selectedAnchor && (
+                        <div className="selected-simulation-workspace">
+                          <div className="selected-simulation-toolbar">
+                            <span>선택한 해의 고정된 곡선</span>
+                            {project.parameters.length > 0 && (
+                              <label>
+                                탐색 변수{' '}
+                                <select
+                                  aria-label="탐색 변수"
+                                  value={project.sweepName}
+                                  onChange={(e) =>
+                                    setProject((p) => ({
+                                      ...p,
+                                      sweepName: e.target.value,
+                                    }))
+                                  }
+                                >
+                                  {project.parameters.map((p) => (
+                                    <option key={p.id} value={p.name}>
+                                      {p.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            )}
+                          </div>
+                          <SimulationPanelView
+                            panel={selectedBranch}
+                            anchor={project.selectedAnchor}
+                            parameters={project.parameters.filter(
+                              (p) => !p.hidden,
+                            )}
+                            onSweepNameChange={updateSweepName}
+                            expanded={expanded}
+                            pending={pending}
+                            closable={false}
+                            onClose={() => {}}
+                            onParameterChange={
+                              sweepParam &&
+                              selectedBranch.sweepName === project.sweepName
+                                ? (value) =>
+                                    updateParameter(sweepParam.id, value)
+                                : undefined
+                            }
+                            onReport={() => navigate('report')}
+                          />
                         </div>
-                        <label>
-                          탐색 변수
-                          <select
-                            aria-label="동시 시뮬레이션 탐색 변수"
-                            value={project.sweepName}
-                            onChange={(e) =>
+                      )}
+                    {automatic &&
+                      view === 'simulation' &&
+                      !overviewHidden &&
+                      overview &&
+                      overview.anchors.length > 0 && (
+                        <div className="default-overview">
+                          <MergedSimulationSetView
+                            mergedSet={{
+                              id: 'default-overview',
+                              name: '전체 해 탐색',
+                              anchorIds: overview.anchors
+                                .filter((a) => !overviewExcluded.includes(a.id))
+                                .map((a) => a.id),
+                            }}
+                            anchors={overview.anchors}
+                            selectedAnchorId={project.selectedAnchor?.id}
+                            panels={overview.panels}
+                            parameters={project.parameters.filter(
+                              (p) => !p.hidden,
+                            )}
+                            sweepName={project.sweepName}
+                            onSweepNameChange={updateSweepName}
+                            controls={
+                              <ResultParameters
+                                parameters={project.parameters.filter(
+                                  (p) => !p.hidden,
+                                )}
+                                onChange={updateParameter}
+                              />
+                            }
+                            expanded={expanded}
+                            large
+                            pending={pending}
+                            onRemoveSet={() => setOverviewHidden(true)}
+                            onToggleAnchorInSet={(id) =>
+                              setOverviewExcluded((ids) =>
+                                ids.includes(id)
+                                  ? ids.filter((v) => v !== id)
+                                  : [...ids, id],
+                              )
+                            }
+                            onParameterChange={
+                              sweepParam
+                                ? (value) =>
+                                    updateParameter(sweepParam.id, value)
+                                : undefined
+                            }
+                            onSelectAnchor={(anchor) =>
                               setProject((p) => ({
                                 ...p,
-                                sweepName: e.target.value,
+                                selectedAnchor: anchor,
                               }))
                             }
-                          >
-                            {project.parameters.map((p) => (
-                              <option key={p.id} value={p.name}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                      <div className="simulation-grid">
-                        {individualAnchors.map((anchor) => {
-                          const panel = simulationResults.find(
-                            (p) => p.id === anchor.id,
-                          ) ?? {
-                            id: anchor.id,
-                            label: anchor.label,
-                            result: null,
-                            sweep: [],
-                            dataset: [],
-                            sweepName: project.sweepName,
-                            error: pending
-                              ? '계산 중입니다.'
-                              : '시뮬레이션 결과를 준비하고 있습니다.',
-                          }
-                          return (
-                            <SimulationPanelView
-                              key={anchor.id}
-                              panel={panel}
-                              anchor={anchor}
-                              parameters={project.parameters}
+                            onReportAnchor={openSimulationReport}
+                          />
+                        </div>
+                      )}
+                    {automatic &&
+                      view === 'simulation' &&
+                      mergedSets.length > 0 && (
+                        <div className="merged-sets-grid">
+                          {mergedSets.map((set) => (
+                            <MergedSimulationSetView
+                              key={set.id}
+                              mergedSet={set}
+                              anchors={anchors}
+                              panels={simulationResults}
+                              parameters={project.parameters.filter(
+                                (p) => !p.hidden,
+                              )}
+                              sweepName={project.sweepName}
                               onSweepNameChange={updateSweepName}
+                              controls={
+                                <ResultParameters
+                                  parameters={project.parameters.filter(
+                                    (p) => !p.hidden,
+                                  )}
+                                  onChange={updateParameter}
+                                  idPrefix={set.id}
+                                />
+                              }
                               expanded={expanded}
                               pending={pending}
-                              onClose={() => closeSimulation(anchor.id)}
+                              onRemoveSet={() => removeMergedSet(set.id)}
+                              onToggleAnchorInSet={(id) =>
+                                setProject((p) => ({
+                                  ...p,
+                                  mergedSets: p.mergedSets?.map((item) =>
+                                    item.id !== set.id
+                                      ? item
+                                      : {
+                                          ...item,
+                                          anchorIds: item.anchorIds.includes(id)
+                                            ? item.anchorIds.filter(
+                                                (value) => value !== id,
+                                              )
+                                            : [...item.anchorIds, id],
+                                        },
+                                  ),
+                                }))
+                              }
                               onParameterChange={
-                                sweepParam &&
-                                panel.sweepName === project.sweepName
+                                sweepParam
                                   ? (value) =>
                                       updateParameter(sweepParam.id, value)
                                   : undefined
                               }
-                              onReport={() => openSimulationReport(anchor)}
                             />
-                          )
-                        })}
+                          ))}
+                        </div>
+                      )}
+                    {automatic &&
+                      view === 'simulation' &&
+                      individualAnchors.length > 0 && (
+                        <div className="multi-simulation-workspace">
+                          <div className="multi-simulation-toolbar">
+                            <div>
+                              <h3>
+                                동시 시뮬레이션{' '}
+                                <span>{individualAnchors.length} / 6</span>
+                              </h3>
+                              <p>
+                                오른쪽 위 파라미터 조절은 열린 모든 시뮬레이션에
+                                함께 적용됩니다.
+                              </p>
+                            </div>
+                            <label>
+                              탐색 변수
+                              <select
+                                aria-label="동시 시뮬레이션 탐색 변수"
+                                value={project.sweepName}
+                                onChange={(e) =>
+                                  setProject((p) => ({
+                                    ...p,
+                                    sweepName: e.target.value,
+                                  }))
+                                }
+                              >
+                                {project.parameters.map((p) => (
+                                  <option key={p.id} value={p.name}>
+                                    {p.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                          <div className="simulation-grid">
+                            {individualAnchors.map((anchor) => {
+                              const panel = simulationResults.find(
+                                (p) => p.id === anchor.id,
+                              ) ?? {
+                                id: anchor.id,
+                                label: anchor.label,
+                                result: null,
+                                sweep: [],
+                                dataset: [],
+                                sweepName: project.sweepName,
+                                error: pending
+                                  ? '계산 중입니다.'
+                                  : '시뮬레이션 결과를 준비하고 있습니다.',
+                              }
+                              return (
+                                <SimulationPanelView
+                                  key={anchor.id}
+                                  panel={panel}
+                                  anchor={anchor}
+                                  parameters={project.parameters.filter(
+                                    (p) => !p.hidden,
+                                  )}
+                                  onSweepNameChange={updateSweepName}
+                                  expanded={expanded}
+                                  pending={pending}
+                                  onClose={() => closeSimulation(anchor.id)}
+                                  onParameterChange={
+                                    sweepParam &&
+                                    panel.sweepName === project.sweepName
+                                      ? (value) =>
+                                          updateParameter(sweepParam.id, value)
+                                      : undefined
+                                  }
+                                  onReport={() => openSimulationReport(anchor)}
+                                />
+                              )
+                            })}
+                          </div>
+                          <p className="multi-simulation-note">
+                            파라미터는 연속적으로 움직이며 샘플 포인트 간격은
+                            표·그래프 마커에 적용됩니다. 각 창은 추가한 시점의
+                            해를 기준으로 이어서 풉니다. 분기점·교차점에서는
+                            가지 구분이 어려울 수 있으며 추적 실패 구간은 빈
+                            값으로 표시합니다.
+                          </p>
+                        </div>
+                      )}
+                  </section>
+                  {view === 'simulation' && (
+                    <div className="insight-card">
+                      <span className="insight-icon">
+                        <ArrowLeftRight size={20} />
+                      </span>
+                      <div>
+                        <b>정적인 정답을 넘어, 변화의 관계를 이해하세요.</b>
+                        <p>
+                          여러 파라미터 중 하나를 선택해 해의 변화를 탐색할 수
+                          있습니다.
+                        </p>
                       </div>
-                      <p className="multi-simulation-note">
-                        파라미터는 연속적으로 움직이며 샘플 포인트 간격은
-                        표·그래프 마커에 적용됩니다. 각 창은 추가한 시점의 해를
-                        기준으로 이어서 풉니다. 분기점·교차점에서는 가지 구분이
-                        어려울 수 있으며 추적 실패 구간은 빈 값으로 표시합니다.
-                      </p>
+                      <span className="insight-symbol">ƒ(x)</span>
                     </div>
                   )}
-              </section>
-              {view === 'simulation' && (
-                <div className="insight-card">
-                  <span className="insight-icon">
-                    <ArrowLeftRight size={20} />
-                  </span>
-                  <div>
-                    <b>정적인 정답을 넘어, 변화의 관계를 이해하세요.</b>
-                    <p>
-                      여러 파라미터 중 하나를 선택해 해의 변화를 탐색할 수
-                      있습니다.
-                    </p>
-                  </div>
-                  <span className="insight-symbol">ƒ(x)</span>
                 </div>
-              )}
-            </div>
+              </div>
+              <footer className="page-footer">
+                <span>
+                  IVC
+                  <span className="footer-studio">
+                    {' '}
+                    Interaction Visual Calculator
+                  </span>
+                  <i />
+                  모델링의 다음 가능성
+                </span>
+                <span>
+                  Equation Solver <span className="footer-dot">·</span> 데이터는
+                  이 브라우저에만 저장됩니다.
+                </span>
+              </footer>
+            </main>
           </div>
-          <footer className="page-footer">
-            <span>
-              IVC
-              <span className="footer-studio">
-                {' '}
-                Interaction Visual Calculator
-              </span>
-              <i />
-              모델링의 다음 가능성
-            </span>
-            <span>
-              Equation Solver <span className="footer-dot">·</span> 데이터는 이
-              브라우저에만 저장됩니다.
-            </span>
-          </footer>
-        </main>
-      </div>
-      {toast && (
-        <div className="toast" role="status">
-          <CheckCircle2 size={17} />
-          {toast}
-          {undoProject && (
-            <button
-              className="undo-button"
-              onClick={() => {
-                setProject(undoProject)
-                setUndoProject(null)
-                setToast('이전 모델을 복원했습니다.')
-              }}
-            >
-              되돌리기
-            </button>
-          )}
-          <button aria-label="알림 닫기" onClick={() => setToast('')}>
-            <X size={14} />
-          </button>
-        </div>
-      )}
-      {guide && (
-        <ModuleGuide initialTopic={mode} onClose={() => setGuide(false)} />
-      )}
-      {paramOpen && (
-        <div className="modal-backdrop" onClick={() => setParamOpen(false)}>
-          <section
-            className="parameter-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="parameter-dialog-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="modal-close icon-button"
-              aria-label="닫기"
-              onClick={() => setParamOpen(false)}
-            >
-              <X size={19} />
-            </button>
-            <span className="modal-eyebrow">MAKE IT INTERACTIVE</span>
-            <h2 id="parameter-dialog-title">상수를 파라미터로.</h2>
-            <p>
-              알려진 값을 등록하고 수식에서 이름으로 사용하세요.
-              <br />
-              슬라이더 범위는 추가 후 설정에서 바꿀 수 있습니다.
-            </p>
-            <form onSubmit={addParameter}>
-              <label>
-                이름
-                <input
-                  autoFocus
-                  placeholder="예: k, F, concentration"
-                  maxLength={40}
-                  value={paramName}
-                  onChange={(e) => setParamName(e.target.value)}
-                />
-              </label>
-              <label>
-                현재 값
-                <input
-                  type="number"
-                  step="any"
-                  value={paramValue}
-                  onChange={(e) => setParamValue(e.target.value)}
-                />
-              </label>
-              {paramError && (
-                <p className="form-error" role="alert">
-                  {paramError}
-                </p>
-              )}
-              <div className="modal-actions">
+          {toast && (
+            <div className="toast" role="status">
+              <CheckCircle2 size={17} />
+              {toast}
+              {undoProject && (
                 <button
-                  type="button"
-                  className="secondary-button"
+                  className="undo-button"
+                  onClick={() => {
+                    setProject(undoProject)
+                    setUndoProject(null)
+                    setToast('이전 모델을 복원했습니다.')
+                  }}
+                >
+                  되돌리기
+                </button>
+              )}
+              <button aria-label="알림 닫기" onClick={() => setToast('')}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          {guide && (
+            <ModuleGuide initialTopic={mode} onClose={() => setGuide(false)} />
+          )}
+          {paramOpen && (
+            <div className="modal-backdrop" onClick={() => setParamOpen(false)}>
+              <section
+                className="parameter-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="parameter-dialog-title"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="modal-close icon-button"
+                  aria-label="닫기"
                   onClick={() => setParamOpen(false)}
                 >
-                  취소
+                  <X size={19} />
                 </button>
-                <button className="primary-button" type="submit">
-                  <Plus size={15} />
-                  Add Parameter
-                </button>
-              </div>
-            </form>
-          </section>
+                <span className="modal-eyebrow">MAKE IT INTERACTIVE</span>
+                <h2 id="parameter-dialog-title">상수를 파라미터로.</h2>
+                <p>
+                  알려진 값을 등록하고 수식에서 이름으로 사용하세요.
+                  <br />
+                  슬라이더 범위는 추가 후 설정에서 바꿀 수 있습니다.
+                </p>
+                <form onSubmit={addParameter}>
+                  <label>
+                    이름
+                    <input
+                      autoFocus
+                      placeholder="예: k, F, concentration"
+                      maxLength={40}
+                      value={paramName}
+                      onChange={(e) => setParamName(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    현재 값
+                    <input
+                      type="number"
+                      step="any"
+                      value={paramValue}
+                      onChange={(e) => setParamValue(e.target.value)}
+                    />
+                  </label>
+                  {paramError && (
+                    <p className="form-error" role="alert">
+                      {paramError}
+                    </p>
+                  )}
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setParamOpen(false)}
+                    >
+                      취소
+                    </button>
+                    <button className="primary-button" type="submit">
+                      <Plus size={15} />
+                      Add Parameter
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </ParameterEditContext.Provider>
+    </AxisTransformProvider>
   )
 }
 function MatrixView({
@@ -8008,6 +8277,7 @@ function ResultParameters({
   onChange: (id: string, value: number) => void
   idPrefix?: string
 }) {
+  const controls = useContext(ParameterEditContext)
   return (
     <section className="results-parameters" aria-label="파라미터 조절">
       <div className="results-parameters-heading">
@@ -8016,6 +8286,17 @@ function ResultParameters({
           파라미터 조절
         </span>
       </div>
+      {controls.all
+        .filter((p) => p.hidden)
+        .map((p) => (
+          <button
+            type="button"
+            key={p.id}
+            onClick={() => controls.toggle(p.id)}
+          >
+            Restore {p.name} ({fmt(p.value)})
+          </button>
+        ))}
       <div className="results-parameter-grid">
         {parameters.map((p) => (
           <div key={p.id} className="result-parameter">
@@ -8026,6 +8307,18 @@ function ResultParameters({
               >
                 {p.name}
               </label>
+              <details className="parameter-range-controls">
+                <summary>Range & Sample Spacing · {p.name}</summary>
+                <p>Remove는 현재 값을 고정하고 슬라이더만 숨깁니다.</p>
+                <RangeEditor parameter={p} onChange={controls.edit} />
+                <button
+                  type="button"
+                  onClick={() => controls.toggle(p.id)}
+                  aria-label={`${p.name} Remove Parameter`}
+                >
+                  Remove Parameter
+                </button>
+              </details>
               <div className="parameter-input-wrap">
                 <ParameterValueInput
                   parameter={p}
@@ -8049,6 +8342,7 @@ function ResultParameters({
               }
               onChange={(e) => onChange(p.id, Number(e.target.value))}
             />
+
             <div className="range-labels">
               <span>{String(p.min)}</span>
               <span>{String(p.max)}</span>

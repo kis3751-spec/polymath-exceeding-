@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `23bd691fe18d7b4d39b7a74fcd9d2b0d0e955dab8b02627a0919c40614fb97f7`
+소스 묶음 SHA-256: `9e4da87ceb41da64278bcc7350940a7e61c21af59e22026453661f690aa5c731`
 
 ## 다른 코드 묶음
 
@@ -51,7 +51,7 @@
 
 ## src/engine/index.ts
 
-원본: [src/engine/index.ts](../../src/engine/index.ts) · 620줄 · SHA-256: `e89ccf24b52e632de5ef927b28a8199d9e882aa42d5bcde3507914f33bf5325a`
+원본: [src/engine/index.ts](../../src/engine/index.ts) · 621줄 · SHA-256: `0f54948d2302e54f761138c55867d35b781cf2b6fe7c0ffb88895d07de3f89fc`
 
 ```typescript
 import type { VariableBounds, SearchWindow } from './search-analysis'
@@ -72,6 +72,7 @@ export type SolverOptions = {
 }
 
 export type Parameter = {
+  hidden?: boolean
   id: string
   name: string
   value: number

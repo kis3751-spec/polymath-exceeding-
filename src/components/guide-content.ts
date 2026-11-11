@@ -1360,6 +1360,40 @@ export const moduleGuides: ModuleGuideContent[] = [
   },
 ]
 
+for (const guide of moduleGuides) {
+  const equation = guide.id === 'linear' || guide.id === 'nonlinear'
+  guide.sections.push({
+    id: 'workspace-controls',
+    title: 'Workspace · Parameters & Axis Expressions',
+    blocks: [
+      p(
+        '상단 New는 현재 도구의 새 빈 모델을 만듭니다. 필요하면 알림의 Undo New 또는 되돌리기로 직전 모델을 복원하세요. Import는 프로젝트 JSON을 열고 Save Project는 모델·설정·파라미터·축 표현식을 파일로 저장합니다. Autosaved는 이 계정의 브라우저에 자동 저장한다는 뜻이며 다른 컴퓨터로 파일이 전송되는 기능은 아닙니다.',
+      ),
+      p(
+        equation
+          ? 'k=4와 x^2=k처럼 숫자로 지정한 이름을 다른 식에서 사용하면 k가 자동으로 Parameter가 됩니다. 이때 k의 숫자 정의는 슬라이더 값으로 대체하여 풉니다. 단독 x=2는 계속 미지수 x를 구하는 방정식입니다. e와 pi는 기존 Equation Solver 모델과의 호환성을 위해 자동 상수로 바꾸지 않습니다. 필요한 알려진 값은 Add Parameter로도 등록할 수 있습니다.'
+          : 'Input에서 k=0.5처럼 숫자로 지정한 상수는 Simulation에 자동으로 표시됩니다. 관측 데이터 열이나 추정할 계수의 m(A), 시간 범위, 초기 상태는 자동 지정 상수와 구분됩니다. 숫자 리터럴 정의만 자동 감지하며 파생 수식은 원래 모델에서 계산합니다.',
+      ),
+      p(
+        'Remove Parameter는 값을 미지수로 바꾸거나 모델에서 지우지 않습니다. 마지막 현재값으로 고정하고 조절 슬라이더를 숨깁니다. Restore를 누르면 이전 값·범위·간격으로 다시 표시합니다. Model 입력에서 숫자 정의 자체를 고치면 그 새 값을 사용합니다. Range는 슬라이더의 최소·최대 범위, Sample Spacing은 Equation Solver의 곡선 샘플 간격 또는 다른 도구의 ± Step 이동 간격입니다. 슬라이더 자체는 사이 값을 연속으로 조절합니다.',
+      ),
+      p(
+        'Axis Expressions를 열어 X Expression과 Y Expression을 입력한 뒤 Apply Axes를 누르세요. x와 y는 현재 그래프의 원래 두 좌표를 뜻합니다. ODE Time Series라면 x는 시간, y는 각 상태값이며 Phase Plot이면 선택한 두 상태값입니다. 회귀에서는 관측값·예측값, 최적화에서는 반복 번호·목적함수 등 해당 그래프의 기본 축을 기준으로 읽습니다.',
+      ),
+      code(
+        'X Expression: log(x)\nY Expression: 2*y+1',
+        '표시 좌표 예시 · 수식만 각 입력칸에 입력합니다',
+      ),
+      p(
+        'log는 밑이 10인 로그이고 ln은 자연로그입니다. x=10은 log(x)=1에, y=3은 2*y+1=7에 표시됩니다. log(x)는 x가 양수일 때만 정의되므로 0 이하 지점은 빈 구간으로 남깁니다. 표시할 수 없는 점의 수를 그래프 위에서 확인하세요. 알 수 없는 이름이나 실행 코드는 허용하지 않습니다.',
+      ),
+      p(
+        '원본 계산값·표·CSV·리포트의 수치는 변하지 않습니다. 축 변환으로 회귀 계수를 다시 추정하거나 새로운 적분을 구하는 것이 아닙니다. 적분 음영은 변환 화면에서 생략하고 원래 y=x 기준선은 같은 좌표 변환을 적용해 표시합니다. 변환 화면에서 클릭하면 화면상 가장 가까운 원본 샘플을 선택합니다. Original Axes는 원래 그래프와 Equation Solver의 연속 조작·접점 표시로 돌아갑니다.',
+      ),
+    ],
+  })
+}
+
 export function getModuleGuide(topic: GuideTopic): ModuleGuideContent {
   return moduleGuides.find((guide) => guide.id === topic)!
 }

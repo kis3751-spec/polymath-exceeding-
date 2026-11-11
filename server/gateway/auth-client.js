@@ -18,14 +18,24 @@ const accountChanged = () =>
 /** Cookie-only authentication. Tokens and request bodies are never persisted. */
 export function createAuthRequests(fetchImpl = fetch) {
   async function get(path, active = false) {
-    return send(path, undefined, undefined, active)
+    if (path === '/api/session' || path === '/ivc-auth/session')
+      return session(active)
+    try {
+      return await send(path, undefined, undefined, active)
+    } catch (error) {
+      if (!isSessionRequired(error)) throw error
+      // Read-only recovery: verify the cookie again before hiding management.
+      await session(active)
+      return send(path, undefined, undefined, active, true)
+    }
   }
-  async function send(path, body, csrf, active = false) {
+  async function send(path, body, csrf, active = false, fresh = false) {
     path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
     if (!/^\/api\/[a-z/-]+$/.test(path))
       throw Error('잘못된 인증 요청 경로입니다.')
     const response = await fetchImpl(
-      path.replace(/^\/api(?=\/)/, '/ivc-auth'),
+      path.replace(/^\/api(?=\/)/, '/ivc-auth') +
+        (fresh ? `?_ivc_check=${Date.now()}-${++checkSequence}` : ''),
       {
         method: body === undefined ? 'GET' : 'POST',
         credentials: 'same-origin',
@@ -48,7 +58,16 @@ export function createAuthRequests(fetchImpl = fetch) {
     return responseData(response, path)
   }
   async function session(active = false) {
-    const data = await get('/api/session', active)
+    let data
+    try {
+      data = await send('/api/session', undefined, undefined, active)
+    } catch (error) {
+      if (!isSessionRequired(error)) throw error
+      // A request can have left with the previous cookie while another tab
+      // completed login. Confirm with a new request and the current cookie.
+      // Do not change cookies or grant access from locally remembered state.
+      data = await send('/api/session', undefined, undefined, active, true)
+    }
     if (
       !data.user ||
       typeof data.user.id !== 'string' ||
@@ -85,6 +104,14 @@ export function createAuthRequests(fetchImpl = fetch) {
       try {
         return await send(path, body, proof)
       } catch (error) {
+        if (!entry && isSessionRequired(error)) {
+          const current = await session(true)
+          if (current.user.id !== expectedUserId) throw accountChanged()
+          if (attempt === 0) continue
+          throw Error(
+            '로그인은 유지되어 있습니다. 요청을 완료하지 못했으므로 잠시 후 다시 시도하세요.',
+          )
+        }
         // These responses are emitted before any mutation or password attempt.
         // Refresh only a stale proof, once; never replay an unknown outcome.
         if (
@@ -99,6 +126,7 @@ export function createAuthRequests(fetchImpl = fetch) {
   }
   return { get, session, post }
 }
+let checkSequence = 0
 const client = createAuthRequests()
 export const authGet = client.get
 export const getAuthSession = client.session

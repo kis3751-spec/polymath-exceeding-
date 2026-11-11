@@ -83,11 +83,14 @@ export default function AccountSession({ children }: { children: ReactNode }) {
         : null
     channelRef.current = channel
     if (channel)
-      channel.onmessage = () => {
+      channel.onmessage = (event) => {
+        if (event.data !== 'logout') return
+        // Notifications can arrive after a newer login in another tab. The
+        // server, rather than the age/order of a tab message, decides expiry.
         version.current++
-        current.current = null
-        setSession(null)
-        location.replace('/')
+        setError('다른 탭의 로그인 변경을 확인하고 있습니다.')
+        if (pending) void pending.then(() => check())
+        else void check()
       }
     const pageshow = (event: PageTransitionEvent) => {
       if (event.persisted) {

@@ -16,6 +16,7 @@ export type SolverOptions = {
 }
 
 export type Parameter = {
+  hidden?: boolean
   id: string
   name: string
   value: number

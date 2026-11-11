@@ -1,13 +1,16 @@
+import { parameterizedSource } from './model-constants'
 import type { Project } from './models'
 
 /** Only inputs that affect a calculation belong in this request. */
 export function createSolverInput(project: Project) {
-  const sweep = project.parameters.find((p) => p.name === project.sweepName)
+  const sweep = project.parameters.find(
+    (p) => p.name === project.sweepName && !p.hidden,
+  )
   return {
     defaultOverview:
       project.mode === 'nonlinear' &&
       (project.nonlinearSearch ?? 'auto') === 'auto',
-    source: project.source,
+    source: parameterizedSource(project),
     conditionNorm: project.conditionNorm ?? 'infinity',
     mode: project.mode ?? 'linear',
     nonlinearSearch: project.nonlinearSearch ?? 'auto',

@@ -128,7 +128,26 @@ async function beginInvitation(token) {
   $('#invitation-code-form').reset()
   showInvitation(data)
 }
-submit('#invitation-code-form', (body) => beginInvitation(body.token.trim()))
+submit('#invitation-code-form', (body) => {
+  let token = body.token.trim()
+  if (/^https?:\/\//i.test(token)) {
+    try {
+      token =
+        new URLSearchParams(new URL(token).hash.slice(1)).get('invite') || ''
+    } catch {
+      token = ''
+    }
+  }
+  if (token.includes('@'))
+    throw Error(
+      '이메일을 입력하는 칸이 아닙니다. 관리자가 전달한 초대 링크 전체 또는 일회용 코드를 붙여넣으세요.',
+    )
+  if (!/^[\w-]{43}$/.test(token))
+    throw Error(
+      '초대 링크 또는 43자리 일회용 코드를 확인하세요. 관리자는 Manage Access에서 초대를 만든 후 Copy link로 전달할 수 있습니다.',
+    )
+  return beginInvitation(token)
+})
 submit('#invite-form', async (body) => {
   if (!invitation) throw Error('원래 초대 링크나 코드를 다시 여세요.')
   if (body.password !== body.confirm)
@@ -365,10 +384,18 @@ async function updateSession() {
     }
   }
 }
-channel?.addEventListener('message', () => {
-  clearSession()
-  $('#access-panel').hidden = false
-  feedback('로그인 상태가 변경되었습니다. 다시 로그인하세요.')
+channel?.addEventListener('message', (event) => {
+  if (event.data !== 'logout') return
+  sessionVersion++
+  $('#admin-panel').inert = true
+  $('#password-panel').inert = true
+  Promise.resolve(sessionCheck)
+    .then(() => checkSession())
+    .catch((e) => feedback(e.message, true))
+    .finally(() => {
+      $('#admin-panel').inert = false
+      $('#password-panel').inert = false
+    })
 })
 for (const event of ['pointerdown', 'keydown'])
   window.addEventListener(event, () => {
@@ -389,6 +416,14 @@ async function initialize() {
   await checkSession()
   const token = new URLSearchParams(location.hash.slice(1)).get('invite')
   if (session) {
+    if (new URLSearchParams(location.search).has('expired')) {
+      const url = new URL(location.href)
+      url.searchParams.delete('expired')
+      history.replaceState(null, '', url.pathname + url.search + url.hash)
+      feedback(
+        '로그인이 유지되어 있습니다. Open Calculator로 작업을 계속하세요.',
+      )
+    }
     if (token)
       feedback(
         '이미 로그인되어 있습니다. 초대받은 계정으로 시작하려면 먼저 Log out을 누르세요.',

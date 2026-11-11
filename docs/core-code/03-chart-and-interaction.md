@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `5191ed68adca27179fe5639ae0df0da3029b1e5d68028a1aab932d413a6338bb`
+소스 묶음 SHA-256: `ad4de99794baa00d680db0102b16bfb4ad81f2379d033d5edc88a960fc5a0ca3`
 
 ## 다른 코드 묶음
 
@@ -35,30 +35,35 @@
 - [server/gateway/response.js](#source-6) · [저장소 원본](../../server/gateway/response.js)
 - [server/gateway/auth-client.js](#source-7) · [저장소 원본](../../server/gateway/auth-client.js)
 - [server/gateway/auth-client.d.ts](#source-8) · [저장소 원본](../../server/gateway/auth-client.d.ts)
-- [server/gateway/welcome.css](#source-9) · [저장소 원본](../../server/gateway/welcome.css)
-- [src/components/chart-domain.ts](#source-10) · [저장소 원본](../../src/components/chart-domain.ts)
-- [src/components/chart-interaction.ts](#source-11) · [저장소 원본](../../src/components/chart-interaction.ts)
-- [src/components/EquationReference.tsx](#source-12) · [저장소 원본](../../src/components/EquationReference.tsx)
-- [src/components/ExampleWalkthrough.tsx](#source-13) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
-- [src/components/AnalysisSummary.tsx](#source-14) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
-- [src/components/AnalysisSummary.css](#source-15) · [저장소 원본](../../src/components/AnalysisSummary.css)
-- [src/components/CertificationReport.tsx](#source-16) · [저장소 원본](../../src/components/CertificationReport.tsx)
-- [src/components/certification-view.ts](#source-17) · [저장소 원본](../../src/components/certification-view.ts)
-- [src/components/Guide.tsx](#source-18) · [저장소 원본](../../src/components/Guide.tsx)
-- [src/components/Guide.css](#source-19) · [저장소 원본](../../src/components/Guide.css)
-- [src/components/ModuleGuide.tsx](#source-20) · [저장소 원본](../../src/components/ModuleGuide.tsx)
-- [src/components/ModuleGuide.css](#source-21) · [저장소 원본](../../src/components/ModuleGuide.css)
-- [src/components/guide-content.ts](#source-22) · [저장소 원본](../../src/components/guide-content.ts)
-- [src/components/SolutionChart.tsx](#source-23) · [저장소 원본](../../src/components/SolutionChart.tsx)
-- [src/components/SolutionChart.css](#source-24) · [저장소 원본](../../src/components/SolutionChart.css)
-- [src/components/SimulationPanelView.tsx](#source-25) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/MergedSimulationSetView.tsx](#source-26) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
-- [src/components/SimulationPanelView.css](#source-27) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-28) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-29) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-30) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-31) · [저장소 원본](../../src/workspace-screens.css)
-- [src/ivc.css](#source-32) · [저장소 원본](../../src/ivc.css)
+- [server/gateway/auth-client.js](#source-9) · [저장소 원본](../../server/gateway/auth-client.js)
+- [server/gateway/auth-client.d.ts](#source-10) · [저장소 원본](../../server/gateway/auth-client.d.ts)
+- [server/gateway/welcome.css](#source-11) · [저장소 원본](../../server/gateway/welcome.css)
+- [src/components/chart-domain.ts](#source-12) · [저장소 원본](../../src/components/chart-domain.ts)
+- [src/components/chart-interaction.ts](#source-13) · [저장소 원본](../../src/components/chart-interaction.ts)
+- [src/components/EquationReference.tsx](#source-14) · [저장소 원본](../../src/components/EquationReference.tsx)
+- [src/components/ExampleWalkthrough.tsx](#source-15) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
+- [src/components/AnalysisSummary.tsx](#source-16) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
+- [src/components/AnalysisSummary.css](#source-17) · [저장소 원본](../../src/components/AnalysisSummary.css)
+- [src/components/CertificationReport.tsx](#source-18) · [저장소 원본](../../src/components/CertificationReport.tsx)
+- [src/components/certification-view.ts](#source-19) · [저장소 원본](../../src/components/certification-view.ts)
+- [src/components/Guide.tsx](#source-20) · [저장소 원본](../../src/components/Guide.tsx)
+- [src/components/Guide.css](#source-21) · [저장소 원본](../../src/components/Guide.css)
+- [src/components/ModuleGuide.tsx](#source-22) · [저장소 원본](../../src/components/ModuleGuide.tsx)
+- [src/components/ModuleGuide.css](#source-23) · [저장소 원본](../../src/components/ModuleGuide.css)
+- [src/components/guide-content.ts](#source-24) · [저장소 원본](../../src/components/guide-content.ts)
+- [src/axis-transform.ts](#source-25) · [저장소 원본](../../src/axis-transform.ts)
+- [src/components/AxisTransforms.tsx](#source-26) · [저장소 원본](../../src/components/AxisTransforms.tsx)
+- [src/components/AxisTransforms.css](#source-27) · [저장소 원본](../../src/components/AxisTransforms.css)
+- [src/components/SolutionChart.tsx](#source-28) · [저장소 원본](../../src/components/SolutionChart.tsx)
+- [src/components/SolutionChart.css](#source-29) · [저장소 원본](../../src/components/SolutionChart.css)
+- [src/components/SimulationPanelView.tsx](#source-30) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
+- [src/components/MergedSimulationSetView.tsx](#source-31) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-32) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-33) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-34) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-35) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-36) · [저장소 원본](../../src/workspace-screens.css)
+- [src/ivc.css](#source-37) · [저장소 원본](../../src/ivc.css)
 
 <a id="source-1"></a>
 
@@ -88,7 +93,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ## src/components/AccountSession.tsx
 
-원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 187줄 · SHA-256: `2c0092c0b8d4f6f94af892691c0f44431fd254079f70fce1be59968b9441b038`
+원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 190줄 · SHA-256: `9a3cb5d897719bc2e21b9c49c1a1e366ea21547a3daa3cba5b63496756aa052f`
 
 ```tsx
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -176,11 +181,14 @@ export default function AccountSession({ children }: { children: ReactNode }) {
         : null
     channelRef.current = channel
     if (channel)
-      channel.onmessage = () => {
+      channel.onmessage = (event) => {
+        if (event.data !== 'logout') return
+        // Notifications can arrive after a newer login in another tab. The
+        // server, rather than the age/order of a tab message, decides expiry.
         version.current++
-        current.current = null
-        setSession(null)
-        location.replace('/')
+        setError('다른 탭의 로그인 변경을 확인하고 있습니다.')
+        if (pending) void pending.then(() => check())
+        else void check()
       }
     const pageshow = (event: PageTransitionEvent) => {
       if (event.persisted) {
@@ -362,7 +370,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/index.html
 
-원본: [server/gateway/index.html](../../server/gateway/index.html) · 372줄 · SHA-256: `2866d11855d486998941786dc39ac5927f5f99cf7cc892b8b0924f9464fcaa12`
+원본: [server/gateway/index.html](../../server/gateway/index.html) · 373줄 · SHA-256: `6e9a1dff55fc302e621be6124da2463a2fbcb700471c48e136e447f2c3a633a0`
 
 ```text
 <!doctype html>
@@ -526,21 +534,22 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       </section>
       <section id="invitation-code-panel" class="access-card" hidden>
         <div>
-          <h2>Invitation code</h2>
+          <h2>Invitation link or code</h2>
           <p>
-            GitHub 로그인 중 초대 화면을 잃었다면 관리자가 준 1회용 코드를
-            입력하세요. 이메일만 등록되어서는 계정이 활성화되지 않습니다.
+            관리자가 전달한 초대 링크 전체 또는 일회용 코드를 붙여넣으세요.
+            이메일 주소를 넣는 칸이 아닙니다. 초대를 연 다음 본인의 IVC
+            비밀번호를 설정합니다.
           </p>
         </div>
         <form id="invitation-code-form">
           <label
-            >Invitation code<input
+            >Invitation link or code<input
               name="token"
               autocomplete="off"
               spellcheck="false"
               required
-              minlength="43"
-              maxlength="43" /></label
+              placeholder="https://…/#invite=… 또는 43자리 코드"
+              maxlength="4096" /></label
           ><button class="primary">Open invitation</button>
         </form>
       </section>
@@ -743,7 +752,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 422줄 · SHA-256: `869e5c09679212f77e8d73e11a33b04af35b16bca8572a890e7fc767d8aa02e0`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 457줄 · SHA-256: `17ff4c44aefc132209b2a477547f3de0902d8c535052742d63024e97ccc3cff9`
 
 ```text
 import {
@@ -876,7 +885,26 @@ async function beginInvitation(token) {
   $('#invitation-code-form').reset()
   showInvitation(data)
 }
-submit('#invitation-code-form', (body) => beginInvitation(body.token.trim()))
+submit('#invitation-code-form', (body) => {
+  let token = body.token.trim()
+  if (/^https?:\/\//i.test(token)) {
+    try {
+      token =
+        new URLSearchParams(new URL(token).hash.slice(1)).get('invite') || ''
+    } catch {
+      token = ''
+    }
+  }
+  if (token.includes('@'))
+    throw Error(
+      '이메일을 입력하는 칸이 아닙니다. 관리자가 전달한 초대 링크 전체 또는 일회용 코드를 붙여넣으세요.',
+    )
+  if (!/^[\w-]{43}$/.test(token))
+    throw Error(
+      '초대 링크 또는 43자리 일회용 코드를 확인하세요. 관리자는 Manage Access에서 초대를 만든 후 Copy link로 전달할 수 있습니다.',
+    )
+  return beginInvitation(token)
+})
 submit('#invite-form', async (body) => {
   if (!invitation) throw Error('원래 초대 링크나 코드를 다시 여세요.')
   if (body.password !== body.confirm)
@@ -1113,10 +1141,18 @@ async function updateSession() {
     }
   }
 }
-channel?.addEventListener('message', () => {
-  clearSession()
-  $('#access-panel').hidden = false
-  feedback('로그인 상태가 변경되었습니다. 다시 로그인하세요.')
+channel?.addEventListener('message', (event) => {
+  if (event.data !== 'logout') return
+  sessionVersion++
+  $('#admin-panel').inert = true
+  $('#password-panel').inert = true
+  Promise.resolve(sessionCheck)
+    .then(() => checkSession())
+    .catch((e) => feedback(e.message, true))
+    .finally(() => {
+      $('#admin-panel').inert = false
+      $('#password-panel').inert = false
+    })
 })
 for (const event of ['pointerdown', 'keydown'])
   window.addEventListener(event, () => {
@@ -1137,6 +1173,14 @@ async function initialize() {
   await checkSession()
   const token = new URLSearchParams(location.hash.slice(1)).get('invite')
   if (session) {
+    if (new URLSearchParams(location.search).has('expired')) {
+      const url = new URL(location.href)
+      url.searchParams.delete('expired')
+      history.replaceState(null, '', url.pathname + url.search + url.hash)
+      feedback(
+        '로그인이 유지되어 있습니다. Open Calculator로 작업을 계속하세요.',
+      )
+    }
     if (token)
       feedback(
         '이미 로그인되어 있습니다. 초대받은 계정으로 시작하려면 먼저 Log out을 누르세요.',
@@ -1220,7 +1264,7 @@ export async function responseData(response, path) {
 
 ## server/gateway/auth-client.js
 
-원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 105줄 · SHA-256: `ebbd18367781529a5110277a310ab426fb08004dfbff0f26fb4222dcea240aec`
+원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 133줄 · SHA-256: `7b9488be3248d191a03b2febb2c3789f9451ddc5bbd1d24d201bc2ba405167a4`
 
 ```text
 import { responseData } from './response.js'
@@ -1243,14 +1287,24 @@ const accountChanged = () =>
 /** Cookie-only authentication. Tokens and request bodies are never persisted. */
 export function createAuthRequests(fetchImpl = fetch) {
   async function get(path, active = false) {
-    return send(path, undefined, undefined, active)
+    if (path === '/api/session' || path === '/ivc-auth/session')
+      return session(active)
+    try {
+      return await send(path, undefined, undefined, active)
+    } catch (error) {
+      if (!isSessionRequired(error)) throw error
+      // Read-only recovery: verify the cookie again before hiding management.
+      await session(active)
+      return send(path, undefined, undefined, active, true)
+    }
   }
-  async function send(path, body, csrf, active = false) {
+  async function send(path, body, csrf, active = false, fresh = false) {
     path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
     if (!/^\/api\/[a-z/-]+$/.test(path))
       throw Error('잘못된 인증 요청 경로입니다.')
     const response = await fetchImpl(
-      path.replace(/^\/api(?=\/)/, '/ivc-auth'),
+      path.replace(/^\/api(?=\/)/, '/ivc-auth') +
+        (fresh ? `?_ivc_check=${Date.now()}-${++checkSequence}` : ''),
       {
         method: body === undefined ? 'GET' : 'POST',
         credentials: 'same-origin',
@@ -1273,7 +1327,16 @@ export function createAuthRequests(fetchImpl = fetch) {
     return responseData(response, path)
   }
   async function session(active = false) {
-    const data = await get('/api/session', active)
+    let data
+    try {
+      data = await send('/api/session', undefined, undefined, active)
+    } catch (error) {
+      if (!isSessionRequired(error)) throw error
+      // A request can have left with the previous cookie while another tab
+      // completed login. Confirm with a new request and the current cookie.
+      // Do not change cookies or grant access from locally remembered state.
+      data = await send('/api/session', undefined, undefined, active, true)
+    }
     if (
       !data.user ||
       typeof data.user.id !== 'string' ||
@@ -1310,6 +1373,14 @@ export function createAuthRequests(fetchImpl = fetch) {
       try {
         return await send(path, body, proof)
       } catch (error) {
+        if (!entry && isSessionRequired(error)) {
+          const current = await session(true)
+          if (current.user.id !== expectedUserId) throw accountChanged()
+          if (attempt === 0) continue
+          throw Error(
+            '로그인은 유지되어 있습니다. 요청을 완료하지 못했으므로 잠시 후 다시 시도하세요.',
+          )
+        }
         // These responses are emitted before any mutation or password attempt.
         // Refresh only a stale proof, once; never replay an unknown outcome.
         if (
@@ -1324,6 +1395,7 @@ export function createAuthRequests(fetchImpl = fetch) {
   }
   return { get, session, post }
 }
+let checkSequence = 0
 const client = createAuthRequests()
 export const authGet = client.get
 export const getAuthSession = client.session
@@ -1362,6 +1434,179 @@ export function postAuth(
 ```
 
 <a id="source-9"></a>
+
+## server/gateway/auth-client.js
+
+원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 133줄 · SHA-256: `7b9488be3248d191a03b2febb2c3789f9451ddc5bbd1d24d201bc2ba405167a4`
+
+```text
+import { responseData } from './response.js'
+
+const entryActions = new Set([
+  '/api/login',
+  '/api/begin-invite',
+  '/api/accept-invite',
+])
+export const isSessionRequired = (error) =>
+  error?.status === 401 && error?.code === 'SESSION_REQUIRED'
+const accountChanged = () =>
+  Object.assign(
+    new Error(
+      '다른 계정으로 로그인 상태가 바뀌었습니다. 현재 계정을 다시 확인합니다.',
+    ),
+    { code: 'ACCOUNT_CHANGED' },
+  )
+
+/** Cookie-only authentication. Tokens and request bodies are never persisted. */
+export function createAuthRequests(fetchImpl = fetch) {
+  async function get(path, active = false) {
+    if (path === '/api/session' || path === '/ivc-auth/session')
+      return session(active)
+    try {
+      return await send(path, undefined, undefined, active)
+    } catch (error) {
+      if (!isSessionRequired(error)) throw error
+      // Read-only recovery: verify the cookie again before hiding management.
+      await session(active)
+      return send(path, undefined, undefined, active, true)
+    }
+  }
+  async function send(path, body, csrf, active = false, fresh = false) {
+    path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
+    if (!/^\/api\/[a-z/-]+$/.test(path))
+      throw Error('잘못된 인증 요청 경로입니다.')
+    const response = await fetchImpl(
+      path.replace(/^\/api(?=\/)/, '/ivc-auth') +
+        (fresh ? `?_ivc_check=${Date.now()}-${++checkSequence}` : ''),
+      {
+        method: body === undefined ? 'GET' : 'POST',
+        credentials: 'same-origin',
+        redirect: 'error',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(12_000),
+        headers: {
+          ...(body === undefined
+            ? {}
+            : { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }),
+          ...(active ? { 'X-IVC-Active': '1' } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      },
+    ).catch(() => {
+      throw Error(
+        '서버 연결 또는 리디렉션을 확인하지 못했습니다. 로그인 상태를 지우지 않았습니다. 잠시 후 다시 시도하세요.',
+      )
+    })
+    return responseData(response, path)
+  }
+  async function session(active = false) {
+    let data
+    try {
+      data = await send('/api/session', undefined, undefined, active)
+    } catch (error) {
+      if (!isSessionRequired(error)) throw error
+      // A request can have left with the previous cookie while another tab
+      // completed login. Confirm with a new request and the current cookie.
+      // Do not change cookies or grant access from locally remembered state.
+      data = await send('/api/session', undefined, undefined, active, true)
+    }
+    if (
+      !data.user ||
+      typeof data.user.id !== 'string' ||
+      !data.user.id ||
+      typeof data.user.email !== 'string' ||
+      !['owner', 'member'].includes(data.user.role) ||
+      typeof data.csrf !== 'string' ||
+      !/^[\w-]{43}$/.test(data.csrf)
+    )
+      throw Error(
+        '로그인 서버의 세션 응답이 올바르지 않습니다. 연결을 확인한 뒤 다시 시도하세요.',
+      )
+    return data
+  }
+  async function post(path, body, expectedUserId) {
+    path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
+    const entry = entryActions.has(path)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let proof
+      if (entry) {
+        proof = (await get('/api/csrf')).csrf
+        if (typeof proof !== 'string' || !/^[\w-]{43}$/.test(proof))
+          throw Error('로그인 보안 토큰을 받지 못했습니다. 다시 시도하세요.')
+      } else {
+        if (!expectedUserId)
+          throw Object.assign(new Error('로그인이 필요합니다.'), {
+            status: 401,
+            code: 'SESSION_REQUIRED',
+          })
+        const current = await session(true)
+        if (current.user.id !== expectedUserId) throw accountChanged()
+        proof = current.csrf
+      }
+      try {
+        return await send(path, body, proof)
+      } catch (error) {
+        if (!entry && isSessionRequired(error)) {
+          const current = await session(true)
+          if (current.user.id !== expectedUserId) throw accountChanged()
+          if (attempt === 0) continue
+          throw Error(
+            '로그인은 유지되어 있습니다. 요청을 완료하지 못했으므로 잠시 후 다시 시도하세요.',
+          )
+        }
+        // These responses are emitted before any mutation or password attempt.
+        // Refresh only a stale proof, once; never replay an unknown outcome.
+        if (
+          attempt === 0 &&
+          error.status === 403 &&
+          error.code === (entry ? 'ENTRY_CSRF' : 'SESSION_CSRF')
+        )
+          continue
+        throw error
+      }
+    }
+  }
+  return { get, session, post }
+}
+let checkSequence = 0
+const client = createAuthRequests()
+export const authGet = client.get
+export const getAuthSession = client.session
+export const postAuth = client.post
+```
+
+<a id="source-10"></a>
+
+## server/gateway/auth-client.d.ts
+
+원본: [server/gateway/auth-client.d.ts](../../server/gateway/auth-client.d.ts) · 22줄 · SHA-256: `844f956334954d698d6948d20ca95e524ca0323016ff1ccd3f5c9509c7191af5`
+
+```typescript
+export type AuthSession = {
+  user: { id: string; email: string; role: 'owner' | 'member' }
+  csrf: string
+  expiresAt?: number
+}
+export function isSessionRequired(error: unknown): boolean
+export function createAuthRequests(fetchImpl?: typeof fetch): {
+  get(path: string, active?: boolean): Promise<unknown>
+  session(active?: boolean): Promise<AuthSession>
+  post(
+    path: string,
+    body: Record<string, unknown>,
+    expectedUserId?: string,
+  ): Promise<unknown>
+}
+export function authGet(path: string, active?: boolean): Promise<unknown>
+export function getAuthSession(active?: boolean): Promise<AuthSession>
+export function postAuth(
+  path: string,
+  body: Record<string, unknown>,
+  expectedUserId?: string,
+): Promise<unknown>
+```
+
+<a id="source-11"></a>
 
 ## server/gateway/welcome.css
 
@@ -2015,7 +2260,7 @@ footer {
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-12"></a>
 
 ## src/components/chart-domain.ts
 
@@ -2109,7 +2354,7 @@ export function fittedDomain(values: readonly number[]): ChartDomain {
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-13"></a>
 
 ## src/components/chart-interaction.ts
 
@@ -2234,7 +2479,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-14"></a>
 
 ## src/components/EquationReference.tsx
 
@@ -2429,7 +2674,7 @@ export default function EquationReference() {
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-15"></a>
 
 ## src/components/ExampleWalkthrough.tsx
 
@@ -2470,7 +2715,7 @@ export default function ExampleWalkthrough({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-16"></a>
 
 ## src/components/AnalysisSummary.tsx
 
@@ -2902,7 +3147,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-17"></a>
 
 ## src/components/AnalysisSummary.css
 
@@ -3292,7 +3537,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-18"></a>
 
 ## src/components/CertificationReport.tsx
 
@@ -3578,7 +3823,7 @@ export default function CertificationReport({
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-19"></a>
 
 ## src/components/certification-view.ts
 
@@ -3696,7 +3941,7 @@ export function certificateSegments(c: RootCertificate): CertificateSegment[] {
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-20"></a>
 
 ## src/components/Guide.tsx
 
@@ -4157,7 +4402,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-21"></a>
 
 ## src/components/Guide.css
 
@@ -4535,7 +4780,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-22"></a>
 
 ## src/components/ModuleGuide.tsx
 
@@ -4891,7 +5136,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-23"></a>
 
 ## src/components/ModuleGuide.css
 
@@ -5330,11 +5575,11 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-24"></a>
 
 ## src/components/guide-content.ts
 
-원본: [src/components/guide-content.ts](../../src/components/guide-content.ts) · 1,413줄 · SHA-256: `cc7d0ba6187cce455e4842e66837aa1a75686d90f393f07f991cd72f85210cce`
+원본: [src/components/guide-content.ts](../../src/components/guide-content.ts) · 1,447줄 · SHA-256: `35fd6eaf33a0d56c378007a93052ded63141303d26e7d597252b305cf9ab9a6e`
 
 ```typescript
 export type GuideTopic =
@@ -6699,6 +6944,40 @@ export const moduleGuides: ModuleGuideContent[] = [
   },
 ]
 
+for (const guide of moduleGuides) {
+  const equation = guide.id === 'linear' || guide.id === 'nonlinear'
+  guide.sections.push({
+    id: 'workspace-controls',
+    title: 'Workspace · Parameters & Axis Expressions',
+    blocks: [
+      p(
+        '상단 New는 현재 도구의 새 빈 모델을 만듭니다. 필요하면 알림의 Undo New 또는 되돌리기로 직전 모델을 복원하세요. Import는 프로젝트 JSON을 열고 Save Project는 모델·설정·파라미터·축 표현식을 파일로 저장합니다. Autosaved는 이 계정의 브라우저에 자동 저장한다는 뜻이며 다른 컴퓨터로 파일이 전송되는 기능은 아닙니다.',
+      ),
+      p(
+        equation
+          ? 'k=4와 x^2=k처럼 숫자로 지정한 이름을 다른 식에서 사용하면 k가 자동으로 Parameter가 됩니다. 이때 k의 숫자 정의는 슬라이더 값으로 대체하여 풉니다. 단독 x=2는 계속 미지수 x를 구하는 방정식입니다. e와 pi는 기존 Equation Solver 모델과의 호환성을 위해 자동 상수로 바꾸지 않습니다. 필요한 알려진 값은 Add Parameter로도 등록할 수 있습니다.'
+          : 'Input에서 k=0.5처럼 숫자로 지정한 상수는 Simulation에 자동으로 표시됩니다. 관측 데이터 열이나 추정할 계수의 m(A), 시간 범위, 초기 상태는 자동 지정 상수와 구분됩니다. 숫자 리터럴 정의만 자동 감지하며 파생 수식은 원래 모델에서 계산합니다.',
+      ),
+      p(
+        'Remove Parameter는 값을 미지수로 바꾸거나 모델에서 지우지 않습니다. 마지막 현재값으로 고정하고 조절 슬라이더를 숨깁니다. Restore를 누르면 이전 값·범위·간격으로 다시 표시합니다. Model 입력에서 숫자 정의 자체를 고치면 그 새 값을 사용합니다. Range는 슬라이더의 최소·최대 범위, Sample Spacing은 Equation Solver의 곡선 샘플 간격 또는 다른 도구의 ± Step 이동 간격입니다. 슬라이더 자체는 사이 값을 연속으로 조절합니다.',
+      ),
+      p(
+        'Axis Expressions를 열어 X Expression과 Y Expression을 입력한 뒤 Apply Axes를 누르세요. x와 y는 현재 그래프의 원래 두 좌표를 뜻합니다. ODE Time Series라면 x는 시간, y는 각 상태값이며 Phase Plot이면 선택한 두 상태값입니다. 회귀에서는 관측값·예측값, 최적화에서는 반복 번호·목적함수 등 해당 그래프의 기본 축을 기준으로 읽습니다.',
+      ),
+      code(
+        'X Expression: log(x)\nY Expression: 2*y+1',
+        '표시 좌표 예시 · 수식만 각 입력칸에 입력합니다',
+      ),
+      p(
+        'log는 밑이 10인 로그이고 ln은 자연로그입니다. x=10은 log(x)=1에, y=3은 2*y+1=7에 표시됩니다. log(x)는 x가 양수일 때만 정의되므로 0 이하 지점은 빈 구간으로 남깁니다. 표시할 수 없는 점의 수를 그래프 위에서 확인하세요. 알 수 없는 이름이나 실행 코드는 허용하지 않습니다.',
+      ),
+      p(
+        '원본 계산값·표·CSV·리포트의 수치는 변하지 않습니다. 축 변환으로 회귀 계수를 다시 추정하거나 새로운 적분을 구하는 것이 아닙니다. 적분 음영은 변환 화면에서 생략하고 원래 y=x 기준선은 같은 좌표 변환을 적용해 표시합니다. 변환 화면에서 클릭하면 화면상 가장 가까운 원본 샘플을 선택합니다. Original Axes는 원래 그래프와 Equation Solver의 연속 조작·접점 표시로 돌아갑니다.',
+      ),
+    ],
+  })
+}
+
 export function getModuleGuide(topic: GuideTopic): ModuleGuideContent {
   return moduleGuides.find((guide) => guide.id === topic)!
 }
@@ -6752,13 +7031,281 @@ export function renderTextbookMarkdown(): string {
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-25"></a>
+
+## src/axis-transform.ts
+
+원본: [src/axis-transform.ts](../../src/axis-transform.ts) · 41줄 · SHA-256: `1ac1b4110daaf3d8ed0de566c3da8b311b16c3a270989c7cfbf6fe1e3c0341ca`
+
+```typescript
+import { compileExpression } from './engine/scientific/expression'
+import type { ScientificSeries } from './engine/scientific/types'
+
+export type AxisTransform = { x: string; y: string }
+export const DEFAULT_AXES: AxisTransform = { x: 'x', y: 'y' }
+export const identityAxes = (axes: AxisTransform) =>
+  axes.x.trim() === 'x' && axes.y.trim() === 'y'
+export function compileAxes(axes: AxisTransform) {
+  const compile = (text: string) => {
+    if (!text.trim() || text.length > 512)
+      throw Error('축 수식은 1~512자로 입력하세요.')
+    const expression = compileExpression(text)
+    for (const name of expression.references)
+      if (!['x', 'y', 'pi', 'e'].includes(name))
+        throw Error(`'${name}' 대신 원래 좌표를 뜻하는 x, y를 사용하세요.`)
+    return expression
+  }
+  const x = compile(axes.x),
+    y = compile(axes.y)
+  return (rawX: number, rawY: number): [number, number] => {
+    if (!Number.isFinite(rawX) || !Number.isFinite(rawY)) return [NaN, NaN]
+    try {
+      const scope = { x: rawX, y: rawY }
+      const a = x.evaluate(scope),
+        b = y.evaluate(scope)
+      return Number.isFinite(a) && Number.isFinite(b) ? [a, b] : [NaN, NaN]
+    } catch {
+      return [NaN, NaN]
+    }
+  }
+}
+export function transformSeries(
+  series: ScientificSeries[],
+  axes: AxisTransform,
+) {
+  const transform = compileAxes(axes)
+  return series.map((s) => {
+    const pairs = s.x.map((x, i) => transform(x, s.y[i]))
+    return { ...s, x: pairs.map((p) => p[0]), y: pairs.map((p) => p[1]) }
+  })
+}
+```
+
+<a id="source-26"></a>
+
+## src/components/AxisTransforms.tsx
+
+원본: [src/components/AxisTransforms.tsx](../../src/components/AxisTransforms.tsx) · 130줄 · SHA-256: `d959fbe31d31f88e4c9858673c2f663b66252a972968b2d761d80ff33ee59342`
+
+```tsx
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
+import {
+  compileAxes,
+  DEFAULT_AXES,
+  type AxisTransform,
+} from '../axis-transform'
+import './AxisTransforms.css'
+export type AxisPreferences = Record<string, AxisTransform>
+const Context = createContext<{
+  value: AxisPreferences
+  onChange: (next: AxisPreferences) => void
+}>({ value: {}, onChange: () => {} })
+export function AxisTransformProvider({
+  value = {},
+  onChange,
+  children,
+}: {
+  value?: AxisPreferences
+  onChange: (next: AxisPreferences) => void
+  children: ReactNode
+}) {
+  return (
+    <Context.Provider
+      value={{
+        value:
+          value && typeof value === 'object' && !Array.isArray(value)
+            ? value
+            : {},
+        onChange,
+      }}
+    >
+      {children}
+    </Context.Provider>
+  )
+}
+export function useAxisTransform(key: string) {
+  const context = useContext(Context)
+  const saved = context.value[key]
+  let axes = DEFAULT_AXES
+  if (saved && typeof saved.x === 'string' && typeof saved.y === 'string') {
+    try {
+      compileAxes(saved)
+      axes = saved
+    } catch {
+      /* invalid imports keep the original axes */
+    }
+  }
+  return [
+    axes,
+    (next: AxisTransform) =>
+      context.onChange({ ...context.value, [key]: next }),
+  ] as const
+}
+export default function AxisTransforms({
+  value,
+  onChange,
+}: {
+  value: AxisTransform
+  onChange: (value: AxisTransform) => void
+}) {
+  const [draft, setDraft] = useState(value),
+    [error, setError] = useState('')
+  useEffect(() => {
+    setDraft(value)
+    setError('')
+  }, [value.x, value.y])
+  function apply() {
+    try {
+      compileAxes(draft)
+      onChange({ x: draft.x.trim(), y: draft.y.trim() })
+      setError('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '축 수식을 확인하세요.')
+    }
+  }
+  return (
+    <details className="axis-transforms">
+      <summary>Axis Expressions</summary>
+      <p>
+        x와 y는 이 그래프의 원래 X·Y 좌표입니다. 예: X = log(x), Y = 2*y+1.
+        log는 상용로그, ln은 자연로그입니다. 각 곡선에 같은 식을 적용합니다.
+      </p>
+      <div className="axis-expression-fields">
+        {(['x', 'y'] as const).map((axis) => (
+          <label key={axis}>
+            {axis.toUpperCase()} Expression
+            <input
+              aria-label={`${axis.toUpperCase()} Expression`}
+              spellCheck={false}
+              maxLength={512}
+              value={draft[axis]}
+              onChange={(e) => setDraft({ ...draft, [axis]: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  apply()
+                }
+              }}
+            />
+          </label>
+        ))}
+        <button type="button" onClick={apply}>
+          Apply Axes
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(DEFAULT_AXES)
+            onChange(DEFAULT_AXES)
+            setError('')
+          }}
+        >
+          Original Axes
+        </button>
+      </div>
+      {error && <p role="alert">{error}</p>}
+      <p>
+        계산·표·CSV·리포트 수치는 원본 그대로입니다. 정의역 밖의 점은 빈
+        구간으로 표시합니다. 변환된 점의 클릭은 가장 가까운 원래 데이터 지점을
+        선택합니다. 축 설정은 프로젝트에 저장됩니다.
+      </p>
+    </details>
+  )
+}
+```
+
+<a id="source-27"></a>
+
+## src/components/AxisTransforms.css
+
+원본: [src/components/AxisTransforms.css](../../src/components/AxisTransforms.css) · 67줄 · SHA-256: `85a136c9cf79548d24183a59452d31fa653b83418842f5a88af83b5ad3673a8c`
+
+```css
+.axis-transforms {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #dce3e8;
+  border-radius: 7px;
+  background: #f8fafb;
+  font-size: 12px;
+  color: #405364;
+}
+.axis-transforms summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.axis-transforms p {
+  margin: 9px 0;
+  line-height: 1.8;
+}
+.axis-expression-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+.axis-expression-fields label {
+  display: grid;
+  gap: 5px;
+}
+.axis-expression-fields input {
+  padding: 8px;
+  border: 1px solid #bdcbd5;
+  border-radius: 5px;
+  background: white;
+  color: #243746;
+  font: 13px monospace;
+  max-width: 100%;
+}
+.axis-expression-fields button {
+  padding: 8px 12px;
+  border: 1px solid #bdcbd5;
+  border-radius: 5px;
+  background: white;
+}
+
+.sc-view-controls .axis-transforms {
+  flex: 1;
+  min-width: 130px;
+  margin: 0;
+  padding: 5px 7px;
+}
+.sc-view-controls .axis-transforms[open] {
+  flex-basis: 100%;
+}
+.parameter-range-controls {
+  font-size: 11px;
+  color: #53647a;
+}
+.parameter-range-controls summary {
+  cursor: pointer;
+}
+.parameter-top:has(.parameter-range-controls[open]) {
+  flex-wrap: wrap;
+  align-items: start;
+}
+.parameter-top .parameter-range-controls[open] {
+  flex-basis: 100%;
+  order: 2;
+}
+```
+
+<a id="source-28"></a>
 
 ## src/components/SolutionChart.tsx
 
-원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,157줄 · SHA-256: `fdfa6012201651c78a80150dd2e10ab2119810a1e35f67bb70ac1db50369299c`
+원본: [src/components/SolutionChart.tsx](../../src/components/SolutionChart.tsx) · 1,254줄 · SHA-256: `4540edc4bb25b97a8d1bf68f0b9a0f18958b797253295203df806e6daf0689f1`
 
 ```tsx
+import AxisTransforms, { useAxisTransform } from './AxisTransforms'
+import { identityAxes } from '../axis-transform'
+import ScientificChart from './ScientificChart'
 import { tangencyOrderLabel } from '../engine/tangency'
 import {
   branchEventLabel,
@@ -6771,6 +7318,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type KeyboardEvent,
   type PointerEvent,
 } from 'react'
@@ -6852,7 +7400,99 @@ function axisNumber(value: number): string {
   return Number(value.toPrecision(4)).toString()
 }
 
-export default function SolutionChart({
+export default function SolutionChart(props: SolutionChartProps) {
+  const [axes, setAxes] = useAxisTransform(
+    `equation:${props.parameterName}:${props.variables.join('|')}:${props.multiBranchSeries ? 'merged' : 'single'}`,
+  )
+  const raw = props.selectionPoints?.length
+    ? props.selectionPoints
+    : props.points
+  const entries = props.multiBranchSeries?.length
+    ? props.multiBranchSeries
+        .filter((s) => props.visibleVariables.includes(s.id))
+        .map((s) => ({
+          name: s.label,
+          data: s.points,
+          variable: props.activeVariableIndex ?? 0,
+        }))
+    : props.variables.flatMap((name, variable) =>
+        props.visibleVariables.includes(name)
+          ? [{ name, data: props.points, variable }]
+          : [],
+      )
+  const series = useMemo(
+    () =>
+      entries.map((e) => ({
+        name: e.name,
+        x: e.data.map((p) => p.parameter),
+        y: e.data.map((p) => p.values?.[e.variable] ?? NaN),
+      })),
+    [
+      props.points,
+      props.multiBranchSeries,
+      props.visibleVariables,
+      props.variables,
+      props.activeVariableIndex,
+    ],
+  )
+  return (
+    <div className="equation-chart-with-axes">
+      {identityAxes(axes) ? (
+        <OriginalSolutionChart
+          {...props}
+          axisControls={<AxisTransforms value={axes} onChange={setAxes} />}
+        />
+      ) : (
+        <>
+          <AxisTransforms value={axes} onChange={setAxes} />
+          <div className="science-chart-legend">
+            {(props.multiBranchSeries?.length
+              ? props.multiBranchSeries.map((s) => ({
+                  id: s.id,
+                  name: s.label,
+                }))
+              : props.variables.map((name) => ({ id: name, name }))
+            ).map((e) => (
+              <button
+                type="button"
+                key={e.id}
+                aria-pressed={props.visibleVariables.includes(e.id)}
+                onClick={() => props.onToggleVariable(e.id)}
+              >
+                {e.name}
+              </button>
+            ))}
+          </div>
+          <ScientificChart
+            series={series}
+            axisValue={axes}
+            hideAxisControls
+            xLabel={props.parameterName || 'Parameter'}
+            yLabel={
+              props.multiBranchSeries
+                ? props.variables[props.activeVariableIndex ?? 0]
+                : 'Solution'
+            }
+            onSelectPoint={(si, i) => {
+              const p = entries[si]?.data[i]
+              if (!p || !Number.isFinite(p.parameter)) return
+              props.onParameterChange?.(p.parameter)
+              const index = raw.findIndex((r) => r.parameter === p.parameter)
+              props.onSelectIndex(index >= 0 ? index : null)
+            }}
+          />
+          <p className="science-help">
+            변환 화면에서는 클릭한 샘플의 원래 파라미터로 계산합니다. 접점·현재
+            위치·연속 보간 도구는 Original Axes에서 확인하세요.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function OriginalSolutionChart({
+  axisControls,
   modelKind = 'linear',
   expanded = false,
   large = false,
@@ -6870,7 +7510,7 @@ export default function SolutionChart({
   events = [],
   multiBranchSeries,
   activeVariableIndex = 0,
-}: SolutionChartProps) {
+}: SolutionChartProps & { axisControls: ReactNode }) {
   const titleId = useId()
   const descriptionId = useId()
   const clipId = useId()
@@ -7384,6 +8024,7 @@ export default function SolutionChart({
       </div>
 
       <div className="sc-view-controls">
+        {axisControls}
         <details className="chart-help">
           <summary>그래프 사용법</summary>
           <p>
@@ -7918,7 +8559,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-29"></a>
 
 ## src/components/SolutionChart.css
 
@@ -8269,7 +8910,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-30"></a>
 
 ## src/components/SimulationPanelView.tsx
 
@@ -8616,7 +9257,7 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-31"></a>
 
 ## src/components/MergedSimulationSetView.tsx
 
@@ -8985,7 +9626,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-32"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -9264,7 +9905,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-28"></a>
+<a id="source-33"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
@@ -9509,7 +10150,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-29"></a>
+<a id="source-34"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -9884,7 +10525,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-30"></a>
+<a id="source-35"></a>
 
 ## src/styles.css
 
@@ -13684,7 +14325,7 @@ h2 {
 }
 ```
 
-<a id="source-31"></a>
+<a id="source-36"></a>
 
 ## src/workspace-screens.css
 
@@ -14103,7 +14744,7 @@ h2 {
 }
 ```
 
-<a id="source-32"></a>
+<a id="source-37"></a>
 
 ## src/ivc.css
 

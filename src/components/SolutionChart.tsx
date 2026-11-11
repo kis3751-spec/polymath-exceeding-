@@ -1,3 +1,6 @@
+import AxisTransforms, { useAxisTransform } from './AxisTransforms'
+import { identityAxes } from '../axis-transform'
+import ScientificChart from './ScientificChart'
 import { tangencyOrderLabel } from '../engine/tangency'
 import {
   branchEventLabel,
@@ -10,6 +13,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type KeyboardEvent,
   type PointerEvent,
 } from 'react'
@@ -91,7 +95,99 @@ function axisNumber(value: number): string {
   return Number(value.toPrecision(4)).toString()
 }
 
-export default function SolutionChart({
+export default function SolutionChart(props: SolutionChartProps) {
+  const [axes, setAxes] = useAxisTransform(
+    `equation:${props.parameterName}:${props.variables.join('|')}:${props.multiBranchSeries ? 'merged' : 'single'}`,
+  )
+  const raw = props.selectionPoints?.length
+    ? props.selectionPoints
+    : props.points
+  const entries = props.multiBranchSeries?.length
+    ? props.multiBranchSeries
+        .filter((s) => props.visibleVariables.includes(s.id))
+        .map((s) => ({
+          name: s.label,
+          data: s.points,
+          variable: props.activeVariableIndex ?? 0,
+        }))
+    : props.variables.flatMap((name, variable) =>
+        props.visibleVariables.includes(name)
+          ? [{ name, data: props.points, variable }]
+          : [],
+      )
+  const series = useMemo(
+    () =>
+      entries.map((e) => ({
+        name: e.name,
+        x: e.data.map((p) => p.parameter),
+        y: e.data.map((p) => p.values?.[e.variable] ?? NaN),
+      })),
+    [
+      props.points,
+      props.multiBranchSeries,
+      props.visibleVariables,
+      props.variables,
+      props.activeVariableIndex,
+    ],
+  )
+  return (
+    <div className="equation-chart-with-axes">
+      {identityAxes(axes) ? (
+        <OriginalSolutionChart
+          {...props}
+          axisControls={<AxisTransforms value={axes} onChange={setAxes} />}
+        />
+      ) : (
+        <>
+          <AxisTransforms value={axes} onChange={setAxes} />
+          <div className="science-chart-legend">
+            {(props.multiBranchSeries?.length
+              ? props.multiBranchSeries.map((s) => ({
+                  id: s.id,
+                  name: s.label,
+                }))
+              : props.variables.map((name) => ({ id: name, name }))
+            ).map((e) => (
+              <button
+                type="button"
+                key={e.id}
+                aria-pressed={props.visibleVariables.includes(e.id)}
+                onClick={() => props.onToggleVariable(e.id)}
+              >
+                {e.name}
+              </button>
+            ))}
+          </div>
+          <ScientificChart
+            series={series}
+            axisValue={axes}
+            hideAxisControls
+            xLabel={props.parameterName || 'Parameter'}
+            yLabel={
+              props.multiBranchSeries
+                ? props.variables[props.activeVariableIndex ?? 0]
+                : 'Solution'
+            }
+            onSelectPoint={(si, i) => {
+              const p = entries[si]?.data[i]
+              if (!p || !Number.isFinite(p.parameter)) return
+              props.onParameterChange?.(p.parameter)
+              const index = raw.findIndex((r) => r.parameter === p.parameter)
+              props.onSelectIndex(index >= 0 ? index : null)
+            }}
+          />
+          <p className="science-help">
+            변환 화면에서는 클릭한 샘플의 원래 파라미터로 계산합니다. 접점·현재
+            위치·연속 보간 도구는 Original Axes에서 확인하세요.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function OriginalSolutionChart({
+  axisControls,
   modelKind = 'linear',
   expanded = false,
   large = false,
@@ -109,7 +205,7 @@ export default function SolutionChart({
   events = [],
   multiBranchSeries,
   activeVariableIndex = 0,
-}: SolutionChartProps) {
+}: SolutionChartProps & { axisControls: ReactNode }) {
   const titleId = useId()
   const descriptionId = useId()
   const clipId = useId()
@@ -623,6 +719,7 @@ export default function SolutionChart({
       </div>
 
       <div className="sc-view-controls">
+        {axisControls}
         <details className="chart-help">
           <summary>그래프 사용법</summary>
           <p>
