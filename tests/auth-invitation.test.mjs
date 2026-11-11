@@ -126,7 +126,10 @@ async function issue(
   )
   assert.equal(r.status, 201, await r.clone().text())
   const data = await r.json()
-  assert.equal(new URL(data.url).hash, '#invite=' + data.code)
+  const link = new URL(data.url)
+  assert.equal(link.hash, '#invite=' + data.code)
+  assert.match(link.searchParams.get('_ivc_page'), /^[\w-]{36}$/)
+  assert.ok(!link.search.includes(data.code))
   return data.code
 }
 async function begin(token) {
@@ -1065,4 +1068,44 @@ test('diagnostic CLI overrides malformed shell origins without touching the orig
   assert.match(env.APP_ORIGIN, /index.html/)
   for (const args of [['--port'], ['--origin', '--port'], ['--bad', 'x']])
     assert.throws(() => connectionEnvironment(args, env), /사용법/)
+})
+
+test('public HTML probe checks the published fresh entry URL when the bare URL is intercepted', async () => {
+  let fetchedEntry
+  const result = await probePublicAccess(
+    origin,
+    'fresh-html-instance',
+    async (input, options) => {
+      const url = new URL(input)
+      assert.equal(options.credentials, 'omit')
+      assert.equal(options.redirect, 'manual')
+      if (url.pathname === '/') {
+        fetchedEntry = url.href
+        if (!url.searchParams.has('_ivc_page'))
+          return new Response('<html>Stale intermediary response</html>', {
+            headers: { 'Content-Type': 'text/html' },
+          })
+      }
+      return publicResponse(input, 'fresh-html-instance')
+    },
+  )
+  assert.equal(result.reachable, true)
+  assert.equal(result.entryUrl, fetchedEntry)
+  assert.match(
+    new URL(result.entryUrl).searchParams.get('_ivc_page'),
+    /^[\w-]{36}$/,
+  )
+  // A fresh URL never upgrades a still-intercepted response into a valid page.
+  const blocked = await probePublicAccess(
+    origin,
+    'fresh-html-instance',
+    async (input) =>
+      new URL(input).pathname === '/'
+        ? new Response('<html>Still not IVC</html>', {
+            headers: { 'Content-Type': 'text/html' },
+          })
+        : publicResponse(input, 'fresh-html-instance'),
+  )
+  assert.equal(blocked.reachable, false)
+  assert.equal(blocked.path, '/')
 })

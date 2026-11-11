@@ -20,3 +20,5 @@ export function postAuth(
   body: Record<string, unknown>,
   expectedUserId?: string,
 ): Promise<unknown>
+
+export function welcomePath(path?: string, stamp?: string): string

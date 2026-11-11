@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `3abdf5deb3cc06dd09cba11471b904bbfdb3a32bd6688eec30de3fac2524c920`
+소스 묶음 SHA-256: `f71c1e44e4d02ac8feb69ec17287b1eddfd9ae46140e3c8aadea95ac52fdf240`
 
 ## 다른 코드 묶음
 
@@ -1298,9 +1298,10 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 544줄 · SHA-256: `77f6d1e9205c2310919afd72cb7d555a7915e59e8d7c65a7f6a3a86d7551260e`
+원본: [server/app.mjs](../../server/app.mjs) · 558줄 · SHA-256: `8c4181d9f5a65ae20a20253fccea2842741b4cf8e5325d2e2fe631e51397b950`
 
 ```javascript
+import { welcomePath } from './gateway/response.js'
 import { createServer } from 'node:http'
 import { acceptedHost, proxyRewrittenOrigin } from './runtime-config.mjs'
 import { AUTH_VERSION, probePublicAccess } from './sharing.mjs'
@@ -1690,7 +1691,7 @@ export async function createAccessServer(input) {
                     )
                   : store.invite(email, user.id)
               return json(201, {
-                url: `${cfg.origin}/#invite=${token}`,
+                url: `${cfg.origin}${welcomePath('/#invite=' + token)}`,
                 code: token,
                 expiresHours: 48,
               })
@@ -1797,7 +1798,7 @@ export async function createAccessServer(input) {
       } else {
         if (!user) {
           if (path === '/calculator' || path === '/calculator/') {
-            res.writeHead(303, { Location: '/' })
+            res.writeHead(303, { Location: welcomePath('/') })
             return res.end()
           }
           return fail(401, '로그인이 필요합니다.')
@@ -1817,7 +1818,16 @@ export async function createAccessServer(input) {
         safeRoot = await realpath(root)
       if (!resolved.startsWith(safeRoot + sep))
         return fail(403, '허용되지 않은 경로입니다.')
-      const data = await readFile(resolved)
+      const bytes = await readFile(resolved)
+      const data =
+        root === gateway && file === 'index.html'
+          ? Buffer.from(
+              bytes
+                .toString('utf8')
+                .replace('href="/"', `href="${welcomePath('/')}"`),
+              'utf8',
+            )
+          : bytes
       res.writeHead(200, {
         'Content-Type': mime[extname(file)] ?? 'application/octet-stream',
         'Content-Length': data.length,
@@ -1843,7 +1853,11 @@ export async function createAccessServer(input) {
   server.headersTimeout = 10_000
   server.keepAliveTimeout = 5000
   server.maxHeadersCount = 40
-  return { server, store }
+  return {
+    server,
+    store,
+    entryUrl: new URL(welcomePath('/'), cfg.origin).href,
+  }
 }
 ```
 
@@ -1851,7 +1865,7 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 46줄 · SHA-256: `61a672abd86db4873a090838fe78ed6eb80bb5398d58e3b73bd86353a0bd0fca`
+원본: [server/start.mjs](../../server/start.mjs) · 46줄 · SHA-256: `a215d6e2bac69f73bb422d4f312af69c138f85e3b6de482d4208dbac19fd7585`
 
 ```javascript
 import { runtimeConfig, runtimePort } from './runtime-config.mjs'
@@ -1863,10 +1877,10 @@ const args = process.argv.slice(2),
 if (at >= 0 && !args[at + 1]) throw Error('--port 값이 필요합니다.')
 const port = runtimePort(process.env, at >= 0 ? args[at + 1] : undefined)
 const cfg = runtimeConfig(process.env, port)
-const { server } = await createAccessServer(cfg)
+const { server, entryUrl } = await createAccessServer(cfg)
 server.listen(port, cfg.host, () => {
   console.log(
-    `IVC secure server: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
+    `IVC secure server: ${entryUrl}\nOrigin: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
   )
   if (cfg.codespaces)
     void diagnoseCodespaces({ ...process.env, PORT: String(port) })
@@ -1994,9 +2008,10 @@ export function proxyRewrittenOrigin(req, cfg) {
 
 ## server/sharing.mjs
 
-원본: [server/sharing.mjs](../../server/sharing.mjs) · 291줄 · SHA-256: `9ba620c5738b8239f9bb80bdac2cf28ad31475fad4623fb4853731191805b915`
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 302줄 · SHA-256: `89e67bc20ac2891c0e995eda63759016b51e85f7f54d65166ad854bab02fa424`
 
 ```javascript
+import { welcomePath } from './gateway/response.js'
 import { isIP } from 'node:net'
 
 export const AUTH_VERSION = 'auth-v4'
@@ -2093,13 +2108,23 @@ export function formatPublicChecks(probe) {
   return (probe?.checks ?? [])
     .map(
       (check) =>
-        `${check.path}: ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? 'OK' : (issues[check.issue] ?? '검사 실패')}${check.contentType ? ` · ${check.contentType}` : ''}${check.server ? ` · ${servers[check.server]}` : ''}${check.redirect ? ` · ${redirects[check.redirect]}` : ''}`,
+        `${check.path}: ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? 'OK' : (issues[check.issue] ?? '검사 실패')}${check.contentType ? ` · ${check.contentType}` : ''}${check.server ? ` · ${servers[check.server]}` : ''}${check.redirect ? ` · ${redirects[check.redirect]}` : ''}${check.path === '/' && probe.entryUrl ? ' · 위 Site 주소 기준' : ''}`,
     )
     .join('\n')
 }
 
 /** Checks from this server's network only; cannot certify another user's route. */
 export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
+  const entryPath = welcomePath('/')
+  const result = await inspectPublicAccess(
+    origin,
+    instance,
+    fetchImpl,
+    entryPath,
+  )
+  return { ...result, entryUrl: new URL(entryPath, origin).href }
+}
+async function inspectPublicAccess(origin, instance, fetchImpl, entryPath) {
   if (localOrigin(origin))
     return {
       state: 'local',
@@ -2110,7 +2135,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
   const checks = [],
     signal = AbortSignal.timeout(6500)
   const get = (path, accept) =>
-    fetchImpl(new URL(path, origin), {
+    fetchImpl(new URL(path === '/' ? entryPath : path, origin), {
       redirect: 'manual',
       credentials: 'omit',
       cache: 'no-store',
@@ -2294,7 +2319,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
 
 ## scripts/share-codespaces.mjs
 
-원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 94줄 · SHA-256: `fe455faad750a6e3013e63ece9cf9c793c8e5818c6c2d3d246819e1356f858dd`
+원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 96줄 · SHA-256: `8dd10d3b7a14f4e5750ee2c1a5a7f2ad838c1d98f32fa8481806a00732d5a2c4`
 
 ```javascript
 import { spawnSync } from 'node:child_process'
@@ -2372,7 +2397,9 @@ if (
     const report = await shareCodespaces(
       connectionEnvironment(process.argv.slice(2)),
     )
-    console.log(`포트 Public 설정 적용: ${report.origin}`)
+    console.log(
+      `포트 Public 설정 적용: ${report.origin}\nSite: ${report.probe.entryUrl}`,
+    )
     console.log(`Public: ${report.probe.state} · ${report.probe.message}`)
     const checks = formatPublicChecks(report.probe)
     if (checks) console.log(checks)
@@ -2397,7 +2424,7 @@ if (
 
 ## scripts/diagnose-codespaces.mjs
 
-원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 120줄 · SHA-256: `7485d36da4144cac9958158533e4309a9c3edb2b683804a2c6c5a917b743f247`
+원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 120줄 · SHA-256: `dd53ade3ac8de7c74c81b82a7c3b4fb90f1e6d6dca2ab7e7051c8e797f8609c1`
 
 ```javascript
 import { pathToFileURL } from 'node:url'
@@ -2495,7 +2522,7 @@ if (
       connectionEnvironment(process.argv.slice(2)),
     )
     console.log(
-      `IVC connection check\nSite: ${report.origin}\nLocal: ${report.local.state} · ${report.local.message}`,
+      `IVC connection check\nOrigin: ${report.origin}\nSite: ${report.external?.entryUrl ?? report.origin}\nLocal: ${report.local.state} · ${report.local.message}`,
     )
     if (report.external)
       console.log(

@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `ad4de99794baa00d680db0102b16bfb4ad81f2379d033d5edc88a960fc5a0ca3`
+소스 묶음 SHA-256: `c307e1268a570cb790a128247e7722b01559d74d7a084541f15f063fd6c029f0`
 
 ## 다른 코드 묶음
 
@@ -93,7 +93,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ## src/components/AccountSession.tsx
 
-원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 190줄 · SHA-256: `9a3cb5d897719bc2e21b9c49c1a1e366ea21547a3daa3cba5b63496756aa052f`
+원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 195줄 · SHA-256: `2162b520f05eb637b0adc0b25549eb81c6144729aa54e49aa0280a4adbd22fc3`
 
 ```tsx
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -102,6 +102,7 @@ import {
   getAuthSession,
   postAuth,
   isSessionRequired,
+  welcomePath,
   type AuthSession,
 } from '../../server/gateway/auth-client.js'
 import './AccountSession.css'
@@ -121,7 +122,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     const endSession = () => {
       current.current = null
       setSession(null)
-      location.replace('/?expired=1')
+      location.replace(welcomePath('/?expired=1'))
     }
     async function run() {
       const request = ++version.current
@@ -233,7 +234,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       channelRef.current?.postMessage('logout')
       current.current = null
       setSession(null)
-      location.replace('/')
+      location.replace(welcomePath('/'))
     } catch (failure) {
       if (
         isSessionRequired(failure) ||
@@ -241,7 +242,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       ) {
         current.current = null
         setSession(null)
-        location.replace('/')
+        location.replace(welcomePath('/'))
         return
       }
       setError(
@@ -259,7 +260,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
         {error && (
           <>
             <button onClick={() => retry.current()}>다시 확인</button>
-            <a href="/">Log in</a>
+            <a href={welcomePath('/')}>Log in</a>
           </>
         )}
       </div>
@@ -268,7 +269,11 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     <>
       <div className="account-bar">
         <span>{session.user.email}</span>
-        <a href={session.user.role === 'owner' ? '/?manage=1' : '/?account=1'}>
+        <a
+          href={welcomePath(
+            session.user.role === 'owner' ? '/?manage=1' : '/?account=1',
+          )}
+        >
           {session.user.role === 'owner' ? 'Manage Access' : 'Account'}
         </a>
         <button onClick={() => void logout()}>Log out</button>
@@ -752,7 +757,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 457줄 · SHA-256: `17ff4c44aefc132209b2a477547f3de0902d8c535052742d63024e97ccc3cff9`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 458줄 · SHA-256: `857cf81b94d94cefb759c921a5c054136cc29a6646459411d3da6e97ba8a0566`
 
 ```text
 import {
@@ -760,6 +765,7 @@ import {
   getAuthSession,
   postAuth,
   isSessionRequired,
+  welcomePath,
 } from '/auth-client.js'
 let session = null,
   invitation = null,
@@ -811,7 +817,7 @@ async function api(path, body) {
     }
     if (error.code === 'ACCOUNT_CHANGED') {
       clearSession()
-      location.replace('/')
+      location.replace(welcomePath('/'))
     }
     throw error
   }
@@ -881,7 +887,7 @@ function showInvitation(data) {
 async function beginInvitation(token) {
   const data = await api('/api/begin-invite', { token })
   // Only discard the URL secret after the server has stored an HttpOnly continuation cookie.
-  history.replaceState(null, '', '/')
+  history.replaceState(null, '', welcomePath('/'))
   $('#invitation-code-form').reset()
   showInvitation(data)
 }
@@ -1024,7 +1030,7 @@ async function checkSharing() {
   try {
     const data = await api('/api/admin/sharing')
     if (!session || session.user.id !== id) return
-    $('#sharing-origin').value = data.origin
+    $('#sharing-origin').value = data.entryUrl ?? data.origin
     $('#sharing-state').textContent = {
       ready: 'Server check passed',
       local: 'Local only',
@@ -1091,13 +1097,13 @@ submit('#password-form', async (body, form) => {
   await api('/api/change-password', body)
   form.reset()
   channel?.postMessage('logout')
-  location.replace('/?changed=1')
+  location.replace(welcomePath('/?changed=1'))
 })
 $('#logout').addEventListener('click', async () => {
   try {
     await api('/api/logout', {})
     channel?.postMessage('logout')
-    location.replace('/' + location.hash)
+    location.replace(welcomePath('/' + location.hash))
   } catch (e) {
     feedback(e.message, true)
   }
@@ -1218,7 +1224,7 @@ initialize().catch((e) => {
 
 ## server/gateway/response.js
 
-원본: [server/gateway/response.js](../../server/gateway/response.js) · 37줄 · SHA-256: `84ef510e88af45b38a84311b0b889e486094099b5efd9a704f250f468cb7efd4`
+원본: [server/gateway/response.js](../../server/gateway/response.js) · 57줄 · SHA-256: `09f1d17ce53669857b66faf9dfa786c1eea396475e73fcb11dd5863084282fb6`
 
 ```text
 /** Never treat an empty/HTML proxy response as successful authentication. */
@@ -1258,16 +1264,37 @@ export async function responseData(response, path) {
     )
   return data
 }
+
+/** Public navigation cache key only, never a session or an access token.
+ * Preserve existing query/fragment and accept only the same-origin welcome path. */
+export function welcomePath(path = '/', stamp = crypto.randomUUID()) {
+  if (
+    typeof path !== 'string' ||
+    !path.startsWith('/') ||
+    path.startsWith('//')
+  )
+    throw Error('잘못된 소개 화면 경로입니다.')
+  const url = new URL(path, 'https://ivc.invalid')
+  if (
+    url.origin !== 'https://ivc.invalid' ||
+    url.pathname !== '/' ||
+    !/^[\w-]{1,100}$/.test(stamp)
+  )
+    throw Error('잘못된 소개 화면 경로입니다.')
+  url.searchParams.set('_ivc_page', stamp)
+  return url.pathname + url.search + url.hash
+}
 ```
 
 <a id="source-7"></a>
 
 ## server/gateway/auth-client.js
 
-원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 133줄 · SHA-256: `7b9488be3248d191a03b2febb2c3789f9451ddc5bbd1d24d201bc2ba405167a4`
+원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 134줄 · SHA-256: `8bb612faabcc4dfbbae97c5beb918e0122c70e3863c279d1a17f1f4a73146575`
 
 ```text
 import { responseData } from './response.js'
+export { welcomePath } from './response.js'
 
 const entryActions = new Set([
   '/api/login',
@@ -1406,7 +1433,7 @@ export const postAuth = client.post
 
 ## server/gateway/auth-client.d.ts
 
-원본: [server/gateway/auth-client.d.ts](../../server/gateway/auth-client.d.ts) · 22줄 · SHA-256: `844f956334954d698d6948d20ca95e524ca0323016ff1ccd3f5c9509c7191af5`
+원본: [server/gateway/auth-client.d.ts](../../server/gateway/auth-client.d.ts) · 24줄 · SHA-256: `013e325ad7eb07ed31a3e0919aac425273aaafba6dcc5c9b7cee7167a8d15026`
 
 ```typescript
 export type AuthSession = {
@@ -1431,16 +1458,19 @@ export function postAuth(
   body: Record<string, unknown>,
   expectedUserId?: string,
 ): Promise<unknown>
+
+export function welcomePath(path?: string, stamp?: string): string
 ```
 
 <a id="source-9"></a>
 
 ## server/gateway/auth-client.js
 
-원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 133줄 · SHA-256: `7b9488be3248d191a03b2febb2c3789f9451ddc5bbd1d24d201bc2ba405167a4`
+원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 134줄 · SHA-256: `8bb612faabcc4dfbbae97c5beb918e0122c70e3863c279d1a17f1f4a73146575`
 
 ```text
 import { responseData } from './response.js'
+export { welcomePath } from './response.js'
 
 const entryActions = new Set([
   '/api/login',
@@ -1579,7 +1609,7 @@ export const postAuth = client.post
 
 ## server/gateway/auth-client.d.ts
 
-원본: [server/gateway/auth-client.d.ts](../../server/gateway/auth-client.d.ts) · 22줄 · SHA-256: `844f956334954d698d6948d20ca95e524ca0323016ff1ccd3f5c9509c7191af5`
+원본: [server/gateway/auth-client.d.ts](../../server/gateway/auth-client.d.ts) · 24줄 · SHA-256: `013e325ad7eb07ed31a3e0919aac425273aaafba6dcc5c9b7cee7167a8d15026`
 
 ```typescript
 export type AuthSession = {
@@ -1604,6 +1634,8 @@ export function postAuth(
   body: Record<string, unknown>,
   expectedUserId?: string,
 ): Promise<unknown>
+
+export function welcomePath(path?: string, stamp?: string): string
 ```
 
 <a id="source-11"></a>

@@ -4,6 +4,7 @@ import {
   getAuthSession,
   postAuth,
   isSessionRequired,
+  welcomePath,
   type AuthSession,
 } from '../../server/gateway/auth-client.js'
 import './AccountSession.css'
@@ -23,7 +24,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     const endSession = () => {
       current.current = null
       setSession(null)
-      location.replace('/?expired=1')
+      location.replace(welcomePath('/?expired=1'))
     }
     async function run() {
       const request = ++version.current
@@ -135,7 +136,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       channelRef.current?.postMessage('logout')
       current.current = null
       setSession(null)
-      location.replace('/')
+      location.replace(welcomePath('/'))
     } catch (failure) {
       if (
         isSessionRequired(failure) ||
@@ -143,7 +144,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       ) {
         current.current = null
         setSession(null)
-        location.replace('/')
+        location.replace(welcomePath('/'))
         return
       }
       setError(
@@ -161,7 +162,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
         {error && (
           <>
             <button onClick={() => retry.current()}>다시 확인</button>
-            <a href="/">Log in</a>
+            <a href={welcomePath('/')}>Log in</a>
           </>
         )}
       </div>
@@ -170,7 +171,11 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     <>
       <div className="account-bar">
         <span>{session.user.email}</span>
-        <a href={session.user.role === 'owner' ? '/?manage=1' : '/?account=1'}>
+        <a
+          href={welcomePath(
+            session.user.role === 'owner' ? '/?manage=1' : '/?account=1',
+          )}
+        >
           {session.user.role === 'owner' ? 'Manage Access' : 'Account'}
         </a>
         <button onClick={() => void logout()}>Log out</button>

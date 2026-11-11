@@ -1,3 +1,4 @@
+import { welcomePath } from './gateway/response.js'
 import { createServer } from 'node:http'
 import { acceptedHost, proxyRewrittenOrigin } from './runtime-config.mjs'
 import { AUTH_VERSION, probePublicAccess } from './sharing.mjs'
@@ -387,7 +388,7 @@ export async function createAccessServer(input) {
                     )
                   : store.invite(email, user.id)
               return json(201, {
-                url: `${cfg.origin}/#invite=${token}`,
+                url: `${cfg.origin}${welcomePath('/#invite=' + token)}`,
                 code: token,
                 expiresHours: 48,
               })
@@ -494,7 +495,7 @@ export async function createAccessServer(input) {
       } else {
         if (!user) {
           if (path === '/calculator' || path === '/calculator/') {
-            res.writeHead(303, { Location: '/' })
+            res.writeHead(303, { Location: welcomePath('/') })
             return res.end()
           }
           return fail(401, '로그인이 필요합니다.')
@@ -514,7 +515,16 @@ export async function createAccessServer(input) {
         safeRoot = await realpath(root)
       if (!resolved.startsWith(safeRoot + sep))
         return fail(403, '허용되지 않은 경로입니다.')
-      const data = await readFile(resolved)
+      const bytes = await readFile(resolved)
+      const data =
+        root === gateway && file === 'index.html'
+          ? Buffer.from(
+              bytes
+                .toString('utf8')
+                .replace('href="/"', `href="${welcomePath('/')}"`),
+              'utf8',
+            )
+          : bytes
       res.writeHead(200, {
         'Content-Type': mime[extname(file)] ?? 'application/octet-stream',
         'Content-Length': data.length,
@@ -540,5 +550,9 @@ export async function createAccessServer(input) {
   server.headersTimeout = 10_000
   server.keepAliveTimeout = 5000
   server.maxHeadersCount = 40
-  return { server, store }
+  return {
+    server,
+    store,
+    entryUrl: new URL(welcomePath('/'), cfg.origin).href,
+  }
 }

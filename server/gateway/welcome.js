@@ -3,6 +3,7 @@ import {
   getAuthSession,
   postAuth,
   isSessionRequired,
+  welcomePath,
 } from '/auth-client.js'
 let session = null,
   invitation = null,
@@ -54,7 +55,7 @@ async function api(path, body) {
     }
     if (error.code === 'ACCOUNT_CHANGED') {
       clearSession()
-      location.replace('/')
+      location.replace(welcomePath('/'))
     }
     throw error
   }
@@ -124,7 +125,7 @@ function showInvitation(data) {
 async function beginInvitation(token) {
   const data = await api('/api/begin-invite', { token })
   // Only discard the URL secret after the server has stored an HttpOnly continuation cookie.
-  history.replaceState(null, '', '/')
+  history.replaceState(null, '', welcomePath('/'))
   $('#invitation-code-form').reset()
   showInvitation(data)
 }
@@ -267,7 +268,7 @@ async function checkSharing() {
   try {
     const data = await api('/api/admin/sharing')
     if (!session || session.user.id !== id) return
-    $('#sharing-origin').value = data.origin
+    $('#sharing-origin').value = data.entryUrl ?? data.origin
     $('#sharing-state').textContent = {
       ready: 'Server check passed',
       local: 'Local only',
@@ -334,13 +335,13 @@ submit('#password-form', async (body, form) => {
   await api('/api/change-password', body)
   form.reset()
   channel?.postMessage('logout')
-  location.replace('/?changed=1')
+  location.replace(welcomePath('/?changed=1'))
 })
 $('#logout').addEventListener('click', async () => {
   try {
     await api('/api/logout', {})
     channel?.postMessage('logout')
-    location.replace('/' + location.hash)
+    location.replace(welcomePath('/' + location.hash))
   } catch (e) {
     feedback(e.message, true)
   }

@@ -87,11 +87,17 @@ test('calculator document, JS, WASM, source and alternate paths are gated', asyn
     '/server/store.mjs',
     '/.env',
     '/api/admin/users',
+    '/assets/private.js?_ivc_page=public',
+    '/solver.wasm?_ivc_page=public',
+    '/api/admin/users?_ivc_page=public',
   ])
     assert.equal((await request(path)).status, 401, path)
   const r = await request('/calculator')
   assert.equal(r.status, 303)
-  assert.equal(r.headers.get('location'), '/')
+  const redirect = new URL(r.headers.get('location'), origin)
+  assert.equal(redirect.origin, origin)
+  assert.equal(redirect.pathname, '/')
+  assert.match(redirect.searchParams.get('_ivc_page'), /^[\w-]{36}$/)
 })
 test('forged cookies, role fields, authorization headers and forwarded identity do not grant access', async () => {
   assert.equal(

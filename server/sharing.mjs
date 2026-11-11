@@ -1,3 +1,4 @@
+import { welcomePath } from './gateway/response.js'
 import { isIP } from 'node:net'
 
 export const AUTH_VERSION = 'auth-v4'
@@ -94,13 +95,23 @@ export function formatPublicChecks(probe) {
   return (probe?.checks ?? [])
     .map(
       (check) =>
-        `${check.path}: ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? 'OK' : (issues[check.issue] ?? '검사 실패')}${check.contentType ? ` · ${check.contentType}` : ''}${check.server ? ` · ${servers[check.server]}` : ''}${check.redirect ? ` · ${redirects[check.redirect]}` : ''}`,
+        `${check.path}: ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? 'OK' : (issues[check.issue] ?? '검사 실패')}${check.contentType ? ` · ${check.contentType}` : ''}${check.server ? ` · ${servers[check.server]}` : ''}${check.redirect ? ` · ${redirects[check.redirect]}` : ''}${check.path === '/' && probe.entryUrl ? ' · 위 Site 주소 기준' : ''}`,
     )
     .join('\n')
 }
 
 /** Checks from this server's network only; cannot certify another user's route. */
 export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
+  const entryPath = welcomePath('/')
+  const result = await inspectPublicAccess(
+    origin,
+    instance,
+    fetchImpl,
+    entryPath,
+  )
+  return { ...result, entryUrl: new URL(entryPath, origin).href }
+}
+async function inspectPublicAccess(origin, instance, fetchImpl, entryPath) {
   if (localOrigin(origin))
     return {
       state: 'local',
@@ -111,7 +122,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
   const checks = [],
     signal = AbortSignal.timeout(6500)
   const get = (path, accept) =>
-    fetchImpl(new URL(path, origin), {
+    fetchImpl(new URL(path === '/' ? entryPath : path, origin), {
       redirect: 'manual',
       credentials: 'omit',
       cache: 'no-store',

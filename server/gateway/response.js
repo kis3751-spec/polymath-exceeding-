@@ -35,3 +35,23 @@ export async function responseData(response, path) {
     )
   return data
 }
+
+/** Public navigation cache key only, never a session or an access token.
+ * Preserve existing query/fragment and accept only the same-origin welcome path. */
+export function welcomePath(path = '/', stamp = crypto.randomUUID()) {
+  if (
+    typeof path !== 'string' ||
+    !path.startsWith('/') ||
+    path.startsWith('//')
+  )
+    throw Error('잘못된 소개 화면 경로입니다.')
+  const url = new URL(path, 'https://ivc.invalid')
+  if (
+    url.origin !== 'https://ivc.invalid' ||
+    url.pathname !== '/' ||
+    !/^[\w-]{1,100}$/.test(stamp)
+  )
+    throw Error('잘못된 소개 화면 경로입니다.')
+  url.searchParams.set('_ivc_page', stamp)
+  return url.pathname + url.search + url.hash
+}

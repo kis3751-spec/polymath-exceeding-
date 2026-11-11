@@ -93,7 +93,7 @@ if (
       connectionEnvironment(process.argv.slice(2)),
     )
     console.log(
-      `IVC connection check\nSite: ${report.origin}\nLocal: ${report.local.state} · ${report.local.message}`,
+      `IVC connection check\nOrigin: ${report.origin}\nSite: ${report.external?.entryUrl ?? report.origin}\nLocal: ${report.local.state} · ${report.local.message}`,
     )
     if (report.external)
       console.log(

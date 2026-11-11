@@ -1,4 +1,5 @@
 import { responseData } from './response.js'
+export { welcomePath } from './response.js'
 
 const entryActions = new Set([
   '/api/login',

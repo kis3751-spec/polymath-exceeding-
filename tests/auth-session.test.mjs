@@ -391,3 +391,25 @@ test('a pre-mutation session rejection recovers only under the same account', as
   )
   assert.equal(writes, 2)
 })
+
+test('fresh welcome navigation preserves account actions and invitation fragments, and rejects other origins', async () => {
+  const { welcomePath } = await import('../server/gateway/response.js')
+  const first = welcomePath('/?manage=1#invite=' + 'A'.repeat(43))
+  const url = new URL(first, origin)
+  assert.equal(url.origin, origin)
+  assert.equal(url.pathname, '/')
+  assert.equal(url.searchParams.get('manage'), '1')
+  assert.match(url.searchParams.get('_ivc_page'), /^[\w-]{36}$/)
+  assert.equal(url.hash, '#invite=' + 'A'.repeat(43))
+  assert.ok(!url.search.includes('A'.repeat(43)))
+  assert.notEqual(first, welcomePath('/?manage=1#invite=' + 'A'.repeat(43)))
+  for (const path of [
+    'https://evil.test/',
+    '//evil.test/',
+    '/calculator',
+    '/assets/private.js',
+    '/api/session',
+  ])
+    assert.throws(() => welcomePath(path), /잘못된/)
+  assert.throws(() => welcomePath('/', 'bad stamp?'), /잘못된/)
+})

@@ -29,7 +29,9 @@ test('welcome precedes login; direct calculation files are inaccessible', async 
   await expect(page.locator('#admin-panel')).toBeHidden()
   expect((await request.get('/solver.wasm')).status()).toBe(401)
   await page.goto('/calculator')
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL(
+    (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+  )
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.screenshot({
     path: '/tmp/ivc-welcome-desktop.png',
@@ -63,9 +65,12 @@ test('owner can invite, member activates and uses calculator; revocation locks a
   await form.getByLabel('Allowed Email').fill('browser-member@example.test')
   await form.getByLabel('Admin Password').fill(owner.password)
   await form.getByRole('button', { name: 'Create invitation' }).click()
-  await expect(page.locator('#invitation-link')).toHaveValue(/\/#invite=/)
+  await expect(page.locator('#invitation-link')).toHaveValue(
+    /\/\?_ivc_page=[\w-]+#invite=/,
+  )
   const url = await page.locator('#invitation-link').inputValue()
-  expect(url).toContain('/#invite=')
+  expect(new URL(url).hash).toMatch(/^#invite=[\w-]{43}$/)
+  expect(new URL(url).searchParams.has('_ivc_page')).toBe(true)
   const memberContext = await browser.newContext({
     baseURL: new URL(url).origin,
     storageState: { cookies: [], origins: [] },
@@ -81,7 +86,13 @@ test('owner can invite, member activates and uses calculator; revocation locks a
     'readonly',
     '',
   )
-  await expect(member).toHaveURL(new URL(url).origin + '/')
+  await expect(member).toHaveURL(
+    (value) =>
+      value.origin === new URL(url).origin &&
+      value.pathname === '/' &&
+      value.searchParams.has('_ivc_page') &&
+      !value.hash,
+  )
   await member.reload()
   await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
     'browser-member@example.test',
@@ -118,7 +129,9 @@ test('logout destroys session and protected resources remain unavailable on back
 }) => {
   await logIn(page)
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL(
+    (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+  )
   expect((await context.request.get('/api/session')).status()).toBe(401)
   await page.goBack()
   await expect(page.locator('.module-grid')).toHaveCount(0)
@@ -181,7 +194,9 @@ test('login and calculator work when a forwarder returns empty 404 for the /api 
   await loginRequest
   await expect(page.locator('.module-grid')).toBeVisible()
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL(
+    (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+  )
 })
 
 test('browser login remains protected when a local forwarder rewrites the Origin header', async ({
@@ -198,7 +213,9 @@ test('browser login remains protected when a local forwarder rewrites the Origin
   await logIn(page)
   await expect(page.locator('.module-grid')).toBeVisible()
   await page.getByRole('button', { name: 'Log out', exact: true }).click()
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL(
+    (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+  )
 })
 
 test('invitation code recovers a lost link, owner can reset an active account, and old credentials stop working', async ({
@@ -640,5 +657,121 @@ test.describe('session recovery', () => {
     await expect(page.locator('.account-bar')).toContainText(owner.email)
     await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
     await expect(page.locator('#admin-panel')).toBeVisible()
+  })
+  test('fresh entry keeps login, access management, invitations and logout working when a proxy poisons the bare homepage', async ({
+    page,
+    browser,
+    context,
+  }) => {
+    const poisoned: string[] = []
+    const intercept = async (route: import('@playwright/test').Route) => {
+      const request = route.request(),
+        url = new URL(request.url())
+      if (
+        request.isNavigationRequest() &&
+        url.pathname === '/' &&
+        !url.searchParams.has('_ivc_page')
+      ) {
+        poisoned.push(url.href)
+        return route.fulfill({
+          status: 404,
+          contentType: 'text/html',
+          body: '<html><h1>Stale upstream response</h1></html>',
+        })
+      }
+      return route.continue()
+    }
+    await context.route('**/*', intercept)
+    await page.goto('/?_ivc_page=initial-entry')
+    await page
+      .getByRole('button', { name: 'Log in to IVC', exact: true })
+      .click()
+    await page
+      .locator('#login-form')
+      .getByLabel('Email', { exact: true })
+      .fill(owner.email)
+    await page
+      .locator('#login-form')
+      .getByLabel('Password', { exact: true })
+      .fill(owner.password)
+    await page
+      .locator('#login-form')
+      .getByRole('button', { name: 'Log in', exact: true })
+      .click()
+    await expect(page.locator('.account-bar')).toContainText(owner.email)
+    await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === '/' &&
+        url.searchParams.get('manage') === '1' &&
+        url.searchParams.has('_ivc_page'),
+    )
+    await expect(page.locator('#admin-panel')).toBeVisible()
+    await page.reload()
+    await expect(page.locator('#admin-panel')).toBeVisible()
+    const form = page.locator('#invite-user-form')
+    await form
+      .getByLabel('Allowed Email')
+      .fill('fresh-entry-member@example.test')
+    await form.getByLabel('Admin Password').fill(owner.password)
+    await form.getByRole('button', { name: 'Create invitation' }).click()
+    await expect(page.locator('#invitation-link')).toHaveValue(/_ivc_page=/)
+    const invitationUrl = await page.locator('#invitation-link').inputValue()
+    const memberContext = await browser.newContext({
+      baseURL: new URL(page.url()).origin,
+      ignoreHTTPSErrors: true,
+      storageState: { cookies: [], origins: [] },
+    })
+    try {
+      await memberContext.route('**/*', intercept)
+      const member = await memberContext.newPage()
+      await member.goto(invitationUrl)
+      const activation = member.locator('#invite-form')
+      await expect(activation.getByLabel('Email', { exact: true })).toHaveValue(
+        'fresh-entry-member@example.test',
+      )
+      await expect(member).toHaveURL(
+        (url) =>
+          url.pathname === '/' &&
+          url.searchParams.has('_ivc_page') &&
+          !url.hash,
+      )
+      await member.reload()
+      await expect(activation).toBeVisible()
+      await activation
+        .getByLabel('New Password', { exact: true })
+        .fill('Fresh-entry-member password 77!')
+      await activation
+        .getByLabel('Confirm Password', { exact: true })
+        .fill('Fresh-entry-member password 77!')
+      await activation
+        .getByRole('button', { name: 'Activate account', exact: true })
+        .click()
+      await expect(member.locator('.account-bar')).toContainText(
+        'fresh-entry-member@example.test',
+      )
+      await member.reload()
+      await expect(member.locator('.account-bar')).toBeVisible()
+      expect(
+        (await memberContext.request.get('/ivc-auth/admin/users')).status(),
+      ).toBe(403)
+      await member.getByRole('button', { name: 'Log out', exact: true }).click()
+      await expect(member).toHaveURL(
+        (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+      )
+      expect((await memberContext.request.get('/solver.wasm')).status()).toBe(
+        401,
+      )
+    } finally {
+      await memberContext.close()
+    }
+    await page.getByRole('button', { name: 'Log out', exact: true }).click()
+    await expect(page).toHaveURL(
+      (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+    )
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      '관계까지',
+    )
+    expect(poisoned).toEqual([])
   })
 })

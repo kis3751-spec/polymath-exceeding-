@@ -73,7 +73,9 @@ if (
     const report = await shareCodespaces(
       connectionEnvironment(process.argv.slice(2)),
     )
-    console.log(`포트 Public 설정 적용: ${report.origin}`)
+    console.log(
+      `포트 Public 설정 적용: ${report.origin}\nSite: ${report.probe.entryUrl}`,
+    )
     console.log(`Public: ${report.probe.state} · ${report.probe.message}`)
     const checks = formatPublicChecks(report.probe)
     if (checks) console.log(checks)

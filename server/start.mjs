@@ -7,10 +7,10 @@ const args = process.argv.slice(2),
 if (at >= 0 && !args[at + 1]) throw Error('--port 값이 필요합니다.')
 const port = runtimePort(process.env, at >= 0 ? args[at + 1] : undefined)
 const cfg = runtimeConfig(process.env, port)
-const { server } = await createAccessServer(cfg)
+const { server, entryUrl } = await createAccessServer(cfg)
 server.listen(port, cfg.host, () => {
   console.log(
-    `IVC secure server: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
+    `IVC secure server: ${entryUrl}\nOrigin: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
   )
   if (cfg.codespaces)
     void diagnoseCodespaces({ ...process.env, PORT: String(port) })
