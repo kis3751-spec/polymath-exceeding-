@@ -12,6 +12,7 @@ import {
   hashPassword,
   verifyPassword,
   secret,
+  SESSION_MAX_AGE_MS,
 } from './store.mjs'
 const gateway = resolve(import.meta.dirname, 'gateway')
 const mime = {
@@ -83,7 +84,7 @@ export async function createAccessServer(input) {
     return values.length === 1 ? values[0].slice(name.length + 1) : null
   }
   const cookie = (token, remove = false) =>
-    `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 28800}`
+    `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : SESSION_MAX_AGE_MS / 1000}`
   function readSession(req) {
     const values = (req.headers.cookie ?? '')
       .split(';')
@@ -180,11 +181,17 @@ export async function createAccessServer(input) {
           .filter((x) => x.startsWith(entryCookie + '='))
         const nonce =
           entries.length === 1 ? entries[0].slice(entryCookie.length + 1) : null
-        const validProof = user
-          ? token === user.csrf
-          : typeof token === 'string' &&
-            /^[\w-]{43}$/.test(token) &&
-            nonce === token
+        const sessionProof = user && token === user.csrf
+        const entryProof =
+          typeof token === 'string' &&
+          /^[\w-]{43}$/.test(token) &&
+          nonce === token
+        const entryAction = [
+          '/api/login',
+          '/api/begin-invite',
+          '/api/accept-invite',
+        ].includes(path)
+        const validProof = sessionProof || (entryAction && entryProof)
         if (req.headers['sec-fetch-site'] === 'cross-site') {
           console.info('IVC auth blocked: cross-site request')
           return fail(403, '다른 사이트에서 보낸 요청은 허용되지 않습니다.')
@@ -212,6 +219,11 @@ export async function createAccessServer(input) {
           return fail(
             403,
             '요청 출처 또는 로그인 보안 토큰을 확인할 수 없습니다. 새로고침하세요.',
+            proxyRewrittenOrigin(req, cfg)
+              ? entryAction
+                ? 'ENTRY_CSRF'
+                : 'SESSION_CSRF'
+              : 'REQUEST_ORIGIN',
           )
         }
         if (
@@ -307,9 +319,13 @@ export async function createAccessServer(input) {
           ])
           return json(200, { ok: true })
         }
-        if (!user) return fail(401, '로그인이 필요합니다.')
+        if (!user) return fail(401, '로그인이 필요합니다.', 'SESSION_REQUIRED')
         if (req.headers['x-csrf-token'] !== user.csrf)
-          return fail(403, '세션 확인에 실패했습니다. 새로고침하세요.')
+          return fail(
+            403,
+            '세션 확인에 실패했습니다. 새로고침하세요.',
+            'SESSION_CSRF',
+          )
         if (path === '/api/logout') {
           store.run('DELETE FROM sessions WHERE hash=?', user.hash)
           res.setHeader('Set-Cookie', cookie('', true))
@@ -330,14 +346,14 @@ export async function createAccessServer(input) {
               ?.slice(cookieName.length + 1),
           )
           if (!current || current.password !== user.password)
-            return fail(401, '다시 로그인하세요.')
+            return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
           if (path === '/api/change-password') {
             if (!validPassword(body.newPassword))
               return fail(400, '새 비밀번호는 12~128자여야 합니다.')
             const encoded = await hashPassword(body.newPassword)
             const fresh = store.user(user.id)
             if (!fresh?.active || fresh.password !== user.password)
-              return fail(401, '다시 로그인하세요.')
+              return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
             store.transaction(() => {
               store.run(
                 'UPDATE users SET password=? WHERE id=?',
@@ -361,7 +377,7 @@ export async function createAccessServer(input) {
               !store.isOwner(fresh) ||
               fresh.password !== user.password
             )
-              return fail(401, '다시 로그인하세요.')
+              return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
             try {
               const token =
                 path === '/api/admin/reset'
@@ -388,7 +404,8 @@ export async function createAccessServer(input) {
         return fail(404, '요청을 찾을 수 없습니다.')
       }
       if (path === '/api/csrf') {
-        const nonce = secret()
+        const existing = cookieValue(req, entryCookie)
+        const nonce = /^[\w-]{43}$/.test(existing ?? '') ? existing : secret()
         res.setHeader(
           'Set-Cookie',
           `${entryCookie}=${nonce}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=600`,
@@ -420,26 +437,27 @@ export async function createAccessServer(input) {
           invitation: { email: flow.email, expires: flow.flowExpires },
         })
       }
-      if (path === '/api/session')
-        return user
-          ? json(200, {
-              user: {
-                id: user.id,
-                email: user.email,
-                role: store.isOwner(user) ? 'owner' : 'member',
-              },
-              csrf: user.csrf,
-            })
-          : fail(401, '로그인이 필요합니다.')
+      if (path === '/api/session') {
+        if (!user) return fail(401, '로그인이 필요합니다.', 'SESSION_REQUIRED')
+        return json(200, {
+          user: {
+            id: user.id,
+            email: user.email,
+            role: store.isOwner(user) ? 'owner' : 'member',
+          },
+          csrf: user.csrf,
+          expiresAt: user.expires,
+        })
+      }
       if (path === '/api/admin/sharing' || path === '/api/admin/users') {
-        if (!user) return fail(401, '로그인이 필요합니다.')
+        if (!user) return fail(401, '로그인이 필요합니다.', 'SESSION_REQUIRED')
         if (!store.isOwner(user))
           return fail(403, '최고 관리자 권한이 필요합니다.')
         if (path === '/api/admin/sharing') {
           const result = await sharing(true)
           const fresh = readSession(req)
           if (!fresh || !store.isOwner(fresh))
-            return fail(401, '다시 로그인하세요.')
+            return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
           return json(200, result)
         }
         return json(200, {
@@ -468,6 +486,7 @@ export async function createAccessServer(input) {
       } else if (
         path === '/welcome.css' ||
         path === '/welcome.js' ||
+        path === '/auth-client.js' ||
         path === '/response.js'
       ) {
         root = gateway

@@ -320,7 +320,10 @@ test('a browser that cannot retain the login cookie gets an explanation before c
     route.fulfill({
       status: 401,
       contentType: 'application/json',
-      body: JSON.stringify({ error: '로그인이 필요합니다.' }),
+      body: JSON.stringify({
+        error: '로그인이 필요합니다.',
+        code: 'SESSION_REQUIRED',
+      }),
     }),
   )
   await page.goto('/')
@@ -431,4 +434,144 @@ test('page diagnostic failure cannot block owner invitation, member activation o
   } finally {
     await context.close()
   }
+})
+
+test.describe('session recovery', () => {
+  test('refreshing calculator and access pages restores the same login, including a reopened browser context', async ({
+    page,
+    context,
+    browser,
+  }) => {
+    await logIn(page)
+    await page.reload()
+    await expect(page.locator('.account-bar')).toContainText(owner.email)
+    await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+    for (let i = 0; i < 3; i++) {
+      await page.reload()
+      await expect(page.locator('#admin-panel')).toBeVisible()
+      await expect(page.locator('#user-list')).toContainText(owner.email)
+      await expect(page.locator('#access-panel')).toBeHidden()
+    }
+    const restored = await browser.newContext({
+      baseURL: new URL(page.url()).origin,
+      storageState: await context.storageState(),
+      ignoreHTTPSErrors: true,
+    })
+    try {
+      const reopened = await restored.newPage()
+      await reopened.goto('/?manage=1')
+      await expect(reopened.locator('#admin-panel')).toBeVisible()
+      await expect(reopened.locator('#user-list')).toContainText(owner.email)
+    } finally {
+      await restored.close()
+    }
+  })
+
+  test('a valid old cookie cannot block re-login through rewritten Origin and subsequent access edits', async ({
+    page,
+  }) => {
+    await logIn(page)
+    await page.route('**/ivc-auth/**', (route) => {
+      const request = route.request(),
+        url = new URL(request.url())
+      return request.method() === 'POST'
+        ? route.continue({
+            headers: {
+              ...request.headers(),
+              origin: `http://localhost:${url.port}`,
+            },
+          })
+        : route.continue()
+    })
+    let first = true
+    await page.route('**/ivc-auth/session', (route) => {
+      if (!first) return route.continue()
+      first = false
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: '로그인이 필요합니다.',
+          code: 'SESSION_REQUIRED',
+        }),
+      })
+    })
+    await page.goto('/')
+    await page
+      .getByRole('button', { name: 'Log in to IVC', exact: true })
+      .click()
+    const login = page.locator('#login-form')
+    await login.getByLabel('Email', { exact: true }).fill(owner.email)
+    await login.getByLabel('Password', { exact: true }).fill(owner.password)
+    await login.getByRole('button', { name: 'Log in', exact: true }).click()
+    await expect(page.locator('.account-bar')).toBeVisible()
+    await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+    const form = page.locator('#invite-user-form')
+    await form.getByLabel('Allowed Email').fill('relogin-member@example.test')
+    await form.getByLabel('Admin Password').fill(owner.password)
+    await form.getByRole('button', { name: 'Create invitation' }).click()
+    await expect(page.locator('#invitation-code')).toHaveValue(/^[\w-]{43}$/)
+    await expect(page.locator('#admin-panel')).toBeVisible()
+  })
+
+  test('another tab renewing the login does not break owner mutations with old in-memory CSRF', async ({
+    page,
+    context,
+  }) => {
+    await logIn(page)
+    await page.getByRole('link', { name: 'Manage Access', exact: true }).click()
+    await expect(page.locator('#user-list')).toContainText(owner.email)
+    const second = await context.newPage()
+    await second.goto('/')
+    await second.evaluate(
+      async ({ url, credentials }) => {
+        const client = await import(url)
+        await client.postAuth('/api/login', credentials)
+      },
+      { url: '/auth-client.js', credentials: owner },
+    )
+    await second.close()
+    const form = page.locator('#invite-user-form')
+    await form.getByLabel('Allowed Email').fill('other-tab-member@example.test')
+    await form.getByLabel('Admin Password').fill(owner.password)
+    await form.getByRole('button', { name: 'Create invitation' }).click()
+    await expect(page.locator('#invitation-code')).toHaveValue(/^[\w-]{43}$/)
+    await expect(page.locator('#admin-panel')).toBeVisible()
+  })
+
+  test('a transient proxy 401 covers the workspace and recovers without logout or losing the model', async ({
+    page,
+    context,
+  }) => {
+    await logIn(page)
+    await page
+      .getByRole('button', { name: 'Equation Solver 열기', exact: true })
+      .click()
+    const editor = page.getByRole('textbox', {
+      name: '방정식 입력',
+      exact: true,
+    })
+    await editor.fill('2*x=6')
+    let failures = 2
+    await page.route('**/ivc-auth/session', (route) =>
+      failures-- > 0
+        ? route.fulfill({
+            status: 401,
+            contentType: 'text/html',
+            body: '<html>Temporary proxy error</html>',
+          })
+        : route.continue(),
+    )
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(page.locator('.account-reconnect')).toBeVisible()
+    await expect(editor).toHaveValue('2*x=6')
+    await expect(page).toHaveURL(/\/calculator$/)
+    await page.getByRole('button', { name: '다시 확인', exact: true }).click()
+    await expect(page.locator('.account-reconnect')).toBeHidden({
+      timeout: 10000,
+    })
+    await expect(editor).toHaveValue('2*x=6')
+    await expect(page.locator('.account-bar')).toContainText(owner.email)
+    expect((await context.request.get('/ivc-auth/session')).status()).toBe(200)
+  })
 })

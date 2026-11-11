@@ -10,6 +10,8 @@ import {
 } from 'node:crypto'
 import { promisify } from 'node:util'
 const rawDerive = promisify(scrypt)
+export const SESSION_MAX_AGE_MS = 8 * 3600_000
+export const SESSION_IDLE_MS = 30 * 60_000
 let activeHashes = 0
 const waiters = []
 async function derive(...args) {
@@ -194,13 +196,15 @@ export class AccessStore {
       row.active !== 1 ||
       !row.password ||
       row.expires <= now ||
-      row.touched + 30 * 60_000 <= now
+      row.touched + SESSION_IDLE_MS <= now
     ) {
       if (row) this.run('DELETE FROM sessions WHERE hash=?', row.hash)
       return null
     }
-    if (touch && now - row.touched > 60_000)
+    if (touch && now - row.touched > 60_000) {
       this.run('UPDATE sessions SET touched=? WHERE hash=?', now, row.hash)
+      row.touched = now
+    }
     return { ...row, id: row.user_id }
   }
   createSession(user) {
@@ -210,7 +214,7 @@ export class AccessStore {
     this.run(
       'DELETE FROM sessions WHERE expires<=? OR touched<=?',
       now,
-      now - 30 * 60_000,
+      now - SESSION_IDLE_MS,
     )
     this.run(
       'INSERT INTO sessions VALUES(?,?,?,?,?,?)',
@@ -219,9 +223,9 @@ export class AccessStore {
       csrf,
       now,
       now,
-      now + 8 * 3600_000,
+      now + SESSION_MAX_AGE_MS,
     )
-    return { token, csrf }
+    return { token, csrf, expires: now + SESSION_MAX_AGE_MS }
   }
   issueInvite(user, actor, action = 'member.invite') {
     this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)

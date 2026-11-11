@@ -33,7 +33,9 @@ function publicResponse(input, instance) {
       ? '<html><form id="login-form"></form></html>'
       : path.endsWith('.css')
         ? 'body { color: black }'
-        : 'export function responseData() {}'
+        : path === '/auth-client.js'
+          ? 'export function getAuthSession() {}'
+          : 'export function responseData() {}'
   return new Response(body, {
     headers: {
       'X-IVC-Instance': instance,
@@ -878,12 +880,13 @@ test('public readiness verifies the actual gateway and login dependencies from t
     },
   )
   assert.equal(result.state, 'ready')
-  assert.equal(result.checks.length, 5)
+  assert.equal(result.checks.length, 6)
   assert.ok(result.checks.every((check) => check.ok))
   assert.deepEqual(
     paths.sort(),
     [
       '/',
+      '/auth-client.js',
       '/ivc-auth/status',
       '/response.js',
       '/welcome.css',

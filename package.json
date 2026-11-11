@@ -10,13 +10,13 @@
     "preview": "node server/start.mjs",
     "docs:core": "node scripts/export-core.mjs",
     "test": "npm run build:wasm && vitest run && npm run test:auth",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert 'session recovery' && playwright test --grep 'session recovery'",
     "format": "prettier --write src scripts tests *.json *.ts *.md index.html",
     "start": "node server/start.mjs",
     "auth:setup": "node server/setup.mjs",
     "share:codespaces": "node scripts/share-codespaces.mjs",
     "diagnose:codespaces": "node scripts/diagnose-codespaces.mjs",
-    "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs"
+    "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs tests/auth-session.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

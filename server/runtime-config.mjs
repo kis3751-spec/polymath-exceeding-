@@ -37,10 +37,12 @@ export function runtimeConfig(env, port) {
     // Codespaces replaces Host with an internal loopback authority.
     // Forwarded headers are never used to choose trusted hosts or origins.
     loopbackProxyHosts: codespaces
-      ? ['localhost', '127.0.0.1', '[::1]'].flatMap((host) => [
-          host,
-          `${host}:${port}`,
-        ])
+      ? [
+          'localhost',
+          '127.0.0.1',
+          '[::1]',
+          ...(host === '0.0.0.0' ? ['0.0.0.0'] : []),
+        ].flatMap((host) => [host, `${host}:${port}`])
       : [],
     database: resolve(env.IVC_DATA_DIR ?? '.ivc-data', 'access.sqlite'),
     dist: resolve('dist'),

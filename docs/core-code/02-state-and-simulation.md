@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `770e86fb84c052932807b465942485cd53706215b84b0a1db010635d4ae7bd92`
+소스 묶음 SHA-256: `e58857e80c9b7bef356b30c5f7976262d6a6394a5db134347f64b11ced14e4c8`
 
 ## 다른 코드 묶음
 
@@ -779,7 +779,7 @@ export function accountStorageKey(key: string) {
 
 ## server/store.mjs
 
-원본: [server/store.mjs](../../server/store.mjs) · 364줄 · SHA-256: `5b42333188cd1fee316461990495311fb22c3404195e19352913e8157c672c39`
+원본: [server/store.mjs](../../server/store.mjs) · 368줄 · SHA-256: `f1a0fd20227994d58e486c853c048b150479cde60bc70127976b8d317bcb0b57`
 
 ```javascript
 import { DatabaseSync } from 'node:sqlite'
@@ -794,6 +794,8 @@ import {
 } from 'node:crypto'
 import { promisify } from 'node:util'
 const rawDerive = promisify(scrypt)
+export const SESSION_MAX_AGE_MS = 8 * 3600_000
+export const SESSION_IDLE_MS = 30 * 60_000
 let activeHashes = 0
 const waiters = []
 async function derive(...args) {
@@ -978,13 +980,15 @@ export class AccessStore {
       row.active !== 1 ||
       !row.password ||
       row.expires <= now ||
-      row.touched + 30 * 60_000 <= now
+      row.touched + SESSION_IDLE_MS <= now
     ) {
       if (row) this.run('DELETE FROM sessions WHERE hash=?', row.hash)
       return null
     }
-    if (touch && now - row.touched > 60_000)
+    if (touch && now - row.touched > 60_000) {
       this.run('UPDATE sessions SET touched=? WHERE hash=?', now, row.hash)
+      row.touched = now
+    }
     return { ...row, id: row.user_id }
   }
   createSession(user) {
@@ -994,7 +998,7 @@ export class AccessStore {
     this.run(
       'DELETE FROM sessions WHERE expires<=? OR touched<=?',
       now,
-      now - 30 * 60_000,
+      now - SESSION_IDLE_MS,
     )
     this.run(
       'INSERT INTO sessions VALUES(?,?,?,?,?,?)',
@@ -1003,9 +1007,9 @@ export class AccessStore {
       csrf,
       now,
       now,
-      now + 8 * 3600_000,
+      now + SESSION_MAX_AGE_MS,
     )
-    return { token, csrf }
+    return { token, csrf, expires: now + SESSION_MAX_AGE_MS }
   }
   issueInvite(user, actor, action = 'member.invite') {
     this.run('UPDATE users SET active=1,password=NULL WHERE id=?', user.id)
@@ -1152,7 +1156,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 525줄 · SHA-256: `161e4793630cb99e0dc1e6d1ca557362f3f20a22826d212ffeaf30d282231087`
+원본: [server/app.mjs](../../server/app.mjs) · 544줄 · SHA-256: `77f6d1e9205c2310919afd72cb7d555a7915e59e8d7c65a7f6a3a86d7551260e`
 
 ```javascript
 import { createServer } from 'node:http'
@@ -1169,6 +1173,7 @@ import {
   hashPassword,
   verifyPassword,
   secret,
+  SESSION_MAX_AGE_MS,
 } from './store.mjs'
 const gateway = resolve(import.meta.dirname, 'gateway')
 const mime = {
@@ -1240,7 +1245,7 @@ export async function createAccessServer(input) {
     return values.length === 1 ? values[0].slice(name.length + 1) : null
   }
   const cookie = (token, remove = false) =>
-    `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : 28800}`
+    `${cookieName}=${token}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=${remove ? 0 : SESSION_MAX_AGE_MS / 1000}`
   function readSession(req) {
     const values = (req.headers.cookie ?? '')
       .split(';')
@@ -1337,11 +1342,17 @@ export async function createAccessServer(input) {
           .filter((x) => x.startsWith(entryCookie + '='))
         const nonce =
           entries.length === 1 ? entries[0].slice(entryCookie.length + 1) : null
-        const validProof = user
-          ? token === user.csrf
-          : typeof token === 'string' &&
-            /^[\w-]{43}$/.test(token) &&
-            nonce === token
+        const sessionProof = user && token === user.csrf
+        const entryProof =
+          typeof token === 'string' &&
+          /^[\w-]{43}$/.test(token) &&
+          nonce === token
+        const entryAction = [
+          '/api/login',
+          '/api/begin-invite',
+          '/api/accept-invite',
+        ].includes(path)
+        const validProof = sessionProof || (entryAction && entryProof)
         if (req.headers['sec-fetch-site'] === 'cross-site') {
           console.info('IVC auth blocked: cross-site request')
           return fail(403, '다른 사이트에서 보낸 요청은 허용되지 않습니다.')
@@ -1369,6 +1380,11 @@ export async function createAccessServer(input) {
           return fail(
             403,
             '요청 출처 또는 로그인 보안 토큰을 확인할 수 없습니다. 새로고침하세요.',
+            proxyRewrittenOrigin(req, cfg)
+              ? entryAction
+                ? 'ENTRY_CSRF'
+                : 'SESSION_CSRF'
+              : 'REQUEST_ORIGIN',
           )
         }
         if (
@@ -1464,9 +1480,13 @@ export async function createAccessServer(input) {
           ])
           return json(200, { ok: true })
         }
-        if (!user) return fail(401, '로그인이 필요합니다.')
+        if (!user) return fail(401, '로그인이 필요합니다.', 'SESSION_REQUIRED')
         if (req.headers['x-csrf-token'] !== user.csrf)
-          return fail(403, '세션 확인에 실패했습니다. 새로고침하세요.')
+          return fail(
+            403,
+            '세션 확인에 실패했습니다. 새로고침하세요.',
+            'SESSION_CSRF',
+          )
         if (path === '/api/logout') {
           store.run('DELETE FROM sessions WHERE hash=?', user.hash)
           res.setHeader('Set-Cookie', cookie('', true))
@@ -1487,14 +1507,14 @@ export async function createAccessServer(input) {
               ?.slice(cookieName.length + 1),
           )
           if (!current || current.password !== user.password)
-            return fail(401, '다시 로그인하세요.')
+            return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
           if (path === '/api/change-password') {
             if (!validPassword(body.newPassword))
               return fail(400, '새 비밀번호는 12~128자여야 합니다.')
             const encoded = await hashPassword(body.newPassword)
             const fresh = store.user(user.id)
             if (!fresh?.active || fresh.password !== user.password)
-              return fail(401, '다시 로그인하세요.')
+              return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
             store.transaction(() => {
               store.run(
                 'UPDATE users SET password=? WHERE id=?',
@@ -1518,7 +1538,7 @@ export async function createAccessServer(input) {
               !store.isOwner(fresh) ||
               fresh.password !== user.password
             )
-              return fail(401, '다시 로그인하세요.')
+              return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
             try {
               const token =
                 path === '/api/admin/reset'
@@ -1545,7 +1565,8 @@ export async function createAccessServer(input) {
         return fail(404, '요청을 찾을 수 없습니다.')
       }
       if (path === '/api/csrf') {
-        const nonce = secret()
+        const existing = cookieValue(req, entryCookie)
+        const nonce = /^[\w-]{43}$/.test(existing ?? '') ? existing : secret()
         res.setHeader(
           'Set-Cookie',
           `${entryCookie}=${nonce}; HttpOnly; ${cfg.secure ? 'Secure; ' : ''}SameSite=Strict; Path=/; Max-Age=600`,
@@ -1577,26 +1598,27 @@ export async function createAccessServer(input) {
           invitation: { email: flow.email, expires: flow.flowExpires },
         })
       }
-      if (path === '/api/session')
-        return user
-          ? json(200, {
-              user: {
-                id: user.id,
-                email: user.email,
-                role: store.isOwner(user) ? 'owner' : 'member',
-              },
-              csrf: user.csrf,
-            })
-          : fail(401, '로그인이 필요합니다.')
+      if (path === '/api/session') {
+        if (!user) return fail(401, '로그인이 필요합니다.', 'SESSION_REQUIRED')
+        return json(200, {
+          user: {
+            id: user.id,
+            email: user.email,
+            role: store.isOwner(user) ? 'owner' : 'member',
+          },
+          csrf: user.csrf,
+          expiresAt: user.expires,
+        })
+      }
       if (path === '/api/admin/sharing' || path === '/api/admin/users') {
-        if (!user) return fail(401, '로그인이 필요합니다.')
+        if (!user) return fail(401, '로그인이 필요합니다.', 'SESSION_REQUIRED')
         if (!store.isOwner(user))
           return fail(403, '최고 관리자 권한이 필요합니다.')
         if (path === '/api/admin/sharing') {
           const result = await sharing(true)
           const fresh = readSession(req)
           if (!fresh || !store.isOwner(fresh))
-            return fail(401, '다시 로그인하세요.')
+            return fail(401, '다시 로그인하세요.', 'SESSION_REQUIRED')
           return json(200, result)
         }
         return json(200, {
@@ -1625,6 +1647,7 @@ export async function createAccessServer(input) {
       } else if (
         path === '/welcome.css' ||
         path === '/welcome.js' ||
+        path === '/auth-client.js' ||
         path === '/response.js'
       ) {
         root = gateway
@@ -1739,7 +1762,7 @@ server.on('error', (e) => {
 
 ## server/runtime-config.mjs
 
-원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 77줄 · SHA-256: `2a20a683dee4f0331db01edc3be0220a3132f75913e82dfc1cd02b3ae021b1e7`
+원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 79줄 · SHA-256: `898e3859c4a8d0b025742560ca513602cc2714f6ff769232b8dae101547a22da`
 
 ```javascript
 import { resolve } from 'node:path'
@@ -1781,10 +1804,12 @@ export function runtimeConfig(env, port) {
     // Codespaces replaces Host with an internal loopback authority.
     // Forwarded headers are never used to choose trusted hosts or origins.
     loopbackProxyHosts: codespaces
-      ? ['localhost', '127.0.0.1', '[::1]'].flatMap((host) => [
-          host,
-          `${host}:${port}`,
-        ])
+      ? [
+          'localhost',
+          '127.0.0.1',
+          '[::1]',
+          ...(host === '0.0.0.0' ? ['0.0.0.0'] : []),
+        ].flatMap((host) => [host, `${host}:${port}`])
       : [],
     database: resolve(env.IVC_DATA_DIR ?? '.ivc-data', 'access.sqlite'),
     dist: resolve('dist'),
@@ -1825,7 +1850,7 @@ export function proxyRewrittenOrigin(req, cfg) {
 
 ## server/sharing.mjs
 
-원본: [server/sharing.mjs](../../server/sharing.mjs) · 196줄 · SHA-256: `44f2d53ea1c3148cf6f2ced6de9bf3859621548a471eabf14e11bae28386f1ed`
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 202줄 · SHA-256: `a7681af23e42f468bf05ea2dcd137bb677d10a6a1653900b9b2be52a996111e6`
 
 ```javascript
 import { isIP } from 'node:net'
@@ -1858,6 +1883,7 @@ async function readBounded(response, limit) {
     }
   return Buffer.concat(chunks).toString('utf8')
 }
+const scriptContent = (text) => text.trim().length > 0 && !/^\s*</.test(text)
 
 /** Checks from this server's network only; cannot certify another user's route. */
 export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
@@ -1940,7 +1966,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       {
         path: '/welcome.js',
         mime: /^(?:text|application)\/javascript\b/i,
-        content: (text) => text.includes('responseData'),
+        content: scriptContent,
       },
       {
         path: '/welcome.css',
@@ -1950,7 +1976,12 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       {
         path: '/response.js',
         mime: /^(?:text|application)\/javascript\b/i,
-        content: (text) => text.includes('responseData'),
+        content: scriptContent,
+      },
+      {
+        path: '/auth-client.js',
+        mime: /^(?:text|application)\/javascript\b/i,
+        content: scriptContent,
       },
     ]
     const outcomes = await Promise.allSettled(

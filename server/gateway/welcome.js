@@ -1,4 +1,9 @@
-import { responseData } from '/response.js'
+import {
+  authGet,
+  getAuthSession,
+  postAuth,
+  isSessionRequired,
+} from '/auth-client.js'
 let session = null,
   invitation = null,
   sessionVersion = 0
@@ -37,31 +42,19 @@ function clearSession() {
     el.hidden = false
 }
 async function api(path, body) {
-  const proof = body && !session ? (await api('/api/csrf')).csrf : session?.csrf
-  const response = await fetch(path.replace(/^\/api(?=\/)/, '/ivc-auth'), {
-    redirect: 'error',
-    method: body ? 'POST' : 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    signal: AbortSignal.timeout(12_000),
-    headers: body
-      ? {
-          'Content-Type': 'application/json',
-          ...(proof ? { 'X-CSRF-Token': proof } : {}),
-        }
-      : {},
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  }).catch(() => {
-    throw Error(
-      '로그인 요청의 연결 또는 리디렉션이 차단되었습니다. Codespaces 포트 주소와 접근 권한을 확인하세요.',
-    )
-  })
+  const started = session
   try {
-    return await responseData(response, path)
+    return body === undefined
+      ? await authGet(path)
+      : await postAuth(path, body, started?.user.id)
   } catch (error) {
-    if (error.status === 401 && session) {
+    if (isSessionRequired(error) && session === started) {
       clearSession()
       $('#access-panel').hidden = false
+    }
+    if (error.code === 'ACCOUNT_CHANGED') {
+      clearSession()
+      location.replace('/')
     }
     throw error
   }
@@ -102,27 +95,15 @@ async function confirmLogin() {
   try {
     await readSessionData()
   } catch (error) {
-    if (error.status === 401)
+    if (isSessionRequired(error))
       throw Error(
         '로그인 쿠키를 확인하지 못했습니다. 같은 HTTPS 주소를 사용하고 이 사이트의 쿠키 차단 설정을 확인하세요.',
       )
     throw error
   }
 }
-async function readSessionData() {
-  const data = await api('/api/session')
-  if (
-    !data.user ||
-    typeof data.user.id !== 'string' ||
-    typeof data.user.email !== 'string' ||
-    !['owner', 'member'].includes(data.user.role) ||
-    typeof data.csrf !== 'string' ||
-    !/^[\w-]{43}$/.test(data.csrf)
-  )
-    throw Error(
-      '로그인 서버의 세션 응답이 올바르지 않습니다. 현재 주소와 서버를 확인하세요.',
-    )
-  return data
+async function readSessionData(active = false) {
+  return getAuthSession(active)
 }
 submit('#login-form', async (body) => {
   await api('/api/login', body)
@@ -345,10 +326,19 @@ $('#logout').addEventListener('click', async () => {
     feedback(e.message, true)
   }
 })
-async function checkSession() {
+let sessionCheck = null
+function checkSession() {
+  if (sessionCheck) return sessionCheck
+  sessionCheck = updateSession().finally(() => {
+    sessionCheck = null
+  })
+  return sessionCheck
+}
+let lastActivity = Date.now()
+async function updateSession() {
   const version = ++sessionVersion
   try {
-    const data = await readSessionData()
+    const data = await readSessionData(Date.now() - lastActivity < 25_000)
     if (version !== sessionVersion) return
     if (session && session.user.id !== data.user.id) {
       location.reload()
@@ -368,8 +358,11 @@ async function checkSession() {
     $('#password-panel').hidden = false
     $('#manage-access').hidden = data.user.role !== 'owner'
   } catch (error) {
-    if (error.status !== 401) throw error
-    if (session) clearSession()
+    if (!isSessionRequired(error)) throw error
+    if (version === sessionVersion && session) {
+      clearSession()
+      $('#access-panel').hidden = false
+    }
   }
 }
 channel?.addEventListener('message', () => {
@@ -377,7 +370,12 @@ channel?.addEventListener('message', () => {
   $('#access-panel').hidden = false
   feedback('로그인 상태가 변경되었습니다. 다시 로그인하세요.')
 })
+for (const event of ['pointerdown', 'keydown'])
+  window.addEventListener(event, () => {
+    lastActivity = Date.now()
+  })
 window.addEventListener('focus', () => {
+  lastActivity = Date.now()
   checkSession().catch((e) => feedback(e.message, true))
 })
 window.addEventListener('pageshow', (event) => {

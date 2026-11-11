@@ -16,7 +16,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `8055f73dd4b9445ce669eaa7b3251ce42ab0833d82ad71189ba47115ab711406`
+소스 묶음 SHA-256: `5191ed68adca27179fe5639ae0df0da3029b1e5d68028a1aab932d413a6338bb`
 
 ## 다른 코드 묶음
 
@@ -33,30 +33,32 @@
 - [server/gateway/index.html](#source-4) · [저장소 원본](../../server/gateway/index.html)
 - [server/gateway/welcome.js](#source-5) · [저장소 원본](../../server/gateway/welcome.js)
 - [server/gateway/response.js](#source-6) · [저장소 원본](../../server/gateway/response.js)
-- [server/gateway/welcome.css](#source-7) · [저장소 원본](../../server/gateway/welcome.css)
-- [src/components/chart-domain.ts](#source-8) · [저장소 원본](../../src/components/chart-domain.ts)
-- [src/components/chart-interaction.ts](#source-9) · [저장소 원본](../../src/components/chart-interaction.ts)
-- [src/components/EquationReference.tsx](#source-10) · [저장소 원본](../../src/components/EquationReference.tsx)
-- [src/components/ExampleWalkthrough.tsx](#source-11) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
-- [src/components/AnalysisSummary.tsx](#source-12) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
-- [src/components/AnalysisSummary.css](#source-13) · [저장소 원본](../../src/components/AnalysisSummary.css)
-- [src/components/CertificationReport.tsx](#source-14) · [저장소 원본](../../src/components/CertificationReport.tsx)
-- [src/components/certification-view.ts](#source-15) · [저장소 원본](../../src/components/certification-view.ts)
-- [src/components/Guide.tsx](#source-16) · [저장소 원본](../../src/components/Guide.tsx)
-- [src/components/Guide.css](#source-17) · [저장소 원본](../../src/components/Guide.css)
-- [src/components/ModuleGuide.tsx](#source-18) · [저장소 원본](../../src/components/ModuleGuide.tsx)
-- [src/components/ModuleGuide.css](#source-19) · [저장소 원본](../../src/components/ModuleGuide.css)
-- [src/components/guide-content.ts](#source-20) · [저장소 원본](../../src/components/guide-content.ts)
-- [src/components/SolutionChart.tsx](#source-21) · [저장소 원본](../../src/components/SolutionChart.tsx)
-- [src/components/SolutionChart.css](#source-22) · [저장소 원본](../../src/components/SolutionChart.css)
-- [src/components/SimulationPanelView.tsx](#source-23) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
-- [src/components/MergedSimulationSetView.tsx](#source-24) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
-- [src/components/SimulationPanelView.css](#source-25) · [저장소 원본](../../src/components/SimulationPanelView.css)
-- [src/components/WorkspaceNavigation.tsx](#source-26) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
-- [src/components/WorkspaceNavigation.css](#source-27) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
-- [src/styles.css](#source-28) · [저장소 원본](../../src/styles.css)
-- [src/workspace-screens.css](#source-29) · [저장소 원본](../../src/workspace-screens.css)
-- [src/ivc.css](#source-30) · [저장소 원본](../../src/ivc.css)
+- [server/gateway/auth-client.js](#source-7) · [저장소 원본](../../server/gateway/auth-client.js)
+- [server/gateway/auth-client.d.ts](#source-8) · [저장소 원본](../../server/gateway/auth-client.d.ts)
+- [server/gateway/welcome.css](#source-9) · [저장소 원본](../../server/gateway/welcome.css)
+- [src/components/chart-domain.ts](#source-10) · [저장소 원본](../../src/components/chart-domain.ts)
+- [src/components/chart-interaction.ts](#source-11) · [저장소 원본](../../src/components/chart-interaction.ts)
+- [src/components/EquationReference.tsx](#source-12) · [저장소 원본](../../src/components/EquationReference.tsx)
+- [src/components/ExampleWalkthrough.tsx](#source-13) · [저장소 원본](../../src/components/ExampleWalkthrough.tsx)
+- [src/components/AnalysisSummary.tsx](#source-14) · [저장소 원본](../../src/components/AnalysisSummary.tsx)
+- [src/components/AnalysisSummary.css](#source-15) · [저장소 원본](../../src/components/AnalysisSummary.css)
+- [src/components/CertificationReport.tsx](#source-16) · [저장소 원본](../../src/components/CertificationReport.tsx)
+- [src/components/certification-view.ts](#source-17) · [저장소 원본](../../src/components/certification-view.ts)
+- [src/components/Guide.tsx](#source-18) · [저장소 원본](../../src/components/Guide.tsx)
+- [src/components/Guide.css](#source-19) · [저장소 원본](../../src/components/Guide.css)
+- [src/components/ModuleGuide.tsx](#source-20) · [저장소 원본](../../src/components/ModuleGuide.tsx)
+- [src/components/ModuleGuide.css](#source-21) · [저장소 원본](../../src/components/ModuleGuide.css)
+- [src/components/guide-content.ts](#source-22) · [저장소 원본](../../src/components/guide-content.ts)
+- [src/components/SolutionChart.tsx](#source-23) · [저장소 원본](../../src/components/SolutionChart.tsx)
+- [src/components/SolutionChart.css](#source-24) · [저장소 원본](../../src/components/SolutionChart.css)
+- [src/components/SimulationPanelView.tsx](#source-25) · [저장소 원본](../../src/components/SimulationPanelView.tsx)
+- [src/components/MergedSimulationSetView.tsx](#source-26) · [저장소 원본](../../src/components/MergedSimulationSetView.tsx)
+- [src/components/SimulationPanelView.css](#source-27) · [저장소 원본](../../src/components/SimulationPanelView.css)
+- [src/components/WorkspaceNavigation.tsx](#source-28) · [저장소 원본](../../src/components/WorkspaceNavigation.tsx)
+- [src/components/WorkspaceNavigation.css](#source-29) · [저장소 원본](../../src/components/WorkspaceNavigation.css)
+- [src/styles.css](#source-30) · [저장소 원본](../../src/styles.css)
+- [src/workspace-screens.css](#source-31) · [저장소 원본](../../src/workspace-screens.css)
+- [src/ivc.css](#source-32) · [저장소 원본](../../src/ivc.css)
 
 <a id="source-1"></a>
 
@@ -86,46 +88,43 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 ## src/components/AccountSession.tsx
 
-원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 137줄 · SHA-256: `5225e20517f109c79b14f040dfba88338c7e55d5ad75f725c4c66ba1e1843445`
+원본: [src/components/AccountSession.tsx](../../src/components/AccountSession.tsx) · 187줄 · SHA-256: `2c0092c0b8d4f6f94af892691c0f44431fd254079f70fce1be59968b9441b038`
 
 ```tsx
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { selectAccountStorage } from '../account-storage'
+import {
+  getAuthSession,
+  postAuth,
+  isSessionRequired,
+  type AuthSession,
+} from '../../server/gateway/auth-client.js'
 import './AccountSession.css'
-type Session = {
-  user: { id: string; email: string; role: 'owner' | 'member' }
-  csrf: string
-}
 export default function AccountSession({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null),
+  const [session, setSession] = useState<AuthSession | null>(null),
     [error, setError] = useState('')
-  const current = useRef<Session | null>(null),
+  const current = useRef<AuthSession | null>(null),
     lastActivity = useRef(Date.now()),
     version = useRef(0)
+  const retry = useRef<() => void>(() => {}),
+    channelRef = useRef<BroadcastChannel | null>(null),
+    loggingOut = useRef(false)
   useEffect(() => {
-    let alive = true
-    async function check() {
+    let alive = true,
+      pending: Promise<void> | null = null,
+      retryTimer: ReturnType<typeof setTimeout> | undefined
+    const endSession = () => {
+      current.current = null
+      setSession(null)
+      location.replace('/?expired=1')
+    }
+    async function run() {
       const request = ++version.current
       try {
-        const response = await fetch('/ivc-auth/session', {
-          credentials: 'same-origin',
-          cache: 'no-store',
-          headers:
-            Date.now() - lastActivity.current < 25_000
-              ? { 'X-IVC-Active': '1' }
-              : {},
-        })
+        const data = await getAuthSession(
+          Date.now() - lastActivity.current < 25_000,
+        )
         if (!alive || request !== version.current) return
-        if (response.status === 401) {
-          setSession(null)
-          location.replace('/?expired=1')
-          return
-        }
-        if (!response.ok) throw Error('서버 연결을 확인할 수 없습니다.')
-        const data = (await response.json()) as Session
-        if (!alive || request !== version.current) return
-        if (!data.user?.id || !data.csrf)
-          throw Error('인증 확인에 실패했습니다.')
         if (current.current && current.current.user.id !== data.user.id) {
           setSession(null)
           location.replace('/calculator')
@@ -135,14 +134,34 @@ export default function AccountSession({ children }: { children: ReactNode }) {
         current.current = data
         setSession(data)
         setError('')
-      } catch {
-        if (alive && request === version.current) {
-          setSession(null)
-          setError(
-            '세션을 확인할 수 없어 작업 화면을 잠갔습니다. 연결을 확인하고 다시 접속하세요.',
-          )
+        clearTimeout(retryTimer)
+      } catch (failure) {
+        if (!alive || request !== version.current) return
+        if (isSessionRequired(failure)) {
+          endSession()
+          return
         }
+        // A network/proxy error does not prove that this server session expired.
+        // Cover the existing workspace while rechecking, preserving model state.
+        setError(
+          '서버 연결을 다시 확인하고 있습니다. 작성 중인 모델은 유지됩니다.',
+        )
+        clearTimeout(retryTimer)
+        retryTimer = setTimeout(() => {
+          if (document.visibilityState === 'visible') void check()
+        }, 3000)
       }
+    }
+    function check() {
+      if (loggingOut.current) return Promise.resolve()
+      if (!pending)
+        pending = run().finally(() => {
+          pending = null
+        })
+      return pending
+    }
+    retry.current = () => {
+      void check()
     }
     const activity = () => {
       lastActivity.current = Date.now()
@@ -151,22 +170,32 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       activity()
       void check()
     }
-    const channel = new BroadcastChannel('ivc-session')
-    channel.onmessage = () => {
-      version.current++
-      setSession(null)
-      location.replace('/')
-    }
+    const channel =
+      typeof BroadcastChannel === 'function'
+        ? new BroadcastChannel('ivc-session')
+        : null
+    channelRef.current = channel
+    if (channel)
+      channel.onmessage = () => {
+        version.current++
+        current.current = null
+        setSession(null)
+        location.replace('/')
+      }
     const pageshow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        setSession(null)
-        location.reload()
+        setError('로그인 상태를 다시 확인하고 있습니다.')
+        void check()
       }
+    }
+    const visibility = () => {
+      if (document.visibilityState === 'visible') focus()
     }
     window.addEventListener('pointerdown', activity)
     window.addEventListener('keydown', activity)
     window.addEventListener('focus', focus)
     window.addEventListener('pageshow', pageshow)
+    document.addEventListener('visibilitychange', visibility)
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') void check()
     }, 20_000)
@@ -174,35 +203,44 @@ export default function AccountSession({ children }: { children: ReactNode }) {
     return () => {
       alive = false
       version.current++
+      clearTimeout(retryTimer)
       clearInterval(interval)
-      channel.close()
+      channel?.close()
+      channelRef.current = null
       window.removeEventListener('pointerdown', activity)
       window.removeEventListener('keydown', activity)
       window.removeEventListener('focus', focus)
       window.removeEventListener('pageshow', pageshow)
+      document.removeEventListener('visibilitychange', visibility)
     }
   }, [])
   async function logout() {
-    if (!session) return
+    const active = current.current
+    if (!active || loggingOut.current) return
+    loggingOut.current = true
     version.current++
-    setSession(null)
+    setError('로그아웃을 확인하고 있습니다.')
     try {
-      const response = await fetch('/ivc-auth/logout', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': session.csrf,
-        },
-        body: '{}',
-      })
-      if (!response.ok) throw Error('logout')
-      new BroadcastChannel('ivc-session').postMessage('logout')
+      await postAuth('/api/logout', {}, active.user.id)
+      channelRef.current?.postMessage('logout')
+      current.current = null
+      setSession(null)
       location.replace('/')
-    } catch {
+    } catch (failure) {
+      if (
+        isSessionRequired(failure) ||
+        (failure as { code?: string }).code === 'ACCOUNT_CHANGED'
+      ) {
+        current.current = null
+        setSession(null)
+        location.replace('/')
+        return
+      }
       setError(
-        '서버 로그아웃을 확인하지 못했습니다. 연결 후 다시 로그인해 로그아웃하세요.',
+        '로그아웃 완료를 확인하지 못했습니다. 연결을 확인한 뒤 다시 확인을 누르세요.',
       )
+    } finally {
+      loggingOut.current = false
     }
   }
   if (!session)
@@ -210,7 +248,12 @@ export default function AccountSession({ children }: { children: ReactNode }) {
       <div className="account-lock" role="status">
         <strong>IVC</strong>
         <p>{error || '사용 권한을 확인하고 있습니다.'}</p>
-        {error && <a href="/">Log in again</a>}
+        {error && (
+          <>
+            <button onClick={() => retry.current()}>다시 확인</button>
+            <a href="/">Log in</a>
+          </>
+        )}
       </div>
     )
   return (
@@ -222,7 +265,16 @@ export default function AccountSession({ children }: { children: ReactNode }) {
         </a>
         <button onClick={() => void logout()}>Log out</button>
       </div>
-      {children}
+      <div className="account-content" inert={Boolean(error)}>
+        {children}
+      </div>
+      {error && (
+        <div className="account-reconnect account-lock" role="status">
+          <strong>IVC</strong>
+          <p>{error}</p>
+          <button onClick={() => retry.current()}>다시 확인</button>
+        </div>
+      )}
     </>
   )
 }
@@ -232,7 +284,7 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## src/components/AccountSession.css
 
-원본: [src/components/AccountSession.css](../../src/components/AccountSession.css) · 56줄 · SHA-256: `fd1b00564b4703dcdda19f77582317cd82eeb96dc942ecdeb47a38e932c504fe`
+원본: [src/components/AccountSession.css](../../src/components/AccountSession.css) · 69줄 · SHA-256: `fc1508cc84f5f304ec8b6c5958f3595c0d3e6023512034d9bfbfec7cb5b13ea3`
 
 ```css
 .account-bar {
@@ -290,6 +342,19 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 .account-lock a {
   font-size: 13px;
   text-decoration: underline;
+}
+.account-reconnect {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgb(244 246 242 / 98%);
+}
+.account-lock button {
+  padding: 10px 18px;
+  border: 1px solid #b8cbc5;
+  border-radius: 6px;
+  background: white;
+  color: #305f59;
 }
 ```
 
@@ -678,10 +743,15 @@ export default function AccountSession({ children }: { children: ReactNode }) {
 
 ## server/gateway/welcome.js
 
-원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 424줄 · SHA-256: `5d263717b85b7c6a43c70d7ab0481b9c0e6b6c94f7ae6c9797796c70bf0e980f`
+원본: [server/gateway/welcome.js](../../server/gateway/welcome.js) · 422줄 · SHA-256: `869e5c09679212f77e8d73e11a33b04af35b16bca8572a890e7fc767d8aa02e0`
 
 ```text
-import { responseData } from '/response.js'
+import {
+  authGet,
+  getAuthSession,
+  postAuth,
+  isSessionRequired,
+} from '/auth-client.js'
 let session = null,
   invitation = null,
   sessionVersion = 0
@@ -720,31 +790,19 @@ function clearSession() {
     el.hidden = false
 }
 async function api(path, body) {
-  const proof = body && !session ? (await api('/api/csrf')).csrf : session?.csrf
-  const response = await fetch(path.replace(/^\/api(?=\/)/, '/ivc-auth'), {
-    redirect: 'error',
-    method: body ? 'POST' : 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    signal: AbortSignal.timeout(12_000),
-    headers: body
-      ? {
-          'Content-Type': 'application/json',
-          ...(proof ? { 'X-CSRF-Token': proof } : {}),
-        }
-      : {},
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  }).catch(() => {
-    throw Error(
-      '로그인 요청의 연결 또는 리디렉션이 차단되었습니다. Codespaces 포트 주소와 접근 권한을 확인하세요.',
-    )
-  })
+  const started = session
   try {
-    return await responseData(response, path)
+    return body === undefined
+      ? await authGet(path)
+      : await postAuth(path, body, started?.user.id)
   } catch (error) {
-    if (error.status === 401 && session) {
+    if (isSessionRequired(error) && session === started) {
       clearSession()
       $('#access-panel').hidden = false
+    }
+    if (error.code === 'ACCOUNT_CHANGED') {
+      clearSession()
+      location.replace('/')
     }
     throw error
   }
@@ -785,27 +843,15 @@ async function confirmLogin() {
   try {
     await readSessionData()
   } catch (error) {
-    if (error.status === 401)
+    if (isSessionRequired(error))
       throw Error(
         '로그인 쿠키를 확인하지 못했습니다. 같은 HTTPS 주소를 사용하고 이 사이트의 쿠키 차단 설정을 확인하세요.',
       )
     throw error
   }
 }
-async function readSessionData() {
-  const data = await api('/api/session')
-  if (
-    !data.user ||
-    typeof data.user.id !== 'string' ||
-    typeof data.user.email !== 'string' ||
-    !['owner', 'member'].includes(data.user.role) ||
-    typeof data.csrf !== 'string' ||
-    !/^[\w-]{43}$/.test(data.csrf)
-  )
-    throw Error(
-      '로그인 서버의 세션 응답이 올바르지 않습니다. 현재 주소와 서버를 확인하세요.',
-    )
-  return data
+async function readSessionData(active = false) {
+  return getAuthSession(active)
 }
 submit('#login-form', async (body) => {
   await api('/api/login', body)
@@ -1028,10 +1074,19 @@ $('#logout').addEventListener('click', async () => {
     feedback(e.message, true)
   }
 })
-async function checkSession() {
+let sessionCheck = null
+function checkSession() {
+  if (sessionCheck) return sessionCheck
+  sessionCheck = updateSession().finally(() => {
+    sessionCheck = null
+  })
+  return sessionCheck
+}
+let lastActivity = Date.now()
+async function updateSession() {
   const version = ++sessionVersion
   try {
-    const data = await readSessionData()
+    const data = await readSessionData(Date.now() - lastActivity < 25_000)
     if (version !== sessionVersion) return
     if (session && session.user.id !== data.user.id) {
       location.reload()
@@ -1051,8 +1106,11 @@ async function checkSession() {
     $('#password-panel').hidden = false
     $('#manage-access').hidden = data.user.role !== 'owner'
   } catch (error) {
-    if (error.status !== 401) throw error
-    if (session) clearSession()
+    if (!isSessionRequired(error)) throw error
+    if (version === sessionVersion && session) {
+      clearSession()
+      $('#access-panel').hidden = false
+    }
   }
 }
 channel?.addEventListener('message', () => {
@@ -1060,7 +1118,12 @@ channel?.addEventListener('message', () => {
   $('#access-panel').hidden = false
   feedback('로그인 상태가 변경되었습니다. 다시 로그인하세요.')
 })
+for (const event of ['pointerdown', 'keydown'])
+  window.addEventListener(event, () => {
+    lastActivity = Date.now()
+  })
 window.addEventListener('focus', () => {
+  lastActivity = Date.now()
   checkSession().catch((e) => feedback(e.message, true))
 })
 window.addEventListener('pageshow', (event) => {
@@ -1154,6 +1217,151 @@ export async function responseData(response, path) {
 ```
 
 <a id="source-7"></a>
+
+## server/gateway/auth-client.js
+
+원본: [server/gateway/auth-client.js](../../server/gateway/auth-client.js) · 105줄 · SHA-256: `ebbd18367781529a5110277a310ab426fb08004dfbff0f26fb4222dcea240aec`
+
+```text
+import { responseData } from './response.js'
+
+const entryActions = new Set([
+  '/api/login',
+  '/api/begin-invite',
+  '/api/accept-invite',
+])
+export const isSessionRequired = (error) =>
+  error?.status === 401 && error?.code === 'SESSION_REQUIRED'
+const accountChanged = () =>
+  Object.assign(
+    new Error(
+      '다른 계정으로 로그인 상태가 바뀌었습니다. 현재 계정을 다시 확인합니다.',
+    ),
+    { code: 'ACCOUNT_CHANGED' },
+  )
+
+/** Cookie-only authentication. Tokens and request bodies are never persisted. */
+export function createAuthRequests(fetchImpl = fetch) {
+  async function get(path, active = false) {
+    return send(path, undefined, undefined, active)
+  }
+  async function send(path, body, csrf, active = false) {
+    path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
+    if (!/^\/api\/[a-z/-]+$/.test(path))
+      throw Error('잘못된 인증 요청 경로입니다.')
+    const response = await fetchImpl(
+      path.replace(/^\/api(?=\/)/, '/ivc-auth'),
+      {
+        method: body === undefined ? 'GET' : 'POST',
+        credentials: 'same-origin',
+        redirect: 'error',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(12_000),
+        headers: {
+          ...(body === undefined
+            ? {}
+            : { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }),
+          ...(active ? { 'X-IVC-Active': '1' } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      },
+    ).catch(() => {
+      throw Error(
+        '서버 연결 또는 리디렉션을 확인하지 못했습니다. 로그인 상태를 지우지 않았습니다. 잠시 후 다시 시도하세요.',
+      )
+    })
+    return responseData(response, path)
+  }
+  async function session(active = false) {
+    const data = await get('/api/session', active)
+    if (
+      !data.user ||
+      typeof data.user.id !== 'string' ||
+      !data.user.id ||
+      typeof data.user.email !== 'string' ||
+      !['owner', 'member'].includes(data.user.role) ||
+      typeof data.csrf !== 'string' ||
+      !/^[\w-]{43}$/.test(data.csrf)
+    )
+      throw Error(
+        '로그인 서버의 세션 응답이 올바르지 않습니다. 연결을 확인한 뒤 다시 시도하세요.',
+      )
+    return data
+  }
+  async function post(path, body, expectedUserId) {
+    path = path.replace(/^\/ivc-auth(?=\/)/, '/api')
+    const entry = entryActions.has(path)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let proof
+      if (entry) {
+        proof = (await get('/api/csrf')).csrf
+        if (typeof proof !== 'string' || !/^[\w-]{43}$/.test(proof))
+          throw Error('로그인 보안 토큰을 받지 못했습니다. 다시 시도하세요.')
+      } else {
+        if (!expectedUserId)
+          throw Object.assign(new Error('로그인이 필요합니다.'), {
+            status: 401,
+            code: 'SESSION_REQUIRED',
+          })
+        const current = await session(true)
+        if (current.user.id !== expectedUserId) throw accountChanged()
+        proof = current.csrf
+      }
+      try {
+        return await send(path, body, proof)
+      } catch (error) {
+        // These responses are emitted before any mutation or password attempt.
+        // Refresh only a stale proof, once; never replay an unknown outcome.
+        if (
+          attempt === 0 &&
+          error.status === 403 &&
+          error.code === (entry ? 'ENTRY_CSRF' : 'SESSION_CSRF')
+        )
+          continue
+        throw error
+      }
+    }
+  }
+  return { get, session, post }
+}
+const client = createAuthRequests()
+export const authGet = client.get
+export const getAuthSession = client.session
+export const postAuth = client.post
+```
+
+<a id="source-8"></a>
+
+## server/gateway/auth-client.d.ts
+
+원본: [server/gateway/auth-client.d.ts](../../server/gateway/auth-client.d.ts) · 22줄 · SHA-256: `844f956334954d698d6948d20ca95e524ca0323016ff1ccd3f5c9509c7191af5`
+
+```typescript
+export type AuthSession = {
+  user: { id: string; email: string; role: 'owner' | 'member' }
+  csrf: string
+  expiresAt?: number
+}
+export function isSessionRequired(error: unknown): boolean
+export function createAuthRequests(fetchImpl?: typeof fetch): {
+  get(path: string, active?: boolean): Promise<unknown>
+  session(active?: boolean): Promise<AuthSession>
+  post(
+    path: string,
+    body: Record<string, unknown>,
+    expectedUserId?: string,
+  ): Promise<unknown>
+}
+export function authGet(path: string, active?: boolean): Promise<unknown>
+export function getAuthSession(active?: boolean): Promise<AuthSession>
+export function postAuth(
+  path: string,
+  body: Record<string, unknown>,
+  expectedUserId?: string,
+): Promise<unknown>
+```
+
+<a id="source-9"></a>
 
 ## server/gateway/welcome.css
 
@@ -1807,7 +2015,7 @@ footer {
 }
 ```
 
-<a id="source-8"></a>
+<a id="source-10"></a>
 
 ## src/components/chart-domain.ts
 
@@ -1901,7 +2109,7 @@ export function fittedDomain(values: readonly number[]): ChartDomain {
 }
 ```
 
-<a id="source-9"></a>
+<a id="source-11"></a>
 
 ## src/components/chart-interaction.ts
 
@@ -2026,7 +2234,7 @@ export function wheelFactor(deltaY: number, deltaMode = 0): number {
 }
 ```
 
-<a id="source-10"></a>
+<a id="source-12"></a>
 
 ## src/components/EquationReference.tsx
 
@@ -2221,7 +2429,7 @@ export default function EquationReference() {
 }
 ```
 
-<a id="source-11"></a>
+<a id="source-13"></a>
 
 ## src/components/ExampleWalkthrough.tsx
 
@@ -2262,7 +2470,7 @@ export default function ExampleWalkthrough({
 }
 ```
 
-<a id="source-12"></a>
+<a id="source-14"></a>
 
 ## src/components/AnalysisSummary.tsx
 
@@ -2694,7 +2902,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-13"></a>
+<a id="source-15"></a>
 
 ## src/components/AnalysisSummary.css
 
@@ -3084,7 +3292,7 @@ export default function AnalysisSummary({
 }
 ```
 
-<a id="source-14"></a>
+<a id="source-16"></a>
 
 ## src/components/CertificationReport.tsx
 
@@ -3370,7 +3578,7 @@ export default function CertificationReport({
 }
 ```
 
-<a id="source-15"></a>
+<a id="source-17"></a>
 
 ## src/components/certification-view.ts
 
@@ -3488,7 +3696,7 @@ export function certificateSegments(c: RootCertificate): CertificateSegment[] {
 }
 ```
 
-<a id="source-16"></a>
+<a id="source-18"></a>
 
 ## src/components/Guide.tsx
 
@@ -3949,7 +4157,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-19"></a>
 
 ## src/components/Guide.css
 
@@ -4327,7 +4535,7 @@ export default function Guide({
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-20"></a>
 
 ## src/components/ModuleGuide.tsx
 
@@ -4683,7 +4891,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-21"></a>
 
 ## src/components/ModuleGuide.css
 
@@ -5122,7 +5330,7 @@ export default function ModuleGuide({
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-22"></a>
 
 ## src/components/guide-content.ts
 
@@ -6544,7 +6752,7 @@ export function renderTextbookMarkdown(): string {
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-23"></a>
 
 ## src/components/SolutionChart.tsx
 
@@ -7710,7 +7918,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-24"></a>
 
 ## src/components/SolutionChart.css
 
@@ -8061,7 +8269,7 @@ export default function SolutionChart({
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-25"></a>
 
 ## src/components/SimulationPanelView.tsx
 
@@ -8408,7 +8616,7 @@ export default function SimulationPanelView({
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-26"></a>
 
 ## src/components/MergedSimulationSetView.tsx
 
@@ -8777,7 +8985,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-27"></a>
 
 ## src/components/SimulationPanelView.css
 
@@ -9056,7 +9264,7 @@ export default function MergedSimulationSetView({
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-28"></a>
 
 ## src/components/WorkspaceNavigation.tsx
 
@@ -9301,7 +9509,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-29"></a>
 
 ## src/components/WorkspaceNavigation.css
 
@@ -9676,7 +9884,7 @@ export function WorkspaceNavigation({
 }
 ```
 
-<a id="source-28"></a>
+<a id="source-30"></a>
 
 ## src/styles.css
 
@@ -13476,7 +13684,7 @@ h2 {
 }
 ```
 
-<a id="source-29"></a>
+<a id="source-31"></a>
 
 ## src/workspace-screens.css
 
@@ -13895,7 +14103,7 @@ h2 {
 }
 ```
 
-<a id="source-30"></a>
+<a id="source-32"></a>
 
 ## src/ivc.css
 

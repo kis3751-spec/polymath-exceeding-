@@ -28,6 +28,7 @@ async function readBounded(response, limit) {
     }
   return Buffer.concat(chunks).toString('utf8')
 }
+const scriptContent = (text) => text.trim().length > 0 && !/^\s*</.test(text)
 
 /** Checks from this server's network only; cannot certify another user's route. */
 export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
@@ -110,7 +111,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       {
         path: '/welcome.js',
         mime: /^(?:text|application)\/javascript\b/i,
-        content: (text) => text.includes('responseData'),
+        content: scriptContent,
       },
       {
         path: '/welcome.css',
@@ -120,7 +121,12 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       {
         path: '/response.js',
         mime: /^(?:text|application)\/javascript\b/i,
-        content: (text) => text.includes('responseData'),
+        content: scriptContent,
+      },
+      {
+        path: '/auth-client.js',
+        mime: /^(?:text|application)\/javascript\b/i,
+        content: scriptContent,
       },
     ]
     const outcomes = await Promise.allSettled(

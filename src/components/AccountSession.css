@@ -54,3 +54,16 @@
   font-size: 13px;
   text-decoration: underline;
 }
+.account-reconnect {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgb(244 246 242 / 98%);
+}
+.account-lock button {
+  padding: 10px 18px;
+  border: 1px solid #b8cbc5;
+  border-radius: 6px;
+  background: white;
+  color: #305f59;
+}
