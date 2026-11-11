@@ -1,7 +1,12 @@
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
-import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
+import { connectionEnvironment } from './connection-options.mjs'
+import {
+  AUTH_VERSION,
+  probePublicAccess,
+  formatPublicChecks,
+} from '../server/sharing.mjs'
 
 /** Explicit operator action; never opens a port automatically at server startup. */
 export async function shareCodespaces(
@@ -58,24 +63,30 @@ export async function shareCodespaces(
       `GitHub에서 Public 설정을 적용하지 못했습니다. Ports → ${port} → Port Visibility → Public으로 변경하세요. 조직 정책이 제한하면 상시 HTTPS 서버에 배포해야 합니다.`,
     )
   const probe = await probePublicAccess(cfg.origin, status.instance, fetchImpl)
-  if (probe.state === 'partial')
-    console.warn(`페이지 확인 미완료: ${probe.message}`)
-  else if (!probe.reachable)
-    throw Error(
-      probe.message +
-        ' 설정 반영 후 Manage Access → Check connection으로 다시 확인하세요.',
-    )
-  return cfg.origin
+  return { origin: cfg.origin, visibilityApplied: true, probe }
 }
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const origin = await shareCodespaces()
-    console.log(
-      `포트 Public 설정 적용: ${origin}\nManage Access에서 초대 링크·코드를 만들고 상대방 브라우저에서 접속을 확인하세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
+    const report = await shareCodespaces(
+      connectionEnvironment(process.argv.slice(2)),
     )
+    console.log(`포트 Public 설정 적용: ${report.origin}`)
+    console.log(`Public: ${report.probe.state} · ${report.probe.message}`)
+    const checks = formatPublicChecks(report.probe)
+    if (checks) console.log(checks)
+    if (report.probe.reachable) {
+      console.log(
+        '사이트 검사 통과 · 상대방 브라우저에서도 현재 주소를 확인하세요. 계산기는 IVC 로그인이 필요합니다. Codespace가 정지되면 주소도 중단됩니다.',
+      )
+    } else {
+      console.error(
+        'Public 설정 변경은 완료했지만 사이트 접속 검사는 통과하지 못했습니다. 위 파일별 결과를 확인하세요. 서버나 계정 DB를 초기화하지 마세요.',
+      )
+      process.exitCode = 1
+    }
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1

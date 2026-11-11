@@ -1,6 +1,6 @@
 import { runtimeConfig, runtimePort } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
-import { AUTH_VERSION } from './sharing.mjs'
+import { AUTH_VERSION, formatPublicChecks } from './sharing.mjs'
 import { diagnoseCodespaces } from '../scripts/diagnose-codespaces.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
@@ -22,6 +22,8 @@ server.listen(port, cfg.host, () => {
           console.log(
             `IVC public check: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
           )
+        const checks = formatPublicChecks(report.external)
+        if (checks) console.log(checks)
         if (
           report.local.state === 'ready' &&
           ['blocked', 'unavailable'].includes(report.external?.state)

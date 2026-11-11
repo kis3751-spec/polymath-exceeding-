@@ -1,6 +1,11 @@
 import { pathToFileURL } from 'node:url'
 import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
-import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
+import { connectionEnvironment } from './connection-options.mjs'
+import {
+  AUTH_VERSION,
+  probePublicAccess,
+  formatPublicChecks,
+} from '../server/sharing.mjs'
 
 /** Read-only diagnostics; never send cookies or change port visibility. */
 export async function diagnoseCodespaces(env = process.env, fetchImpl = fetch) {
@@ -84,7 +89,9 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const report = await diagnoseCodespaces()
+    const report = await diagnoseCodespaces(
+      connectionEnvironment(process.argv.slice(2)),
+    )
     console.log(
       `IVC connection check\nSite: ${report.origin}\nLocal: ${report.local.state} · ${report.local.message}`,
     )
@@ -92,6 +99,8 @@ if (
       console.log(
         `Public: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
       )
+    const checks = formatPublicChecks(report.external)
+    if (checks) console.log(checks)
     if (
       report.local.state === 'ready' &&
       ['blocked', 'unavailable'].includes(report.external?.state)
@@ -99,14 +108,12 @@ if (
       console.log(
         `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
-    if (
-      report.local.state !== 'ready' ||
-      !['ready', 'partial'].includes(report.external?.state)
-    )
+    if (report.local.state !== 'ready' || report.external?.reachable !== true)
       process.exitCode = 1
-  } catch {
+  } catch (error) {
+    console.error(error.message)
     console.error(
-      '진단 설정을 확인하세요. PORT와 APP_ORIGIN은 실행 중인 서버와 같아야 합니다.',
+      '사이트 주소는 경로·쿼리·로그인 정보 없이 입력하세요. 예: npm run diagnose:codespaces -- --port 5181 --origin https://your-space-5181.app.github.dev',
     )
     process.exitCode = 1
   }

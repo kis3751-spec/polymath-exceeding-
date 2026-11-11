@@ -78,6 +78,7 @@ const books = [
       'server/sharing.mjs',
       'scripts/share-codespaces.mjs',
       'scripts/diagnose-codespaces.mjs',
+      'scripts/connection-options.mjs',
       'server/setup.mjs',
       'server/dev.mjs',
       'src/equation-count.ts',

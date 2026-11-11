@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `8970fbf5cb4eb58b897ff4301802a44720fde2cd00afe131e5c31843be24b104`
+소스 묶음 SHA-256: `3abdf5deb3cc06dd09cba11471b904bbfdb3a32bd6688eec30de3fac2524c920`
 
 ## 다른 코드 묶음
 
@@ -40,19 +40,20 @@
 - [server/sharing.mjs](#source-13) · [저장소 원본](../../server/sharing.mjs)
 - [scripts/share-codespaces.mjs](#source-14) · [저장소 원본](../../scripts/share-codespaces.mjs)
 - [scripts/diagnose-codespaces.mjs](#source-15) · [저장소 원본](../../scripts/diagnose-codespaces.mjs)
-- [server/setup.mjs](#source-16) · [저장소 원본](../../server/setup.mjs)
-- [server/dev.mjs](#source-17) · [저장소 원본](../../server/dev.mjs)
-- [src/equation-count.ts](#source-18) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-19) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-20) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-21) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-22) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-23) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-24) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-25) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-26) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-27) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-28) · [저장소 원본](../../src/App.tsx)
+- [scripts/connection-options.mjs](#source-16) · [저장소 원본](../../scripts/connection-options.mjs)
+- [server/setup.mjs](#source-17) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-18) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-19) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-20) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-21) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-22) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-23) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-24) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-25) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-26) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-27) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-28) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-29) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -1850,12 +1851,12 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 44줄 · SHA-256: `f13d8b4b9887b8b8208b9cad27de0467b2c27f3dcecb81998816d9e256b6369b`
+원본: [server/start.mjs](../../server/start.mjs) · 46줄 · SHA-256: `61a672abd86db4873a090838fe78ed6eb80bb5398d58e3b73bd86353a0bd0fca`
 
 ```javascript
 import { runtimeConfig, runtimePort } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
-import { AUTH_VERSION } from './sharing.mjs'
+import { AUTH_VERSION, formatPublicChecks } from './sharing.mjs'
 import { diagnoseCodespaces } from '../scripts/diagnose-codespaces.mjs'
 const args = process.argv.slice(2),
   at = args.indexOf('--port')
@@ -1877,6 +1878,8 @@ server.listen(port, cfg.host, () => {
           console.log(
             `IVC public check: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
           )
+        const checks = formatPublicChecks(report.external)
+        if (checks) console.log(checks)
         if (
           report.local.state === 'ready' &&
           ['blocked', 'unavailable'].includes(report.external?.state)
@@ -1991,7 +1994,7 @@ export function proxyRewrittenOrigin(req, cfg) {
 
 ## server/sharing.mjs
 
-원본: [server/sharing.mjs](../../server/sharing.mjs) · 202줄 · SHA-256: `a7681af23e42f468bf05ea2dcd137bb677d10a6a1653900b9b2be52a996111e6`
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 291줄 · SHA-256: `9ba620c5738b8239f9bb80bdac2cf28ad31475fad4623fb4853731191805b915`
 
 ```javascript
 import { isIP } from 'node:net'
@@ -2026,6 +2029,75 @@ async function readBounded(response, limit) {
 }
 const scriptContent = (text) => text.trim().length > 0 && !/^\s*</.test(text)
 
+// Retain only bounded, non-secret provenance, never raw response bodies,
+// Location queries/fragments, Set-Cookie values or authentication challenges.
+function provenance(response, instance, origin) {
+  const id = response.headers.get('x-ivc-instance')
+  const type = (response.headers.get('content-type') ?? '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase()
+  const contentType = [
+    'text/html',
+    'application/json',
+    'text/javascript',
+    'application/javascript',
+    'text/css',
+  ].includes(type)
+    ? type
+    : type
+      ? 'other'
+      : 'missing'
+  let redirect
+  if (response.status >= 300 && response.status < 400) {
+    try {
+      const location = response.headers.get('location')
+      if (!location) throw Error('missing redirect destination')
+      const destination = new URL(location, origin)
+      redirect =
+        destination.hostname === 'github.com' &&
+        /^\/(?:login|session|sessions)(?:\/|$)/.test(destination.pathname)
+          ? 'github-login'
+          : destination.origin === new URL(origin).origin
+            ? 'same-origin'
+            : 'external'
+    } catch {
+      redirect = 'unknown'
+    }
+  }
+  return {
+    contentType,
+    server: id === instance ? 'ivc' : id ? 'different' : 'unmarked',
+    ...(redirect ? { redirect } : {}),
+  }
+}
+export function formatPublicChecks(probe) {
+  const issues = {
+    http: 'HTTP 응답 실패',
+    instance: '서버 ID 불일치',
+    mime: '파일 유형 불일치',
+    content: '예상한 IVC 내용 없음',
+    connection: '연결·읽기 실패 또는 시간 초과',
+  }
+  const servers = {
+    ivc: '현재 IVC 서버',
+    different: '다른 서버 ID',
+    unmarked: 'IVC 서버 표식 없음',
+  }
+  const redirects = {
+    'github-login': 'GitHub 로그인으로 이동',
+    'same-origin': '같은 사이트의 다른 경로로 이동',
+    external: '다른 사이트로 이동',
+    unknown: '이동 대상 미확인',
+  }
+  return (probe?.checks ?? [])
+    .map(
+      (check) =>
+        `${check.path}: ${check.status ? `HTTP ${check.status}` : '응답 미확인'} · ${check.ok ? 'OK' : (issues[check.issue] ?? '검사 실패')}${check.contentType ? ` · ${check.contentType}` : ''}${check.server ? ` · ${servers[check.server]}` : ''}${check.redirect ? ` · ${redirects[check.redirect]}` : ''}`,
+    )
+    .join('\n')
+}
+
 /** Checks from this server's network only; cannot certify another user's route. */
 export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
   if (localOrigin(origin))
@@ -2045,13 +2117,16 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
       signal,
       headers: { Accept: accept, 'Cache-Control': 'no-cache' },
     })
-  function blocked(path, status) {
+  function blocked(path, status, details) {
     return {
       state: 'blocked',
       reachable: false,
       path,
       status,
-      checks,
+      checks: [
+        ...checks,
+        { path, status, ok: false, issue: 'http', ...details },
+      ],
       message:
         status >= 300 && status < 400
           ? `공유 주소의 ${path} 요청이 다른 화면으로 이동합니다. 실행 중인 포트의 Public 설정과 전달 주소를 확인하세요.`
@@ -2062,8 +2137,20 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
     const response = await get('/ivc-auth/status', 'application/json')
     if (!response.ok) {
       await response.body?.cancel()
-      return blocked('/ivc-auth/status', response.status)
+      return blocked(
+        '/ivc-auth/status',
+        response.status,
+        provenance(response, instance, origin),
+      )
     }
+    const statusCheck = {
+      path: '/ivc-auth/status',
+      status: response.status,
+      ok: false,
+      issue: 'content',
+      ...provenance(response, instance, origin),
+    }
+    checks.push(statusCheck)
     let data
     try {
       data = JSON.parse(await readBounded(response, 16384))
@@ -2086,7 +2173,8 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
         message:
           '서버 연결 검사 응답에서 IVC 정보를 확인하지 못했습니다. 이 결과는 관리자 초대 발급을 차단하지 않습니다.',
       }
-    if (data.instance !== instance)
+    if (data.instance !== instance) {
+      statusCheck.issue = 'instance'
       return {
         state: 'mismatch',
         reachable: false,
@@ -2095,7 +2183,9 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
         message:
           '공유 주소가 현재 서버와 다릅니다. APP_ORIGIN과 실행 중인 서버를 확인하세요.',
       }
-    checks.push({ path: '/ivc-auth/status', status: response.status, ok: true })
+    }
+    statusCheck.ok = true
+    delete statusCheck.issue
     // Verify the actual page and every module needed by the public login form.
     // One deadline covers all requests; no cookies, redirects or arbitrary URLs.
     const targets = [
@@ -2138,6 +2228,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
             status: r.status,
             ok: false,
             issue: 'http',
+            ...provenance(r, instance, origin),
           }
         }
         const text = await readBounded(r, 65536)
@@ -2155,6 +2246,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
           path: target.path,
           status: r.status,
           ok,
+          ...provenance(r, instance, origin),
           ...(issue ? { issue } : {}),
           ...(!identity ? { note: 'instance-header-missing' } : {}),
         }
@@ -2176,7 +2268,7 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
         path: failed.path,
         ...(failed.status ? { status: failed.status } : {}),
         checks,
-        message: `현재 IVC 상태 API에 연결했습니다. ${failed.path} 페이지·파일 검사는 완료하지 못했지만, 관리자 초대 발급과 계정 재설정은 사용할 수 있습니다. 아래 상세 결과를 참고하고 상대방 브라우저에서 초대 링크를 확인하세요.`,
+        message: `현재 IVC 상태 API에는 연결했지만 ${failed.path} 페이지·파일 검사가 실패했습니다. 소개·로그인 화면의 접속 성공을 확인한 상태는 아닙니다. 파일별 응답을 확인하세요.`,
       }
     }
     return {
@@ -2202,13 +2294,18 @@ export async function probePublicAccess(origin, instance, fetchImpl = fetch) {
 
 ## scripts/share-codespaces.mjs
 
-원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 83줄 · SHA-256: `64491dee7c031005711cdad78d04cb5d2cece896598625c589c16f2cd72065a6`
+원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 94줄 · SHA-256: `fe455faad750a6e3013e63ece9cf9c793c8e5818c6c2d3d246819e1356f858dd`
 
 ```javascript
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
-import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
+import { connectionEnvironment } from './connection-options.mjs'
+import {
+  AUTH_VERSION,
+  probePublicAccess,
+  formatPublicChecks,
+} from '../server/sharing.mjs'
 
 /** Explicit operator action; never opens a port automatically at server startup. */
 export async function shareCodespaces(
@@ -2265,24 +2362,30 @@ export async function shareCodespaces(
       `GitHub에서 Public 설정을 적용하지 못했습니다. Ports → ${port} → Port Visibility → Public으로 변경하세요. 조직 정책이 제한하면 상시 HTTPS 서버에 배포해야 합니다.`,
     )
   const probe = await probePublicAccess(cfg.origin, status.instance, fetchImpl)
-  if (probe.state === 'partial')
-    console.warn(`페이지 확인 미완료: ${probe.message}`)
-  else if (!probe.reachable)
-    throw Error(
-      probe.message +
-        ' 설정 반영 후 Manage Access → Check connection으로 다시 확인하세요.',
-    )
-  return cfg.origin
+  return { origin: cfg.origin, visibilityApplied: true, probe }
 }
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const origin = await shareCodespaces()
-    console.log(
-      `포트 Public 설정 적용: ${origin}\nManage Access에서 초대 링크·코드를 만들고 상대방 브라우저에서 접속을 확인하세요. 계산기는 IVC 로그인으로 보호됩니다.\nCodespace가 정지되면 주소도 중단됩니다.`,
+    const report = await shareCodespaces(
+      connectionEnvironment(process.argv.slice(2)),
     )
+    console.log(`포트 Public 설정 적용: ${report.origin}`)
+    console.log(`Public: ${report.probe.state} · ${report.probe.message}`)
+    const checks = formatPublicChecks(report.probe)
+    if (checks) console.log(checks)
+    if (report.probe.reachable) {
+      console.log(
+        '사이트 검사 통과 · 상대방 브라우저에서도 현재 주소를 확인하세요. 계산기는 IVC 로그인이 필요합니다. Codespace가 정지되면 주소도 중단됩니다.',
+      )
+    } else {
+      console.error(
+        'Public 설정 변경은 완료했지만 사이트 접속 검사는 통과하지 못했습니다. 위 파일별 결과를 확인하세요. 서버나 계정 DB를 초기화하지 마세요.',
+      )
+      process.exitCode = 1
+    }
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
@@ -2294,12 +2397,17 @@ if (
 
 ## scripts/diagnose-codespaces.mjs
 
-원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 113줄 · SHA-256: `e44281c46cd14856e7fce06966377fc13cb0629fc2734f5c25f96870feb74c0d`
+원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 120줄 · SHA-256: `7485d36da4144cac9958158533e4309a9c3edb2b683804a2c6c5a917b743f247`
 
 ```javascript
 import { pathToFileURL } from 'node:url'
 import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
-import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
+import { connectionEnvironment } from './connection-options.mjs'
+import {
+  AUTH_VERSION,
+  probePublicAccess,
+  formatPublicChecks,
+} from '../server/sharing.mjs'
 
 /** Read-only diagnostics; never send cookies or change port visibility. */
 export async function diagnoseCodespaces(env = process.env, fetchImpl = fetch) {
@@ -2383,7 +2491,9 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const report = await diagnoseCodespaces()
+    const report = await diagnoseCodespaces(
+      connectionEnvironment(process.argv.slice(2)),
+    )
     console.log(
       `IVC connection check\nSite: ${report.origin}\nLocal: ${report.local.state} · ${report.local.message}`,
     )
@@ -2391,6 +2501,8 @@ if (
       console.log(
         `Public: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
       )
+    const checks = formatPublicChecks(report.external)
+    if (checks) console.log(checks)
     if (
       report.local.state === 'ready' &&
       ['blocked', 'unavailable'].includes(report.external?.state)
@@ -2398,14 +2510,12 @@ if (
       console.log(
         `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
-    if (
-      report.local.state !== 'ready' ||
-      !['ready', 'partial'].includes(report.external?.state)
-    )
+    if (report.local.state !== 'ready' || report.external?.reachable !== true)
       process.exitCode = 1
-  } catch {
+  } catch (error) {
+    console.error(error.message)
     console.error(
-      '진단 설정을 확인하세요. PORT와 APP_ORIGIN은 실행 중인 서버와 같아야 합니다.',
+      '사이트 주소는 경로·쿼리·로그인 정보 없이 입력하세요. 예: npm run diagnose:codespaces -- --port 5181 --origin https://your-space-5181.app.github.dev',
     )
     process.exitCode = 1
   }
@@ -2413,6 +2523,32 @@ if (
 ```
 
 <a id="source-16"></a>
+
+## scripts/connection-options.mjs
+
+원본: [scripts/connection-options.mjs](../../scripts/connection-options.mjs) · 17줄 · SHA-256: `ab8e5664c9b61d591d3b6266b2d0cece5728c9396b769e8e74c1726f31292720`
+
+```javascript
+/** Explicit CLI arguments override stale shell configuration. No shell execution. */
+export function connectionEnvironment(args, env = process.env) {
+  const next = { ...env }
+  for (let i = 0; i < args.length; i++) {
+    const flag = args[i]
+    if (
+      !['--port', '--origin'].includes(flag) ||
+      !args[i + 1] ||
+      args[i + 1].startsWith('--')
+    )
+      throw Error(
+        '사용법: --port 5181 --origin https://your-space-5181.app.github.dev',
+      )
+    next[flag === '--port' ? 'PORT' : 'APP_ORIGIN'] = args[++i]
+  }
+  return next
+}
+```
+
+<a id="source-17"></a>
 
 ## server/setup.mjs
 
@@ -2484,7 +2620,7 @@ try {
 }
 ```
 
-<a id="source-17"></a>
+<a id="source-18"></a>
 
 ## server/dev.mjs
 
@@ -2498,7 +2634,7 @@ if (built.status !== 0) process.exit(built.status ?? 1)
 await import('./start.mjs')
 ```
 
-<a id="source-18"></a>
+<a id="source-19"></a>
 
 ## src/equation-count.ts
 
@@ -2539,7 +2675,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-20"></a>
 
 ## src/csv.ts
 
@@ -2562,7 +2698,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-21"></a>
 
 ## src/engine/sweep.ts
 
@@ -2753,7 +2889,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-22"></a>
 
 ## src/engine/branches.ts
 
@@ -3278,7 +3414,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-23"></a>
 
 ## src/engine/branch-events.ts
 
@@ -3361,7 +3497,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-24"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -3915,7 +4051,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-25"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -3992,7 +4128,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-26"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -4069,7 +4205,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-27"></a>
 
 ## src/engine/default-overview.ts
 
@@ -4195,7 +4331,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-28"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -4611,7 +4747,7 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-28"></a>
+<a id="source-29"></a>
 
 ## src/App.tsx
 

@@ -6,7 +6,11 @@ import { resolve } from 'node:path'
 import { createServer } from 'node:net'
 import { AccessStore, digest } from '../server/store.mjs'
 import { createAccessServer } from '../server/app.mjs'
-import { AUTH_VERSION, probePublicAccess } from '../server/sharing.mjs'
+import {
+  AUTH_VERSION,
+  probePublicAccess,
+  formatPublicChecks,
+} from '../server/sharing.mjs'
 import { shareCodespaces } from '../scripts/share-codespaces.mjs'
 const owner = {
   email: 'owner@example.test',
@@ -712,7 +716,9 @@ test('Codespaces sharing command checks a protected server before changing port 
       ? new Response('private', { status: 401 })
       : publicResponse(url, status.instance),
   )
-  assert.equal(origin, 'https://fixture-code-space-5180.app.github.dev')
+  assert.equal(origin.origin, 'https://fixture-code-space-5180.app.github.dev')
+  assert.equal(origin.visibilityApplied, true)
+  assert.equal(origin.probe.reachable, true)
   assert.equal(changed, 1)
   changed = 0
   await assert.rejects(
@@ -739,7 +745,12 @@ test('Codespaces sharing command checks a protected server before changing port 
       return new Response('', { status: 404 })
     return publicResponse(input, status.instance)
   })
-  assert.equal(partial, 'https://fixture-code-space-5180.app.github.dev')
+  assert.equal(partial.origin, 'https://fixture-code-space-5180.app.github.dev')
+  assert.equal(partial.visibilityApplied, true)
+  assert.equal(partial.probe.reachable, false)
+  assert.equal(partial.probe.state, 'partial')
+  assert.match(formatPublicChecks(partial.probe), /\/: HTTP 404/)
+  assert.doesNotMatch(partial.probe.message, /상대방.*초대/)
 })
 
 test('a concurrent reset after activation commits cannot issue a new valid session for the pending account', async () => {
@@ -989,4 +1000,69 @@ test('an owner can issue invitations without invoking an unavailable outbound pr
   } finally {
     await unavailable.close()
   }
+})
+
+test('public failure details distinguish IVC and intermediary replies without leaking redirect secrets', async () => {
+  const result = await probePublicAccess(
+    origin,
+    'safe-instance',
+    async (input) => {
+      const path = new URL(input).pathname
+      if (path === '/')
+        return new Response('', {
+          status: 404,
+          headers: { 'Content-Type': 'text/html' },
+        })
+      if (path === '/welcome.js')
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location:
+              'https://user:private-password@github.com/login?token=private-token#secret',
+          },
+        })
+      return publicResponse(input, 'safe-instance')
+    },
+  )
+  const text = formatPublicChecks(result)
+  assert.equal(result.state, 'partial')
+  assert.match(text, /\/: HTTP 404 .*IVC 서버 표식 없음/)
+  assert.match(text, /welcome.js: HTTP 302 .*GitHub 로그인으로 이동/)
+  assert.match(text, /ivc-auth\/status: HTTP 200 .*현재 IVC 서버/)
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /private-password|private-token|#secret/,
+  )
+  const blocked = await probePublicAccess(
+    origin,
+    'safe-instance',
+    async () =>
+      new Response(null, {
+        status: 302,
+        headers: { Location: 'https://github.com/login?token=private-token' },
+      }),
+  )
+  assert.match(formatPublicChecks(blocked), /HTTP 302 .*GitHub 로그인으로 이동/)
+  assert.doesNotMatch(JSON.stringify(blocked), /private-token/)
+})
+test('diagnostic CLI overrides malformed shell origins without touching the original environment', async () => {
+  const { connectionEnvironment } = await import(
+    '../scripts/connection-options.mjs'
+  )
+  const env = {
+    PORT: '5180',
+    APP_ORIGIN: 'https://example.test/index.html?x=1',
+    IVC_DATA_DIR: 'do-not-change',
+  }
+  const result = connectionEnvironment(
+    ['--port', '5181', '--origin', 'https://working-space-5181.app.github.dev'],
+    env,
+  )
+  assert.equal(result.PORT, '5181')
+  assert.equal(result.APP_ORIGIN, 'https://working-space-5181.app.github.dev')
+  assert.equal(result.IVC_DATA_DIR, env.IVC_DATA_DIR)
+  assert.equal(env.PORT, '5180')
+  assert.match(env.APP_ORIGIN, /index.html/)
+  for (const args of [['--port'], ['--origin', '--port'], ['--bad', 'x']])
+    assert.throws(() => connectionEnvironment(args, env), /사용법/)
 })
