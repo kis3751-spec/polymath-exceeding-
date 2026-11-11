@@ -365,7 +365,7 @@ test('session idle and absolute expiry are enforced by server; status polling do
   )
   app.store.run(
     'UPDATE sessions SET touched=? WHERE hash=?',
-    Date.now() - 31 * 60_000,
+    Date.now() - 8 * 24 * 3600_000,
     digest(session.token),
   )
   assert.equal(app.store.session(session.token), null)

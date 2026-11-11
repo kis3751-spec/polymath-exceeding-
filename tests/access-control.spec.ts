@@ -443,6 +443,15 @@ test.describe('session recovery', () => {
     browser,
   }) => {
     await logIn(page)
+    const sessionCookie = (await context.cookies()).find((cookie) =>
+      ['__Host-ivc-session', 'ivc-local-session'].includes(cookie.name),
+    )
+    if (!sessionCookie) throw Error('Session cookie was not issued')
+    const remaining = sessionCookie.expires - Date.now() / 1000
+    expect(remaining).toBeGreaterThan(30 * 86400 - 120)
+    expect(remaining).toBeLessThanOrEqual(30 * 86400 + 120)
+    expect(sessionCookie.httpOnly).toBe(true)
+    expect(sessionCookie.sameSite).toBe('Strict')
     await page.reload()
     await expect(page.locator('.account-bar')).toContainText(owner.email)
     await page.getByRole('link', { name: 'Manage Access', exact: true }).click()

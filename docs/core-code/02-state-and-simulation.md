@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `e58857e80c9b7bef356b30c5f7976262d6a6394a5db134347f64b11ced14e4c8`
+소스 묶음 SHA-256: `b6432f7a06b7dfcf9c1bc8be5b09606dc190c396ba2020ff5ce3405db4837f13`
 
 ## 다른 코드 묶음
 
@@ -779,7 +779,7 @@ export function accountStorageKey(key: string) {
 
 ## server/store.mjs
 
-원본: [server/store.mjs](../../server/store.mjs) · 368줄 · SHA-256: `f1a0fd20227994d58e486c853c048b150479cde60bc70127976b8d317bcb0b57`
+원본: [server/store.mjs](../../server/store.mjs) · 368줄 · SHA-256: `530cb3f87468ce53e812395e6ca9cf2ae5634a113f3881fca68eb2f88271107e`
 
 ```javascript
 import { DatabaseSync } from 'node:sqlite'
@@ -794,8 +794,8 @@ import {
 } from 'node:crypto'
 import { promisify } from 'node:util'
 const rawDerive = promisify(scrypt)
-export const SESSION_MAX_AGE_MS = 8 * 3600_000
-export const SESSION_IDLE_MS = 30 * 60_000
+export const SESSION_MAX_AGE_MS = 30 * 24 * 3600_000
+export const SESSION_IDLE_MS = 7 * 24 * 3600_000
 let activeHashes = 0
 const waiters = []
 async function derive(...args) {

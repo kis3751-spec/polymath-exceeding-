@@ -137,7 +137,7 @@ test('session refresh never overwrites the session cookie with a late response',
     r = await request('/session', null, active.cookie)
   assert.equal(r.status, 200)
   assert.equal(r.headers['set-cookie'], undefined)
-  assert.match(active.response.headers['set-cookie'][0], /Max-Age=28800/)
+  assert.match(active.response.headers['set-cookie'][0], /Max-Age=2592000/)
 })
 import {
   createAuthRequests,
@@ -297,5 +297,52 @@ test('a persisted session cookie is accepted after reopening the DB and restarti
     }
     store?.close()
     await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('approved policy expires at seven days idle, and passive checks do not extend it', async () => {
+  const day = 24 * 3600_000,
+    start = Date.now()
+  let now = start
+  const store = new AccessStore(':memory:', () => now)
+  try {
+    const id = await store.bootstrap(
+      'idle-policy@example.test',
+      'Only-a-policy-test-password 52!',
+    )
+    const issued = store.createSession(store.user(id))
+    assert.equal(issued.expires, start + 30 * day)
+    now = start + 7 * day - 1
+    assert.ok(store.session(issued.token))
+    now = start + 7 * day
+    assert.equal(store.session(issued.token), null)
+  } finally {
+    store.close()
+  }
+})
+test('activity renews seven-day idle time without extending the thirty-day absolute deadline', async () => {
+  const day = 24 * 3600_000,
+    start = Date.now()
+  let now = start
+  const store = new AccessStore(':memory:', () => now)
+  try {
+    const id = await store.bootstrap(
+      'active-policy@example.test',
+      'Only-a-policy-test-password 53!',
+    )
+    const issued = store.createSession(store.user(id))
+    for (const elapsed of [6, 12, 18, 24, 29]) {
+      now = start + elapsed * day
+      const active = store.session(issued.token, true)
+      assert.ok(active)
+      assert.equal(active.touched, now)
+      assert.equal(active.expires, start + 30 * day)
+    }
+    now = start + 30 * day - 1
+    assert.ok(store.session(issued.token, true))
+    now = start + 30 * day
+    assert.equal(store.session(issued.token, true), null)
+  } finally {
+    store.close()
   }
 })

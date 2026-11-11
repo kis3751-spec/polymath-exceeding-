@@ -10,8 +10,8 @@ import {
 } from 'node:crypto'
 import { promisify } from 'node:util'
 const rawDerive = promisify(scrypt)
-export const SESSION_MAX_AGE_MS = 8 * 3600_000
-export const SESSION_IDLE_MS = 30 * 60_000
+export const SESSION_MAX_AGE_MS = 30 * 24 * 3600_000
+export const SESSION_IDLE_MS = 7 * 24 * 3600_000
 let activeHashes = 0
 const waiters = []
 async function derive(...args) {
