@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `f71c1e44e4d02ac8feb69ec17287b1eddfd9ae46140e3c8aadea95ac52fdf240`
+소스 묶음 SHA-256: `8cf442906b7bcb1888a5112263db77a160e4e5d68e175c4cbdeb78907010c9d3`
 
 ## 다른 코드 묶음
 
@@ -41,19 +41,22 @@
 - [scripts/share-codespaces.mjs](#source-14) · [저장소 원본](../../scripts/share-codespaces.mjs)
 - [scripts/diagnose-codespaces.mjs](#source-15) · [저장소 원본](../../scripts/diagnose-codespaces.mjs)
 - [scripts/connection-options.mjs](#source-16) · [저장소 원본](../../scripts/connection-options.mjs)
-- [server/setup.mjs](#source-17) · [저장소 원본](../../server/setup.mjs)
-- [server/dev.mjs](#source-18) · [저장소 원본](../../server/dev.mjs)
-- [src/equation-count.ts](#source-19) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-20) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-21) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-22) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-23) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-24) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-25) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-26) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-27) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-28) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-29) · [저장소 원본](../../src/App.tsx)
+- [scripts/open-site.mjs](#source-17) · [저장소 원본](../../scripts/open-site.mjs)
+- [.vscode/settings.json](#source-18) · [저장소 원본](../../.vscode/settings.json)
+- [package.json](#source-19) · [저장소 원본](../../package.json)
+- [server/setup.mjs](#source-20) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-21) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-22) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-23) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-24) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-25) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-26) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-27) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-28) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-29) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-30) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-31) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-32) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -1298,7 +1301,7 @@ export class AccessStore {
 
 ## server/app.mjs
 
-원본: [server/app.mjs](../../server/app.mjs) · 558줄 · SHA-256: `8c4181d9f5a65ae20a20253fccea2842741b4cf8e5325d2e2fe631e51397b950`
+원본: [server/app.mjs](../../server/app.mjs) · 577줄 · SHA-256: `32037142905549aaf49aa61dc48a2ac85fcdf5af97c9aa5228d08db804c614da`
 
 ```javascript
 import { welcomePath } from './gateway/response.js'
@@ -1723,6 +1726,8 @@ export async function createAccessServer(input) {
           version: AUTH_VERSION,
           accessControl: 'invite-only',
           instance,
+          origin: cfg.origin,
+          entryUrl: new URL(welcomePath('/'), cfg.origin).href,
         })
       if (path === '/api/invitation') {
         const token = cookieValue(req, flowCookie)
@@ -1828,6 +1833,23 @@ export async function createAccessServer(input) {
               'utf8',
             )
           : bytes
+      // Recover browser HTTP cache only after a real welcome document was read.
+      // Never clear cookies, localStorage or execution contexts. This cannot
+      // clear a response retained by an upstream service we do not control.
+      if (
+        cfg.secure &&
+        req.method === 'GET' &&
+        root === gateway &&
+        file === 'index.html'
+      )
+        res.setHeader('Clear-Site-Data', '"cache"')
+      if (req.method === 'GET' && root === gateway && file === 'index.html') {
+        const page = new URL(raw, cfg.origin)
+        if (!page.searchParams.has('_ivc_page')) {
+          res.writeHead(303, { Location: welcomePath('/' + page.search) })
+          return res.end()
+        }
+      }
       res.writeHead(200, {
         'Content-Type': mime[extname(file)] ?? 'application/octet-stream',
         'Content-Length': data.length,
@@ -1865,41 +1887,49 @@ export async function createAccessServer(input) {
 
 ## server/start.mjs
 
-원본: [server/start.mjs](../../server/start.mjs) · 46줄 · SHA-256: `a215d6e2bac69f73bb422d4f312af69c138f85e3b6de482d4208dbac19fd7585`
+원본: [server/start.mjs](../../server/start.mjs) · 54줄 · SHA-256: `1e161d831ccb96f5a0021c2e4319292e7662b08fa46a3a98c62528a1e99f9f29`
 
 ```javascript
+import { connectionEnvironment } from '../scripts/connection-options.mjs'
+import { launchSite } from '../scripts/open-site.mjs'
 import { runtimeConfig, runtimePort } from './runtime-config.mjs'
 import { createAccessServer } from './app.mjs'
 import { AUTH_VERSION, formatPublicChecks } from './sharing.mjs'
 import { diagnoseCodespaces } from '../scripts/diagnose-codespaces.mjs'
-const args = process.argv.slice(2),
-  at = args.indexOf('--port')
-if (at >= 0 && !args[at + 1]) throw Error('--port 값이 필요합니다.')
-const port = runtimePort(process.env, at >= 0 ? args[at + 1] : undefined)
-const cfg = runtimeConfig(process.env, port)
+const env = connectionEnvironment(process.argv.slice(2))
+const port = runtimePort(env)
+const cfg = runtimeConfig(env, port)
 const { server, entryUrl } = await createAccessServer(cfg)
 server.listen(port, cfg.host, () => {
   console.log(
     `IVC secure server: ${entryUrl}\nOrigin: ${cfg.origin}\nInternal listener: http://${cfg.host.includes(':') ? `[${cfg.host}]` : cfg.host}:${port}\nAuthentication routes: /ivc-auth (${AUTH_VERSION})\n로그인 후 계산기에 접속할 수 있습니다.${cfg.codespaces ? `\nCodespaces port: ${port} · Port Protocol = HTTP, Port Visibility = Public\n타인 초대 전: 새 터미널에서 PORT=${port} npm run share:codespaces\n404 진단: 새 터미널에서 PORT=${port} npm run diagnose:codespaces` : ''}`,
   )
   if (cfg.codespaces)
-    void diagnoseCodespaces({ ...process.env, PORT: String(port) })
-      .then((report) => {
+    void diagnoseCodespaces({ ...env, PORT: String(port) })
+      .then(async (report) => {
         console.log(
           `IVC local check: ${report.local.state} · ${report.local.message}`,
         )
         if (report.external)
           console.log(
-            `IVC public check: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
+            `Site: ${report.external.entryUrl}\nIVC public check: ${report.external.state}${report.external.status ? ` (HTTP ${report.external.status})` : ''} · ${report.external.message}`,
           )
         const checks = formatPublicChecks(report.external)
         if (checks) console.log(checks)
+        if (report.external?.reachable && env.IVC_OPEN_BROWSER !== '0') {
+          const browser = await launchSite(report.external.entryUrl, env)
+          console.log(
+            browser.requested
+              ? 'IVC browser: 검사한 새 Site 주소를 브라우저로 보냈습니다.'
+              : `IVC browser: 새 터미널에서 npm run open -- --port ${port}를 실행하거나 위 Site 주소를 클릭하세요.`,
+          )
+        }
         if (
           report.local.state === 'ready' &&
           ['blocked', 'unavailable'].includes(report.external?.state)
         )
           console.log(
-            `로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 ${port}을 다시 추가하고 HTTP · Public으로 설정한 후 Open in Browser로 여세요.`,
+            `로컬 서버는 정상입니다. Codespaces의 기존 포트 전달을 중지한 뒤 ${port}을 다시 추가하고 HTTP · Public으로 설정한 후 새 터미널에서 npm run open -- --port ${port}로 여세요.`,
           )
       })
       .catch(() =>
@@ -1920,7 +1950,7 @@ server.on('error', (e) => {
 
 ## server/runtime-config.mjs
 
-원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 79줄 · SHA-256: `898e3859c4a8d0b025742560ca513602cc2714f6ff769232b8dae101547a22da`
+원본: [server/runtime-config.mjs](../../server/runtime-config.mjs) · 79줄 · SHA-256: `30ac1543f226c8b0a8648f1a4ca0f08e4b066e6e214a78c60ec2ab35a51d8fb8`
 
 ```javascript
 import { resolve } from 'node:path'
@@ -1928,7 +1958,7 @@ import { resolve } from 'node:path'
 export const isCodespaces = (env) =>
   Boolean(env.CODESPACE_NAME && env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN)
 export function runtimePort(env, explicit) {
-  const port = Number(explicit ?? env.PORT ?? (isCodespaces(env) ? 5180 : 5173))
+  const port = Number(explicit ?? env.PORT ?? (isCodespaces(env) ? 5181 : 5173))
   if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw Error('유효한 포트가 필요합니다.')
   return port
@@ -2008,13 +2038,13 @@ export function proxyRewrittenOrigin(req, cfg) {
 
 ## server/sharing.mjs
 
-원본: [server/sharing.mjs](../../server/sharing.mjs) · 302줄 · SHA-256: `89e67bc20ac2891c0e995eda63759016b51e85f7f54d65166ad854bab02fa424`
+원본: [server/sharing.mjs](../../server/sharing.mjs) · 302줄 · SHA-256: `f5178abbbe60ea6440fba040c7c67a2b2573e67b55cf1a4ab7d7ec522e14d2a0`
 
 ```javascript
 import { welcomePath } from './gateway/response.js'
 import { isIP } from 'node:net'
 
-export const AUTH_VERSION = 'auth-v4'
+export const AUTH_VERSION = 'auth-v5'
 export function localOrigin(origin) {
   const host = new URL(origin).hostname.replace(/^\[|\]$/g, '')
   return (
@@ -2319,9 +2349,10 @@ async function inspectPublicAccess(origin, instance, fetchImpl, entryPath) {
 
 ## scripts/share-codespaces.mjs
 
-원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 96줄 · SHA-256: `8dd10d3b7a14f4e5750ee2c1a5a7f2ad838c1d98f32fa8481806a00732d5a2c4`
+원본: [scripts/share-codespaces.mjs](../../scripts/share-codespaces.mjs) · 99줄 · SHA-256: `2accf904acf29216fea9aa7607ef0552c5962cac795abfc0fb09c969a14313f0`
 
 ```javascript
+import { launchSite } from './open-site.mjs'
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
@@ -2394,9 +2425,8 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const report = await shareCodespaces(
-      connectionEnvironment(process.argv.slice(2)),
-    )
+    const env = connectionEnvironment(process.argv.slice(2))
+    const report = await shareCodespaces(env)
     console.log(
       `포트 Public 설정 적용: ${report.origin}\nSite: ${report.probe.entryUrl}`,
     )
@@ -2404,6 +2434,9 @@ if (
     const checks = formatPublicChecks(report.probe)
     if (checks) console.log(checks)
     if (report.probe.reachable) {
+      const browser = await launchSite(report.probe.entryUrl, env)
+      if (browser.requested)
+        console.log('브라우저에 검사한 새 Site 주소 열기를 요청했습니다.')
       console.log(
         '사이트 검사 통과 · 상대방 브라우저에서도 현재 주소를 확인하세요. 계산기는 IVC 로그인이 필요합니다. Codespace가 정지되면 주소도 중단됩니다.',
       )
@@ -2424,7 +2457,7 @@ if (
 
 ## scripts/diagnose-codespaces.mjs
 
-원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 120줄 · SHA-256: `dd53ade3ac8de7c74c81b82a7c3b4fb90f1e6d6dca2ab7e7051c8e797f8609c1`
+원본: [scripts/diagnose-codespaces.mjs](../../scripts/diagnose-codespaces.mjs) · 127줄 · SHA-256: `914d36ccd164e83bbc8edcba79c7899388ceb75b9a83ce7efca576f6f2804937`
 
 ```javascript
 import { pathToFileURL } from 'node:url'
@@ -2470,6 +2503,13 @@ export async function diagnoseCodespaces(env = process.env, fetchImpl = fetch) {
     const text = await status.text()
     if (!status.ok || text.length > 16384) throw Error('status')
     const data = JSON.parse(text)
+    if (data?.service === 'IVC' && data.version !== AUTH_VERSION) {
+      result.local = {
+        state: 'outdated',
+        message: `실행 중인 서버는 이전 버전입니다. Git 업데이트 후 서버를 Ctrl+C로 종료하고 다시 실행하세요. 새 서버 표시: ${AUTH_VERSION}`,
+      }
+      return result
+    }
     if (
       data.service !== 'IVC' ||
       data.version !== AUTH_VERSION ||
@@ -2535,7 +2575,7 @@ if (
       ['blocked', 'unavailable'].includes(report.external?.state)
     )
       console.log(
-        `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
+        `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 npm run open -- --port ${report.port}로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
     if (report.local.state !== 'ready' || report.external?.reachable !== true)
       process.exitCode = 1
@@ -2576,6 +2616,243 @@ export function connectionEnvironment(args, env = process.env) {
 ```
 
 <a id="source-17"></a>
+
+## scripts/open-site.mjs
+
+원본: [scripts/open-site.mjs](../../scripts/open-site.mjs) · 148줄 · SHA-256: `9434ddfc1eddc902fdb15e3277718ae1b2976f62368077cafa4411cd79383c3e`
+
+```javascript
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { pathToFileURL } from 'node:url'
+import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
+import { AUTH_VERSION, localOrigin } from '../server/sharing.mjs'
+import { welcomePath } from '../server/gateway/response.js'
+import { connectionEnvironment } from './connection-options.mjs'
+const execute = promisify(execFile)
+
+function originOnly(value) {
+  const url = new URL(value)
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash ||
+    !(
+      url.protocol === 'https:' ||
+      (url.protocol === 'http:' && localOrigin(url.origin))
+    )
+  )
+    throw Error('사이트 원점을 확인하세요.')
+  return url.origin
+}
+/** A browser helper receives exactly one validated URL, without a shell. A
+ * successful IPC request does not prove the remote browser finished loading. */
+export async function launchSite(entryUrl, env = process.env, run = execute) {
+  const url = new URL(entryUrl)
+  originOnly(url.origin)
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.hash ||
+    !/^[\w-]{36}$/.test(url.searchParams.get('_ivc_page') ?? '') ||
+    url.searchParams.size !== 1
+  )
+    throw Error('새 IVC 접속 주소를 확인하세요.')
+  if (!env.BROWSER || env.BROWSER === 'none')
+    return { requested: false, reason: 'unavailable' }
+  try {
+    await run(env.BROWSER, [url.href], {
+      shell: false,
+      timeout: 5000,
+      maxBuffer: 16_384,
+      windowsHide: true,
+    })
+    return { requested: true }
+  } catch {
+    return { requested: false, reason: 'failed' }
+  }
+}
+
+/** Read the actual protected server before opening a fresh welcome URL. No
+ * credentials, visibility changes or DB writes; stale shell origins cannot
+ * replace the live server's origin with an arbitrary address. */
+export async function openSite(
+  env = process.env,
+  run = execute,
+  fetchImpl = fetch,
+) {
+  const port = runtimePort(env)
+  const local = `http://127.0.0.1:${port}`
+  const get = (path) =>
+    fetchImpl(local + path, {
+      redirect: 'manual',
+      credentials: 'omit',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4000),
+    })
+  let data
+  try {
+    const response = await get('/ivc-auth/status')
+    if (!response.ok) throw Error('status')
+    const reader = response.body?.getReader()
+    const chunks = []
+    let size = 0
+    if (reader)
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        size += value.length
+        if (size > 16_384) {
+          await reader.cancel()
+          throw Error('size')
+        }
+        chunks.push(value)
+      }
+    data = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    if (
+      data.service !== 'IVC' ||
+      data.accessControl !== 'invite-only' ||
+      typeof data.instance !== 'string'
+    )
+      throw Error('guard')
+  } catch {
+    throw Error(
+      `${port} 포트에서 실행 중인 IVC를 확인하지 못했습니다. 먼저 서버의 시작 완료 메시지를 확인하세요.`,
+    )
+  }
+  if (data.version !== AUTH_VERSION)
+    throw Error(
+      `실행 중인 서버는 이전 버전입니다. Git 업데이트만으로 실행 중인 서버가 바뀌지는 않습니다. 서버를 Ctrl+C로 종료하고 npm run dev -- --port ${port}로 다시 실행하세요. 새 서버의 표시: ${AUTH_VERSION}`,
+    )
+  const liveOrigin = originOnly(data.origin)
+  const allowed = new Set()
+  for (const candidate of [
+    env,
+    { ...env, APP_ORIGIN: undefined, NODE_ENV: undefined },
+  ]) {
+    try {
+      allowed.add(originOnly(runtimeConfig(candidate, port).origin))
+    } catch {
+      /* invalid stale shell configuration is not authority */
+    }
+  }
+  if (!allowed.has(liveOrigin))
+    throw Error(
+      '실행 중인 서버의 Origin이 현재 Codespace/설정과 다릅니다. 실제 Origin을 --origin으로 지정하세요.',
+    )
+  const resource = await get('/solver.wasm')
+  await resource.body?.cancel()
+  if (resource.status !== 401)
+    throw Error(
+      '익명 계산 파일 차단을 확인하지 못했습니다. 브라우저를 자동으로 열지 않았습니다.',
+    )
+  const entryUrl = new URL(welcomePath('/'), liveOrigin).href
+  const browser = await launchSite(entryUrl, env, run)
+  return { origin: liveOrigin, entryUrl, browser, version: data.version }
+}
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  try {
+    const report = await openSite(connectionEnvironment(process.argv.slice(2)))
+    console.log(`IVC live server: ${report.version}\nSite: ${report.entryUrl}`)
+    console.log(
+      report.browser.requested
+        ? '브라우저에 새 IVC 주소 열기를 요청했습니다.'
+        : '자동 브라우저 도구를 사용할 수 없습니다. 위 Site 링크 전체를 클릭하세요.',
+    )
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 1
+  }
+}
+```
+
+<a id="source-18"></a>
+
+## .vscode/settings.json
+
+원본: [.vscode/settings.json](../../.vscode/settings.json) · 19줄 · SHA-256: `dbb189e4c248ed6bbe8e10fca8b5c02deff20d9f3873463dce76931e4c8af62d`
+
+```text
+{
+  "remote.portsAttributes": {
+    "5180": {
+      "label": "IVC · npm run open",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    },
+    "5173": {
+      "label": "IVC · npm run open",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    },
+    "5181": {
+      "label": "IVC · npm run open",
+      "protocol": "http",
+      "onAutoForward": "silent"
+    }
+  }
+}
+```
+
+<a id="source-19"></a>
+
+## package.json
+
+원본: [package.json](../../package.json) · 43줄 · SHA-256: `0e64714e33729b500bea930e31e7317504bb6561461232d9f94f073ffc0ec603`
+
+```text
+{
+  "name": "interaction-visual-calculator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server/dev.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build": "npm run build:wasm && tsc -b && vite build",
+    "preview": "node server/start.mjs",
+    "docs:core": "node scripts/export-core.mjs",
+    "test": "npm run build:wasm && vitest run && npm run test:auth",
+    "test:e2e": "playwright test --grep-invert 'session recovery' && playwright test --grep 'session recovery'",
+    "format": "prettier --write src scripts tests *.json *.ts *.md index.html",
+    "start": "node server/start.mjs",
+    "auth:setup": "node server/setup.mjs",
+    "share:codespaces": "node scripts/share-codespaces.mjs",
+    "diagnose:codespaces": "node scripts/diagnose-codespaces.mjs",
+    "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs tests/auth-session.test.mjs tests/site-entry.test.mjs",
+    "open": "node scripts/open-site.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "ml-matrix": "^6.15.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "prettier": "3.6.2",
+    "typescript": "~5.7.3",
+    "vite": "^6.3.0",
+    "vitest": "^3.2.0",
+    "wabt": "^1.0.37"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
+```
+
+<a id="source-20"></a>
 
 ## server/setup.mjs
 
@@ -2647,7 +2924,7 @@ try {
 }
 ```
 
-<a id="source-18"></a>
+<a id="source-21"></a>
 
 ## server/dev.mjs
 
@@ -2661,7 +2938,7 @@ if (built.status !== 0) process.exit(built.status ?? 1)
 await import('./start.mjs')
 ```
 
-<a id="source-19"></a>
+<a id="source-22"></a>
 
 ## src/equation-count.ts
 
@@ -2702,7 +2979,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-23"></a>
 
 ## src/csv.ts
 
@@ -2725,7 +3002,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-24"></a>
 
 ## src/engine/sweep.ts
 
@@ -2916,7 +3193,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-22"></a>
+<a id="source-25"></a>
 
 ## src/engine/branches.ts
 
@@ -3441,7 +3718,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-26"></a>
 
 ## src/engine/branch-events.ts
 
@@ -3524,7 +3801,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-27"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -4078,7 +4355,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-28"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -4155,7 +4432,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-29"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -4232,7 +4509,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-30"></a>
 
 ## src/engine/default-overview.ts
 
@@ -4358,7 +4635,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-28"></a>
+<a id="source-31"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -4774,7 +5051,7 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-29"></a>
+<a id="source-32"></a>
 
 ## src/App.tsx
 

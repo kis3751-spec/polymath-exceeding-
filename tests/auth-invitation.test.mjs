@@ -700,7 +700,7 @@ test('Codespaces sharing command checks a protected server before changing port 
       'codespace',
       'ports',
       'visibility',
-      '5180:public',
+      '5181:public',
       '--codespace',
       env.CODESPACE_NAME,
     ])
@@ -719,7 +719,7 @@ test('Codespaces sharing command checks a protected server before changing port 
       ? new Response('private', { status: 401 })
       : publicResponse(url, status.instance),
   )
-  assert.equal(origin.origin, 'https://fixture-code-space-5180.app.github.dev')
+  assert.equal(origin.origin, 'https://fixture-code-space-5181.app.github.dev')
   assert.equal(origin.visibilityApplied, true)
   assert.equal(origin.probe.reachable, true)
   assert.equal(changed, 1)
@@ -748,7 +748,7 @@ test('Codespaces sharing command checks a protected server before changing port 
       return new Response('', { status: 404 })
     return publicResponse(input, status.instance)
   })
-  assert.equal(partial.origin, 'https://fixture-code-space-5180.app.github.dev')
+  assert.equal(partial.origin, 'https://fixture-code-space-5181.app.github.dev')
   assert.equal(partial.visibilityApplied, true)
   assert.equal(partial.probe.reachable, false)
   assert.equal(partial.probe.state, 'partial')
@@ -890,7 +890,7 @@ test('public readiness verifies the actual gateway and login dependencies from t
       const path = new URL(input).pathname
       paths.push(path)
       assert.equal(options.credentials, 'omit')
-      return fetch(fixture.localOrigin + path, options)
+      return fetch(fixture.localOrigin + path + new URL(input).search, options)
     },
   )
   assert.equal(result.state, 'ready')

@@ -1,14 +1,19 @@
 {
   "remote.portsAttributes": {
     "5180": {
-      "label": "IVC secure server",
+      "label": "IVC · npm run open",
       "protocol": "http",
-      "onAutoForward": "notify"
+      "onAutoForward": "silent"
     },
     "5173": {
-      "label": "IVC secure server",
+      "label": "IVC · npm run open",
       "protocol": "http",
-      "onAutoForward": "notify"
+      "onAutoForward": "silent"
+    },
+    "5181": {
+      "label": "IVC · npm run open",
+      "protocol": "http",
+      "onAutoForward": "silent"
     }
   }
 }

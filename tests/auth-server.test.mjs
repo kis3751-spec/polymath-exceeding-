@@ -65,7 +65,10 @@ after(async () => {
   if (root) await rm(root, { recursive: true, force: true })
 })
 test('public welcome is accessible, with hardening headers and no inline script', async () => {
-  const r = await request('/')
+  const initial = await request('/')
+  assert.equal(initial.status, 303)
+  assert.match(initial.headers.get('location'), /^\/\?_ivc_page=/)
+  const r = await request(initial.headers.get('location'))
   assert.equal(r.status, 200)
   const text = await r.text()
   assert.match(text, /Interaction Visual Calculator/)
@@ -608,7 +611,7 @@ test('Codespaces rewritten loopback Host supports the full HTTPS login flow', as
       '[::1]:5173',
       'localhost',
     ])
-      assert.equal((await raw('/', host)).status, 200)
+      assert.equal((await raw('/?_ivc_page=host-check', host)).status, 200)
     const login = await raw('/api/login', 'localhost:5173', {
       email: ownerEmail,
       password: 'Changed-test-password 872!',
@@ -747,16 +750,18 @@ test('dedicated auth namespace shares authorization, CSRF and cookie semantics w
   const status = await request('/ivc-auth/status')
   const data = await status.json()
   assert.match(data.instance, /^[a-f0-9-]{36}$/)
-  assert.deepEqual(
-    { ...data, instance: undefined },
-    {
-      service: 'IVC',
-      api: '/ivc-auth',
-      version: 'auth-v4',
-      accessControl: 'invite-only',
-      instance: undefined,
-    },
-  )
+  const { instance, origin: liveOrigin, entryUrl, ...publicFields } = data
+  assert.deepEqual(publicFields, {
+    service: 'IVC',
+    api: '/ivc-auth',
+    version: 'auth-v5',
+    accessControl: 'invite-only',
+  })
+  assert.equal(liveOrigin, origin)
+  const entry = new URL(entryUrl)
+  assert.equal(entry.origin, origin)
+  assert.equal(entry.pathname, '/')
+  assert.match(entry.searchParams.get('_ivc_page'), /^[\w-]{36}$/)
   assert.equal((await request('/ivc-auth/admin/users')).status, 401)
   app.store.run('DELETE FROM limits')
   const login = await request('/ivc-auth/login', {
@@ -975,7 +980,7 @@ test('Codespaces listens on the container interface while keeping anonymous file
   }
   try {
     assert.equal(application.server.address().address, '0.0.0.0')
-    assert.equal((await get('/')).status, 200)
+    assert.equal((await get('/?_ivc_page=listener-check')).status, 200)
     const status = await get('/ivc-auth/status')
     assert.equal(JSON.parse(status.body).service, 'IVC')
     assert.equal((await get('/solver.wasm')).status, 401)
@@ -987,7 +992,7 @@ test('Codespaces listens on the container interface while keeping anonymous file
   }
 })
 
-test('Codespaces start, share and diagnostics use 5180 by default and retain explicit port overrides', async () => {
+test('Codespaces start, share and diagnostics use 5181 by default and retain explicit port overrides', async () => {
   const { runtimePort, runtimeConfig } = await import(
     '../server/runtime-config.mjs'
   )
@@ -995,10 +1000,10 @@ test('Codespaces start, share and diagnostics use 5180 by default and retain exp
     CODESPACE_NAME: 'default-space',
     GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: 'app.github.dev',
   }
-  assert.equal(runtimePort(env), 5180)
+  assert.equal(runtimePort(env), 5181)
   assert.equal(
     runtimeConfig(env, runtimePort(env)).origin,
-    'https://default-space-5180.app.github.dev',
+    'https://default-space-5181.app.github.dev',
   )
   assert.equal(runtimePort({}), 5173)
   assert.equal(runtimePort({ ...env, PORT: '6000' }), 6000)

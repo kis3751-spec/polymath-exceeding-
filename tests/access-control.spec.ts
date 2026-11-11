@@ -360,7 +360,9 @@ test('a browser that cannot retain the login cookie gets an explanation before c
   await form.getByLabel('Password', { exact: true }).fill(owner.password)
   await form.getByRole('button', { name: 'Log in', exact: true }).click()
   await expect(page.locator('#feedback')).toContainText('쿠키')
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL(
+    (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+  )
   await expect(page.locator('.module-grid')).toHaveCount(0)
 })
 
@@ -377,7 +379,9 @@ test('proxy JSON without a validated session cannot be treated as a successful l
   await form.getByLabel('Password', { exact: true }).fill(owner.password)
   await form.getByRole('button', { name: 'Log in', exact: true }).click()
   await expect(page.locator('#feedback')).toContainText('세션 응답')
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL(
+    (url) => url.pathname === '/' && url.searchParams.has('_ivc_page'),
+  )
   await expect(page.locator('.module-grid')).toHaveCount(0)
 })
 

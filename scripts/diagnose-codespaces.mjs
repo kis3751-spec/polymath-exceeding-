@@ -41,6 +41,13 @@ export async function diagnoseCodespaces(env = process.env, fetchImpl = fetch) {
     const text = await status.text()
     if (!status.ok || text.length > 16384) throw Error('status')
     const data = JSON.parse(text)
+    if (data?.service === 'IVC' && data.version !== AUTH_VERSION) {
+      result.local = {
+        state: 'outdated',
+        message: `실행 중인 서버는 이전 버전입니다. Git 업데이트 후 서버를 Ctrl+C로 종료하고 다시 실행하세요. 새 서버 표시: ${AUTH_VERSION}`,
+      }
+      return result
+    }
     if (
       data.service !== 'IVC' ||
       data.version !== AUTH_VERSION ||
@@ -106,7 +113,7 @@ if (
       ['blocked', 'unavailable'].includes(report.external?.state)
     )
       console.log(
-        `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 Open in Browser로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
+        `로컬 서버는 정상입니다. Codespaces Ports에서 ${report.port} 전달 항목을 중지한 뒤 다시 추가하고, Port Protocol=HTTP · Port Visibility=Public으로 설정한 뒤 npm run open -- --port ${report.port}로 여세요. Codespace 재시작·주소 변경 여부도 확인하세요.`,
       )
     if (report.local.state !== 'ready' || report.external?.reachable !== true)
       process.exitCode = 1

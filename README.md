@@ -15,12 +15,22 @@
 ```sh
 git pull --ff-only origin codex/leq-studio
 npm ci
-APP_ORIGIN="https://fluffy-goldfish-jj6xqwp475w7fqv5g-5181.app.github.dev" PORT=5181 HOST=0.0.0.0 npm run dev -- --port 5181
+npm run dev -- --port 5181 --origin https://fluffy-goldfish-jj6xqwp475w7fqv5g-5181.app.github.dev
 ```
 
-기존 계정은 그대로 사용합니다. `npm run auth:setup`은 새 서버에서 관리자를 처음 만들 때만 실행합니다. `npm run dev`는 빌드를 마친 뒤 보호 서버를 시작하므로, 시작 메시지가 나올 때까지 기다립니다. **서버 터미널은 계속 켜둡니다.**
+**터미널에 `Authentication routes: /ivc-auth (auth-v5)`가 표시되어야 최신 서버입니다.** Git 업데이트만으로 실행 중인 Node 서버와 계산기 빌드가 바뀌지는 않으므로 위 재시작을 마칩니다. 기존 계정은 그대로 사용합니다. `npm run auth:setup`은 새 서버에서 관리자를 처음 만들 때만 실행합니다. `npm run dev`는 빌드를 마친 뒤 보호 서버를 시작하므로, 시작 메시지가 나올 때까지 기다립니다. **서버 터미널은 계속 켜둡니다.**
 
 ### 2. 접속·공유할 주소 선택하기
+
+서버가 시작되고 Public 검사를 통과하면 Codespaces의 브라우저 도구로 **검사한 새 Site 주소를 자동으로 여는 요청**을 보냅니다. 브라우저가 열리지 않거나 예전 북마크에서 오류가 나면 서버를 켜둔 채 **새 터미널**에서 실행합니다.
+
+```sh
+npm run open -- --port 5181
+```
+
+이 명령은 실제 서버의 버전·Origin·익명 계산 파일 차단을 확인한 뒤 새 주소를 엽니다. 이전 서버가 실행 중이면 재시작이 필요하다고 표시합니다. 자동 브라우저 도구가 없는 환경에서는 출력된 Site 링크 전체를 클릭합니다. Public 설정은 바꾸지 않습니다. 자동 열기 요청의 성공과 브라우저 화면의 실제 로드 성공은 구분합니다.
+
+프로젝트의 Ports 자동 알림은 같은 기본 주소를 반복해서 여는 일을 줄이도록 조정했습니다. 자동 열기를 끄려면 서버 실행 환경에 `IVC_OPEN_BROWSER=0`을 지정합니다.
 
 서버 시작 로그 또는 공유·진단 명령의 **`Site:` 주소 전체**를 브라우저에 붙여넣습니다. 시작 로그의 **`IVC secure server:` 주소**도 같은 방식으로 사용할 수 있습니다.
 
@@ -59,7 +69,7 @@ npm run share:codespaces -- --port 5181 --origin https://fluffy-goldfish-jj6xqwp
 
 이 명령은 보호 서버를 확인한 뒤 해당 포트만 Public으로 설정하고 파일별 응답을 검사합니다. GitHub CLI 권한이 없으면 위 Ports 메뉴로 설정합니다. **Public 적용 성공과 사이트 검사 통과는 별개**이며, 소개·로그인 파일이 실패하면 `partial`과 실패 내용을 표시합니다.
 
-Ports의 **Open in Browser**는 쿼리 없는 기본 주소를 열 수 있습니다. 기본 주소에서 이전 오류가 반복되면 **Site 주소 전체**로 접속합니다. 공유 주소는 Codespace가 실행 중일 때 사용할 수 있습니다.
+Ports의 **Open in Browser**는 쿼리 없는 기본 주소를 열 수 있습니다. 접속은 **`npm run open -- --port 5181`** 또는 출력된 **Site 주소 전체**를 사용합니다. 공유 주소는 Codespace가 실행 중일 때 사용할 수 있습니다.
 
 ### 4. 로그인하고 다른 사람 초대하기
 
@@ -99,8 +109,11 @@ npm run diagnose:codespaces -- --port 5181 --origin https://fluffy-goldfish-jj6x
 | `HTTP 302 · GitHub 로그인으로 이동`    | 5181의 실제 Public 설정과 전달 주소를 확인합니다.                                                              |
 | `APP_ORIGIN은 … 원점이어야 합니다`     | 설정에는 Origin 줄의 값만 사용합니다. Site의 경로·쿼리·초대 fragment를 붙이지 않습니다.                        |
 | `EADDRINUSE`                           | 해당 포트를 사용하는 기존 서버가 있어 새 서버가 시작되지 않았습니다. 기존 서버 터미널을 확인합니다.            |
+| `Local: outdated`                      | 실행 중인 서버가 이전 버전입니다. 서버를 종료하고 1번 명령으로 다시 실행해 `auth-v5`를 확인합니다.             |
 | `Local: unavailable`                   | 서버 시작이 끝났는지, 실행 포트가 5181인지, 빌드·시작 오류가 없는지 확인합니다.                                |
 | `최고 관리자가 이미 설정되어 있습니다` | 최초 설정은 완료된 상태입니다. 기존 계정으로 로그인합니다.                                                     |
+
+`auth-v5`는 앱까지 도착한 기본 소개 주소를 새 요청 주소로 자동 이동시킵니다. 정상 소개 응답은 `Clear-Site-Data: "cache"`로 브라우저의 HTTP 캐시만 정리합니다. 쿠키·localStorage는 지우지 않으므로 기존 로그인과 저장 모델을 유지합니다. 중간 서비스가 앱에 요청을 보내지 않고 응답하는 경우에는 `npm run open`으로 새 요청 주소를 엽니다.
 
 현재 환경에서는 기본 `/`가 IVC가 아닌 HTML을 반환하는 동안 API·JS·CSS는 정상이었고, 새 쿼리가 붙은 주소에서 소개 화면과 계산기 로그인이 정상 동작한다고 사용자가 확인했습니다. 이후 공유·초대·관리·로그아웃 이동에도 새 요청 주소를 적용했습니다. 특정 중간 계층의 내부 원인까지 입증한 것은 아닙니다.
 
@@ -118,7 +131,7 @@ DB는 기본 `.ivc-data/`에 있으며, `IVC_DATA_DIR`을 설정했다면 해당
 
 ### 로컬 실행과 기본 포트
 
-일반 로컬의 `npm run dev` 기본 주소는 `http://127.0.0.1:5173`입니다. 코드의 Codespaces 기본 포트는 5180이지만, **이 문서는 현재 사용 중인 5181을 명시해서 실행**합니다. `--port`는 서버 실행 포트, `PORT`는 실행·공유·진단의 기본값입니다. `--origin` 옵션은 공유·진단 명령에서 지원하며, 서버 실행의 원점은 `APP_ORIGIN`으로 설정합니다.
+일반 로컬의 기본 주소는 `http://127.0.0.1:5173`이며, **Codespaces의 기본 포트는 5181**입니다. 실행·공유·진단·열기 명령에서 `--port`와 `--origin`을 지원하며, 지정한 옵션이 `PORT`·`APP_ORIGIN`보다 우선합니다. Codespaces에서는 수신 주소를 기본 `0.0.0.0`으로 구성합니다.
 
 운영은 `npm run build` 후 HTTPS 원점을 설정하고 `npm start`로 실행합니다. **server/ + dist/ + Node 24 + 영구 DB**를 함께 운영해야 로그인 보안이 적용됩니다. 상세 설정은 [Access Control & Deployment](docs/ACCESS_CONTROL.md)에 있습니다.
 

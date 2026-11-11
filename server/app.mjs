@@ -420,6 +420,8 @@ export async function createAccessServer(input) {
           version: AUTH_VERSION,
           accessControl: 'invite-only',
           instance,
+          origin: cfg.origin,
+          entryUrl: new URL(welcomePath('/'), cfg.origin).href,
         })
       if (path === '/api/invitation') {
         const token = cookieValue(req, flowCookie)
@@ -525,6 +527,23 @@ export async function createAccessServer(input) {
               'utf8',
             )
           : bytes
+      // Recover browser HTTP cache only after a real welcome document was read.
+      // Never clear cookies, localStorage or execution contexts. This cannot
+      // clear a response retained by an upstream service we do not control.
+      if (
+        cfg.secure &&
+        req.method === 'GET' &&
+        root === gateway &&
+        file === 'index.html'
+      )
+        res.setHeader('Clear-Site-Data', '"cache"')
+      if (req.method === 'GET' && root === gateway && file === 'index.html') {
+        const page = new URL(raw, cfg.origin)
+        if (!page.searchParams.has('_ivc_page')) {
+          res.writeHead(303, { Location: welcomePath('/' + page.search) })
+          return res.end()
+        }
+      }
       res.writeHead(200, {
         'Content-Type': mime[extname(file)] ?? 'application/octet-stream',
         'Content-Length': data.length,

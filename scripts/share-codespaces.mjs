@@ -1,3 +1,4 @@
+import { launchSite } from './open-site.mjs'
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { runtimeConfig, runtimePort } from '../server/runtime-config.mjs'
@@ -70,9 +71,8 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   try {
-    const report = await shareCodespaces(
-      connectionEnvironment(process.argv.slice(2)),
-    )
+    const env = connectionEnvironment(process.argv.slice(2))
+    const report = await shareCodespaces(env)
     console.log(
       `포트 Public 설정 적용: ${report.origin}\nSite: ${report.probe.entryUrl}`,
     )
@@ -80,6 +80,9 @@ if (
     const checks = formatPublicChecks(report.probe)
     if (checks) console.log(checks)
     if (report.probe.reachable) {
+      const browser = await launchSite(report.probe.entryUrl, env)
+      if (browser.requested)
+        console.log('브라우저에 검사한 새 Site 주소 열기를 요청했습니다.')
       console.log(
         '사이트 검사 통과 · 상대방 브라우저에서도 현재 주소를 확인하세요. 계산기는 IVC 로그인이 필요합니다. Codespace가 정지되면 주소도 중단됩니다.',
       )

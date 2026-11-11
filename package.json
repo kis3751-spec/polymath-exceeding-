@@ -16,7 +16,8 @@
     "auth:setup": "node server/setup.mjs",
     "share:codespaces": "node scripts/share-codespaces.mjs",
     "diagnose:codespaces": "node scripts/diagnose-codespaces.mjs",
-    "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs tests/auth-session.test.mjs"
+    "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs tests/auth-session.test.mjs tests/site-entry.test.mjs",
+    "open": "node scripts/open-site.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

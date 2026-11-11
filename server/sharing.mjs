@@ -1,7 +1,7 @@
 import { welcomePath } from './gateway/response.js'
 import { isIP } from 'node:net'
 
-export const AUTH_VERSION = 'auth-v4'
+export const AUTH_VERSION = 'auth-v5'
 export function localOrigin(origin) {
   const host = new URL(origin).hostname.replace(/^\[|\]$/g, '')
   return (
