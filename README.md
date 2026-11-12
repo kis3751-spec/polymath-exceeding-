@@ -2,6 +2,14 @@
 
 공학 수식을 직접 입력하고 파라미터를 움직이며 해의 변화를 탐색하는 브라우저 계산기입니다. **Equation Solver**의 선형·비선형 방정식에 더해 **미분방정식, 선형·다항·다중·비선형 회귀, 이산 적분, 제약·LSQ 최적화**를 제공합니다.
 
+## 개인용 Windows 프로그램
+
+Codespaces 없이 사용하려면 **IVC Personal Desktop**을 사용합니다. Windows ZIP을 모두 압축 해제한 뒤 **IVC.exe**를 더블클릭하면 자체 창에서 계산기가 열리고, 창을 닫으면 함께 종료됩니다. 실행할 때 GitHub 로그인·Node.js 설치·터미널 명령어·포트 공개 설정이 필요하지 않습니다. 처음 한 번 개인 계정을 설정하며 계정과 저장 모델은 `%LOCALAPPDATA%\IVC\Desktop`에 유지합니다.
+
+**IVC 메뉴 → 바탕 화면 바로가기 만들기**로 아이콘을 만듭니다. 기존 사이트 모델은 Save Project → JSON 저장 → 앱에서 Import로 옮깁니다. 앱 폴더를 업데이트해도 개인 데이터 폴더는 유지됩니다. Windows 10/11 x64, .NET Framework 4.8 및 Edge WebView2 Runtime을 사용합니다. [사용·데이터·업데이트 안내](docs/DESKTOP_APP.md)를 참고하세요.
+
+GitHub의 [Build IVC Windows App](https://github.com/kis3751-spec/polymath-exceeding-/actions/workflows/desktop-windows.yml)에서 성공한 실행의 **Artifacts → IVC-Desktop-Windows-x64**를 다운로드할 수 있습니다. 필요하면 Run workflow로 새 패키지를 만듭니다. 앱을 다운로드한 뒤에는 Codespaces나 빌드 작업을 켜둘 필요가 없습니다. 아래 Codespaces 절차는 브라우저에서 타인과 공유할 서버를 운영할 때의 별도 방법입니다.
+
 ## Codespaces에서 업데이트하고 실행하기
 
 **현재 사용하는 포트는 5181입니다.** 아래 실행·공유·진단 명령을 같은 포트로 맞췄습니다. **README 미리보기는 설명서이며, 명령은 VS Code 하단 Terminal에서 실행합니다.** Node.js **24 이상**이 필요합니다.

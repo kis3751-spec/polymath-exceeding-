@@ -12,3 +12,10 @@ playwright-report/
 !.env.example
 *.sqlite
 *.sqlite-*
+
+# Personal desktop build output and downloaded runtimes
+desktop/bin/
+desktop/obj/
+desktop/ivc.ico
+.desktop-build-cache/
+release/

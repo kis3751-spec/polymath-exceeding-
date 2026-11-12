@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `8cf442906b7bcb1888a5112263db77a160e4e5d68e175c4cbdeb78907010c9d3`
+소스 묶음 SHA-256: `2231222f5b4ec26019fd4d0a8fe82eccd1b9c431e721e890368f340b6e843355`
 
 ## 다른 코드 묶음
 
@@ -42,21 +42,29 @@
 - [scripts/diagnose-codespaces.mjs](#source-15) · [저장소 원본](../../scripts/diagnose-codespaces.mjs)
 - [scripts/connection-options.mjs](#source-16) · [저장소 원본](../../scripts/connection-options.mjs)
 - [scripts/open-site.mjs](#source-17) · [저장소 원본](../../scripts/open-site.mjs)
-- [.vscode/settings.json](#source-18) · [저장소 원본](../../.vscode/settings.json)
-- [package.json](#source-19) · [저장소 원본](../../package.json)
-- [server/setup.mjs](#source-20) · [저장소 원본](../../server/setup.mjs)
-- [server/dev.mjs](#source-21) · [저장소 원본](../../server/dev.mjs)
-- [src/equation-count.ts](#source-22) · [저장소 원본](../../src/equation-count.ts)
-- [src/csv.ts](#source-23) · [저장소 원본](../../src/csv.ts)
-- [src/engine/sweep.ts](#source-24) · [저장소 원본](../../src/engine/sweep.ts)
-- [src/engine/branches.ts](#source-25) · [저장소 원본](../../src/engine/branches.ts)
-- [src/engine/branch-events.ts](#source-26) · [저장소 원본](../../src/engine/branch-events.ts)
-- [src/engine/simulation-panels.ts](#source-27) · [저장소 원본](../../src/engine/simulation-panels.ts)
-- [src/engine/manual-simulation.ts](#source-28) · [저장소 원본](../../src/engine/manual-simulation.ts)
-- [src/use-interaction-viewport.ts](#source-29) · [저장소 원본](../../src/use-interaction-viewport.ts)
-- [src/engine/default-overview.ts](#source-30) · [저장소 원본](../../src/engine/default-overview.ts)
-- [src/engine/solver.worker.ts](#source-31) · [저장소 원본](../../src/engine/solver.worker.ts)
-- [src/App.tsx](#source-32) · [저장소 원본](../../src/App.tsx)
+- [desktop/backend.mjs](#source-18) · [저장소 원본](../../desktop/backend.mjs)
+- [desktop/IVC.cs](#source-19) · [저장소 원본](../../desktop/IVC.cs)
+- [desktop/IVC.Desktop.csproj](#source-20) · [저장소 원본](../../desktop/IVC.Desktop.csproj)
+- [desktop/App.config](#source-21) · [저장소 원본](../../desktop/App.config)
+- [desktop/app.manifest](#source-22) · [저장소 원본](../../desktop/app.manifest)
+- [scripts/desktop-assets.mjs](#source-23) · [저장소 원본](../../scripts/desktop-assets.mjs)
+- [scripts/package-desktop.mjs](#source-24) · [저장소 원본](../../scripts/package-desktop.mjs)
+- [scripts/verify-desktop-package.mjs](#source-25) · [저장소 원본](../../scripts/verify-desktop-package.mjs)
+- [.vscode/settings.json](#source-26) · [저장소 원본](../../.vscode/settings.json)
+- [package.json](#source-27) · [저장소 원본](../../package.json)
+- [server/setup.mjs](#source-28) · [저장소 원본](../../server/setup.mjs)
+- [server/dev.mjs](#source-29) · [저장소 원본](../../server/dev.mjs)
+- [src/equation-count.ts](#source-30) · [저장소 원본](../../src/equation-count.ts)
+- [src/csv.ts](#source-31) · [저장소 원본](../../src/csv.ts)
+- [src/engine/sweep.ts](#source-32) · [저장소 원본](../../src/engine/sweep.ts)
+- [src/engine/branches.ts](#source-33) · [저장소 원본](../../src/engine/branches.ts)
+- [src/engine/branch-events.ts](#source-34) · [저장소 원본](../../src/engine/branch-events.ts)
+- [src/engine/simulation-panels.ts](#source-35) · [저장소 원본](../../src/engine/simulation-panels.ts)
+- [src/engine/manual-simulation.ts](#source-36) · [저장소 원본](../../src/engine/manual-simulation.ts)
+- [src/use-interaction-viewport.ts](#source-37) · [저장소 원본](../../src/use-interaction-viewport.ts)
+- [src/engine/default-overview.ts](#source-38) · [저장소 원본](../../src/engine/default-overview.ts)
+- [src/engine/solver.worker.ts](#source-39) · [저장소 원본](../../src/engine/solver.worker.ts)
+- [src/App.tsx](#source-40) · [저장소 원본](../../src/App.tsx)
 
 <a id="source-1"></a>
 
@@ -2774,6 +2782,983 @@ if (
 
 <a id="source-18"></a>
 
+## desktop/backend.mjs
+
+원본: [desktop/backend.mjs](../../desktop/backend.mjs) · 153줄 · SHA-256: `680cc907dd1736793a1b1c0ae05fbb1475f1790aea0ce3cfbedb40e04f82710b`
+
+```javascript
+import { createInterface } from 'node:readline'
+import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { AccessStore } from '../server/store.mjs'
+import { createAccessServer } from '../server/app.mjs'
+
+export const DESKTOP_PORT = 53173
+
+/** The desktop process always binds loopback. Deployment/Codespaces variables
+ * cannot turn a personal installation into a shared HTTP server. */
+export function createDesktopBackend({ dataDir, dist, port = DESKTOP_PORT }) {
+  if (
+    !dataDir ||
+    !dist ||
+    !Number.isInteger(port) ||
+    port < 1024 ||
+    port > 65535
+  )
+    throw Error('개인용 앱의 데이터 폴더와 포트를 확인하세요.')
+  const store = new AccessStore(resolve(dataDir, 'access.sqlite'))
+  let application = null,
+    stopping = null
+  return {
+    needsSetup: () => !store.owner(),
+    async setup(email, password) {
+      if (stopping) throw Error('앱이 종료 중입니다.')
+      // bootstrap refuses to replace an existing owner and stores scrypt only.
+      await store.bootstrap(email, password)
+    },
+    async start() {
+      if (stopping) throw Error('앱이 종료 중입니다.')
+      if (application)
+        return {
+          origin: `http://127.0.0.1:${port}`,
+          entryUrl: application.entryUrl,
+        }
+      const origin = `http://127.0.0.1:${port}`
+      const app = await createAccessServer({
+        origin,
+        host: '127.0.0.1',
+        store,
+        dist: resolve(dist),
+      })
+      await new Promise((done, reject) => {
+        app.server.once('error', reject)
+        app.server.listen(port, '127.0.0.1', () => {
+          app.server.off('error', reject)
+          done()
+        })
+      })
+      application = app
+      return { origin, entryUrl: app.entryUrl }
+    },
+    stop() {
+      return (stopping ??= (async () => {
+        if (application)
+          await new Promise((done) => {
+            const force = setTimeout(
+              () => application.server.closeAllConnections(),
+              1500,
+            )
+            force.unref()
+            application.server.close(() => {
+              clearTimeout(force)
+              done()
+            })
+            application.server.closeIdleConnections()
+          })
+        store.close()
+      })())
+    },
+  }
+}
+
+/** Credentials travel over the parent-owned stdin pipe, never an HTTP setup
+ * endpoint, URL, environment variable or command-line argument. */
+export async function runDesktop({
+  input = process.stdin,
+  output = process.stdout,
+  ...options
+}) {
+  const backend = createDesktopBackend(options)
+  const send = (data) =>
+    output.write('IVC_DESKTOP ' + JSON.stringify(data) + '\n')
+  const lines = createInterface({ input, crlfDelay: Infinity })
+  const commands = lines[Symbol.asyncIterator]()
+  let ready = false
+  let exitCode = 0
+  const start = async () => {
+    const address = await backend.start()
+    ready = true
+    send({ type: 'ready', ...address })
+  }
+  try {
+    if (backend.needsSetup()) send({ type: 'setup-required' })
+    else await start()
+    for await (const line of commands) {
+      if (line.length > 4096) throw Error('앱 제어 요청이 너무 깁니다.')
+      let command
+      try {
+        command = JSON.parse(line)
+      } catch {
+        throw Error('앱 제어 요청을 확인하세요.')
+      }
+      if (command.type === 'stop') break
+      if (command.type !== 'setup' || ready) {
+        send({ type: 'error', message: '지원하지 않는 앱 제어 요청입니다.' })
+        continue
+      }
+      try {
+        await backend.setup(command.email, command.password)
+      } catch (error) {
+        send({ type: 'setup-error', message: error.message })
+        continue
+      } finally {
+        command.password = undefined
+      }
+      await start()
+    }
+  } catch (error) {
+    send({
+      type: 'fatal',
+      message:
+        error.code === 'EADDRINUSE'
+          ? `${options.port ?? DESKTOP_PORT} 포트를 다른 프로그램이 사용 중입니다. 다른 IVC 창을 종료한 뒤 다시 실행하세요. 저장 데이터는 유지됩니다.`
+          : 'IVC를 실행하지 못했습니다. 앱 파일이 모두 있는지 확인한 뒤 다시 실행하세요.',
+    })
+    exitCode = 1
+  } finally {
+    lines.close()
+    await backend.stop()
+  }
+  return exitCode
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  const args = process.argv.slice(2),
+    flags = {}
+  for (let i = 0; i < args.length; i += 2) {
+    if (!['--data-dir', '--dist', '--port'].includes(args[i]) || !args[i + 1])
+      throw Error('올바른 개인용 앱 실행 인수가 필요합니다.')
+    flags[args[i]] = args[i + 1]
+  }
+  process.exitCode = await runDesktop({
+    dataDir: flags['--data-dir'],
+    dist: flags['--dist'] ?? resolve(import.meta.dirname, '../dist'),
+    port:
+      flags['--port'] === undefined ? DESKTOP_PORT : Number(flags['--port']),
+  })
+}
+```
+
+<a id="source-19"></a>
+
+## desktop/IVC.cs
+
+원본: [desktop/IVC.cs](../../desktop/IVC.cs) · 360줄 · SHA-256: `1e14db2038c6c83360dd4d83e565f2b5c25097b5c9eae8cc09819002c628cf0d`
+
+```text
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Script.Serialization;
+using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
+
+internal static class Program
+{
+    [STAThread]
+    private static void Main()
+    {
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
+        foreach (var key in new[] { "WEBVIEW2_USER_DATA_FOLDER", "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "WEBVIEW2_BROWSER_EXECUTABLE_FOLDER" })
+            Environment.SetEnvironmentVariable(key, null, EnvironmentVariableTarget.Process);
+        CoreWebView2Environment.SetLoaderDllFolderPath(AppDomain.CurrentDomain.BaseDirectory);
+        var sid = System.Security.Principal.WindowsIdentity.GetCurrent().User.Value;
+        bool first;
+        using (var mutex = new Mutex(true, @"Local\IVC.Desktop." + sid, out first))
+        using (var wake = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\IVC.Desktop.Open." + sid))
+        {
+            if (!first) { wake.Set(); return; }
+            try { Application.Run(new CalculatorWindow(wake)); }
+            catch { MessageBox.Show("IVC를 시작하지 못했습니다. 압축을 모두 푼 뒤 IVC.exe를 실행하세요.", "IVC", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            finally { mutex.ReleaseMutex(); }
+        }
+    }
+}
+
+internal sealed class CalculatorWindow : Form
+{
+    private readonly string root = AppDomain.CurrentDomain.BaseDirectory;
+    private readonly string dataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "IVC", "Desktop");
+    private readonly Label status = new Label();
+    private readonly Panel splash = new Panel();
+    private readonly WebView2 browser = new WebView2();
+    private readonly JavaScriptSerializer json = new JavaScriptSerializer();
+    private readonly System.Windows.Forms.Timer wakeTimer = new System.Windows.Forms.Timer();
+    private Process backend;
+    private SetupDialog setup;
+    private string origin;
+    private bool closing, mayClose, failed;
+
+    public CalculatorWindow(EventWaitHandle wake)
+    {
+        Text = "IVC · Interaction Visual Calculator";
+        StartPosition = FormStartPosition.CenterScreen;
+        Size = new Size(1360, 920);
+        MinimumSize = new Size(850, 620);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        BackColor = Color.FromArgb(245, 248, 245);
+        try { Icon = Icon.ExtractAssociatedIcon(Path.Combine(root, "IVC.exe")); } catch { }
+        browser.Dock = DockStyle.Fill;
+        browser.Visible = false;
+        Controls.Add(browser);
+        splash.Dock = DockStyle.Fill;
+        splash.Padding = new Padding(48);
+        var title = new Label { Text = "IVC", Font = new Font("Segoe UI", 38, FontStyle.Bold), ForeColor = Color.FromArgb(44, 79, 70), AutoSize = true, Location = new Point(48, 60) };
+        var subtitle = new Label { Text = "Interaction Visual Calculator", Font = new Font("Segoe UI", 18), AutoSize = true, Location = new Point(52, 148) };
+        status.Text = "개인용 계산기를 준비하고 있습니다…";
+        status.Font = new Font("Segoe UI", 12);
+        status.Location = new Point(54, 210);
+        status.Size = new Size(680, 160);
+        var footer = new Label { Text = "Think in relationships.\n\nCodespaces 없이 이 컴퓨터에서 실행합니다.\n창을 닫으면 계산기도 함께 종료됩니다.", Font = new Font("Segoe UI", 11), AutoSize = true, Location = new Point(54, 400) };
+        splash.Controls.AddRange(new Control[] { title, subtitle, status, footer });
+        Controls.Add(splash);
+        var menu = new MenuStrip();
+        var appMenu = new ToolStripMenuItem("IVC");
+        appMenu.DropDownItems.Add("바탕 화면 바로가기 만들기", null, delegate { CreateShortcut(); });
+        appMenu.DropDownItems.Add("개인 데이터 폴더 열기", null, delegate { try { Process.Start(new ProcessStartInfo("explorer.exe", Quote(dataRoot)) { UseShellExecute = true }); } catch { } });
+        appMenu.DropDownItems.Add("종료", null, delegate { Close(); });
+        menu.Items.Add(appMenu); MainMenuStrip = menu; Controls.Add(menu);
+        wakeTimer.Interval = 200;
+        wakeTimer.Tick += delegate {
+            if (!wake.WaitOne(0)) return;
+            if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+            Show(); BringToFront(); Activate();
+        };
+        wakeTimer.Start();
+        Shown += delegate { StartBackend(); };
+        FormClosing += CloseWindow;
+    }
+
+    private static string Quote(string value)
+    {
+        // Windows command-line quoting, including trailing backslashes.
+        var text = new StringBuilder("\"");
+        int slashes = 0;
+        foreach (char c in value)
+        {
+            if (c == '\\') { slashes++; continue; }
+            text.Append('\\', c == '"' ? slashes * 2 + 1 : slashes);
+            text.Append(c); slashes = 0;
+        }
+        return text.Append('\\', slashes * 2).Append('"').ToString();
+    }
+
+    private void CreateShortcut()
+    {
+        object shell = null, link = null;
+        try
+        {
+            shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
+            link = shell.GetType().InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, shell, new object[] { Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "IVC.lnk") });
+            var type = link.GetType();
+            type.InvokeMember("TargetPath", System.Reflection.BindingFlags.SetProperty, null, link, new object[] { Path.Combine(root, "IVC.exe") });
+            type.InvokeMember("WorkingDirectory", System.Reflection.BindingFlags.SetProperty, null, link, new object[] { root });
+            type.InvokeMember("IconLocation", System.Reflection.BindingFlags.SetProperty, null, link, new object[] { Path.Combine(root, "IVC.exe") + ",0" });
+            type.InvokeMember("Save", System.Reflection.BindingFlags.InvokeMethod, null, link, null);
+            MessageBox.Show(this, "바탕 화면에 IVC 바로가기를 만들었습니다. 앱 폴더를 이동하면 바로가기를 다시 만드세요.", "IVC");
+        }
+        catch { MessageBox.Show(this, "바로가기를 만들지 못했습니다. IVC.exe를 직접 실행할 수 있습니다.", "IVC"); }
+        finally
+        {
+            if (link != null) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(link);
+            if (shell != null) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(shell);
+        }
+    }
+
+    private void OnUi(Action action)
+    {
+        if (IsDisposed || !IsHandleCreated) return;
+        try { BeginInvoke(action); } catch (InvalidOperationException) { }
+    }
+
+    private void StartBackend()
+    {
+        try
+        {
+            Directory.CreateDirectory(dataRoot);
+            var info = new ProcessStartInfo {
+                FileName = Path.Combine(root, "runtime", "node.exe"),
+                Arguments = Quote(Path.Combine(root, "app", "desktop", "backend.mjs")) + " --data-dir " + Quote(Path.Combine(dataRoot, "Data")) + " --dist " + Quote(Path.Combine(root, "app", "dist")),
+                WorkingDirectory = Path.Combine(root, "app"),
+                UseShellExecute = false, CreateNoWindow = true,
+                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8
+            };
+            // No setup credentials or sharing configuration in the environment.
+            info.EnvironmentVariables.Remove("IVC_ADMIN_PASSWORD");
+            info.EnvironmentVariables.Remove("NODE_OPTIONS");
+            info.EnvironmentVariables.Remove("NODE_PATH");
+            backend = new Process { StartInfo = info, EnableRaisingEvents = true };
+            backend.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) {
+                if (e.Data == null || !e.Data.StartsWith("IVC_DESKTOP ", StringComparison.Ordinal)) return;
+                var message = e.Data.Substring("IVC_DESKTOP ".Length);
+                OnUi(delegate { Receive(message); });
+            };
+            // Drain stderr without persisting passwords, request bodies or logs.
+            backend.ErrorDataReceived += delegate { };
+            backend.Exited += delegate { OnUi(delegate { if (!closing) Fail("계산 프로세스가 종료됐습니다. 이 창을 닫고 IVC를 다시 실행하세요. 기존 데이터는 유지됩니다."); }); };
+            backend.Start();
+            backend.BeginOutputReadLine(); backend.BeginErrorReadLine();
+        }
+        catch { Fail("실행 파일을 찾지 못했습니다. ZIP 파일의 압축을 모두 푼 뒤 IVC.exe를 실행하세요."); }
+    }
+
+    private void Send(object command)
+    {
+        // ASCII JSON avoids Windows console-codepage changes to Unicode passwords.
+        var encoded = json.Serialize(command);
+        var ascii = new StringBuilder();
+        foreach (char c in encoded) ascii.Append(c > 127 ? "\\u" + ((int)c).ToString("x4") : c.ToString());
+        backend.StandardInput.WriteLine(ascii.ToString());
+        backend.StandardInput.Flush();
+    }
+
+    private async void Receive(string message)
+    {
+        if (closing) return;
+        try
+        {
+            var data = json.Deserialize<Dictionary<string, object>>(message);
+            var type = data["type"] as string;
+            if (type == "setup-required")
+            {
+                status.Text = "처음 한 번, 이 컴퓨터에서 사용할 계정을 설정합니다.";
+                setup = new SetupDialog(delegate(string email, string password) {
+                    try { Send(new { type = "setup", email, password }); }
+                    catch { Fail("계정 설정 요청을 보내지 못했습니다. 앱을 다시 실행하세요."); }
+                });
+                setup.FormClosed += delegate { if (setup != null && !closing) Close(); };
+                setup.Show(this);
+            }
+            else if (type == "setup-error")
+            {
+                if (setup != null) setup.ShowError(data["message"] as string);
+            }
+            else if (type == "ready")
+            {
+                if (setup != null) { var dialog = setup; setup = null; dialog.ClearPasswords(); dialog.Close(); }
+                origin = data["origin"] as string;
+                Uri entry;
+                if (origin != "http://127.0.0.1:53173" || !Uri.TryCreate(data["entryUrl"] as string, UriKind.Absolute, out entry) || entry.GetLeftPart(UriPartial.Authority) != origin || entry.AbsolutePath != "/" || entry.UserInfo.Length != 0)
+                    throw new InvalidOperationException();
+                status.Text = "계산기 화면을 열고 있습니다…";
+                // A valid persisted login opens the workspace directly. The
+                // existing server redirects expired/anonymous sessions to login.
+                await OpenCalculator(new Uri(origin + "/calculator"));
+            }
+            else if (type == "fatal") Fail(data["message"] as string);
+        }
+        catch { Fail("IVC 창을 준비하지 못했습니다. 앱을 다시 실행하세요."); }
+    }
+
+    private async Task OpenCalculator(Uri entry)
+    {
+        try
+        {
+            var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(dataRoot, "Browser"));
+            if (closing) return;
+            await browser.EnsureCoreWebView2Async(environment);
+            if (closing) return;
+            browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
+            browser.CoreWebView2.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs e) {
+                Uri uri;
+                if (Uri.TryCreate(e.Uri, UriKind.Absolute, out uri) && uri.Scheme == "http" && uri.GetLeftPart(UriPartial.Authority) == origin && uri.UserInfo.Length == 0) return;
+                e.Cancel = true;
+                if (e.IsUserInitiated) OpenExternal(e.Uri);
+            };
+            browser.CoreWebView2.NewWindowRequested += delegate(object sender, CoreWebView2NewWindowRequestedEventArgs e) {
+                e.Handled = true;
+                if (e.IsUserInitiated) OpenExternal(e.Uri);
+            };
+            browser.CoreWebView2.PermissionRequested += delegate(object sender, CoreWebView2PermissionRequestedEventArgs e) { e.State = CoreWebView2PermissionState.Deny; };
+            browser.CoreWebView2.DownloadStarting += delegate(object sender, CoreWebView2DownloadStartingEventArgs e) {
+                // Return from the WebView2 callback before showing a modal UI.
+                // The deferral keeps the download alive without reentrancy.
+                var deferral = e.GetDeferral();
+                BeginInvoke(new Action(delegate {
+                    try
+                    {
+                        if (closing) { e.Cancel = true; return; }
+                        using (var save = new SaveFileDialog { FileName = Path.GetFileName(e.ResultFilePath), Title = "IVC 파일 저장", OverwritePrompt = true, Filter = "All files (*.*)|*.*" })
+                        {
+                            if (save.ShowDialog(this) != DialogResult.OK) { e.Cancel = true; return; }
+                            e.ResultFilePath = save.FileName;
+                            e.Handled = true;
+                        }
+                    }
+                    catch { e.Cancel = true; }
+                    finally { deferral.Complete(); }
+                }));
+            };
+            browser.CoreWebView2.NavigationCompleted += delegate(object sender, CoreWebView2NavigationCompletedEventArgs e) {
+                if (closing) return;
+                if (!e.IsSuccess) { Fail("계산기 화면을 열지 못했습니다. 앱을 닫고 다시 실행하세요."); return; }
+                browser.Visible = true; splash.Visible = false;
+            };
+            browser.CoreWebView2.Navigate(entry.AbsoluteUri);
+        }
+        catch (WebView2RuntimeNotFoundException)
+        {
+            Fail("Microsoft Edge WebView2 Runtime이 필요합니다. 한 번 설치한 뒤 IVC를 다시 실행하세요.");
+            if (MessageBox.Show(this, "Microsoft 공식 WebView2 설치 페이지를 열까요?", "IVC", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                OpenExternal("https://developer.microsoft.com/microsoft-edge/webview2/");
+        }
+    }
+
+    private static void OpenExternal(string value)
+    {
+        Uri uri;
+        if (!Uri.TryCreate(value, UriKind.Absolute, out uri) || (uri.Scheme != "https" && uri.Scheme != "http") || uri.UserInfo.Length != 0) return;
+        try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); } catch { }
+    }
+
+    private void Fail(string message)
+    {
+        if (closing || failed) return;
+        failed = true;
+        if (setup != null) { var dialog = setup; setup = null; dialog.ClearPasswords(); dialog.Close(); }
+        browser.Visible = false; splash.Visible = true;
+        status.Text = message ?? "IVC를 실행하지 못했습니다.";
+        status.ForeColor = Color.FromArgb(143, 63, 45);
+    }
+
+    private async void CloseWindow(object sender, FormClosingEventArgs e)
+    {
+        if (mayClose) return;
+        e.Cancel = true;
+        if (closing) return;
+        closing = true;
+        wakeTimer.Stop();
+        try
+        {
+            if (browser.CoreWebView2 != null)
+            {
+                var flush = browser.CoreWebView2.ExecuteScriptAsync("window.dispatchEvent(new Event('pagehide'));");
+                await Task.WhenAny(flush, Task.Delay(1500));
+            }
+        }
+        catch { }
+        browser.Dispose();
+        if (setup != null) { setup.ClearPasswords(); setup.Close(); setup = null; }
+        await Task.Run(delegate {
+            try
+            {
+                if (backend != null && !backend.HasExited)
+                {
+                    Send(new { type = "stop" });
+                    backend.StandardInput.Close();
+                    if (!backend.WaitForExit(5000)) backend.Kill();
+                }
+            }
+            catch { }
+        });
+        if (backend != null) backend.Dispose();
+        wakeTimer.Dispose();
+        mayClose = true;
+        Close();
+    }
+}
+
+internal sealed class SetupDialog : Form
+{
+    private readonly TextBox email = new TextBox { MaxLength = 254 };
+    private readonly TextBox password = new TextBox { UseSystemPasswordChar = true, MaxLength = 128 };
+    private readonly TextBox confirm = new TextBox { UseSystemPasswordChar = true, MaxLength = 128 };
+    private readonly Label feedback = new Label();
+    private readonly Button submit = new Button();
+
+    public SetupDialog(Action<string, string> create)
+    {
+        Text = "IVC · 이 컴퓨터의 첫 계정";
+        Size = new Size(560, 490);
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false; MinimizeBox = false;
+        StartPosition = FormStartPosition.CenterParent;
+        Font = new Font("Segoe UI", 10);
+        var note = new Label { Text = "처음 한 번만 설정합니다. 공유 사이트 계정과 별개의\n개인용 계정입니다. 비밀번호는 해시로만 저장합니다.", Location = new Point(28, 24), Size = new Size(490, 56) };
+        Controls.Add(note);
+        AddField("이메일", email, 92);
+        AddField("비밀번호 (12~128자)", password, 168);
+        AddField("비밀번호 확인", confirm, 244);
+        feedback.Location = new Point(28, 320); feedback.Size = new Size(490, 48); feedback.ForeColor = Color.Maroon;
+        submit.Text = "개인용 계정 만들기"; submit.Location = new Point(28, 374); submit.Size = new Size(490, 44);
+        submit.Click += delegate {
+            if (password.Text.Length < 12) { ShowError("비밀번호는 12자 이상으로 설정하세요."); return; }
+            if (password.Text != confirm.Text) { ShowError("비밀번호 확인이 일치하지 않습니다."); return; }
+            submit.Enabled = false; feedback.Text = "계정을 준비하고 있습니다…";
+            create(email.Text.Trim(), password.Text);
+        };
+        Controls.Add(feedback); Controls.Add(submit); AcceptButton = submit;
+    }
+    private void AddField(string label, TextBox box, int top)
+    {
+        Controls.Add(new Label { Text = label, Location = new Point(28, top), AutoSize = true });
+        box.Location = new Point(28, top + 26); box.Size = new Size(490, 28); Controls.Add(box);
+    }
+    public void ShowError(string text) { feedback.Text = text; submit.Enabled = true; }
+    public void ClearPasswords() { password.Clear(); confirm.Clear(); }
+}
+```
+
+<a id="source-20"></a>
+
+## desktop/IVC.Desktop.csproj
+
+원본: [desktop/IVC.Desktop.csproj](../../desktop/IVC.Desktop.csproj) · 22줄 · SHA-256: `4a34aa12a23e0328dd3d13676a923830c4d01e9e031fcccbf66e3ba39c333c07`
+
+```text
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>IVC</AssemblyName>
+    <ApplicationIcon>ivc.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="IVC.cs" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web.Extensions" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+  </ItemGroup>
+</Project>
+```
+
+<a id="source-21"></a>
+
+## desktop/App.config
+
+원본: [desktop/App.config](../../desktop/App.config) · 4줄 · SHA-256: `f7d392e55d67293ca77b32c6e7750f253dc893b8db04ecfada88d34274ef76d5`
+
+```text
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8" /></startup>
+</configuration>
+```
+
+<a id="source-22"></a>
+
+## desktop/app.manifest
+
+원본: [desktop/app.manifest](../../desktop/app.manifest) · 7줄 · SHA-256: `c0d00276b28efd9d70e06bbce42260a095d19e6a905f6949fd7c22f0e587d396`
+
+```text
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <assemblyIdentity version="1.0.0.0" name="IVC.Desktop" />
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false" /></requestedPrivileges></security></trustInfo>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1"><application><supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" /></application></compatibility>
+  <application xmlns="urn:schemas-microsoft-com:asm.v3"><windowsSettings><dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware></windowsSettings></application>
+</assembly>
+```
+
+<a id="source-23"></a>
+
+## scripts/desktop-assets.mjs
+
+원본: [scripts/desktop-assets.mjs](../../scripts/desktop-assets.mjs) · 99줄 · SHA-256: `4297eeb2a0d394b8cd02deeb44ffb62fadff78599b91c9d3377268747582e9a6`
+
+```javascript
+import { inflateRawSync } from 'node:zlib'
+
+/** Extract only an explicitly named member from the upstream, checksum-verified
+ * ZIP. No archive path is ever written to disk and ZIP64 is not accepted. */
+export function zipMember(bytes, name, maxSize = 128 * 1024 * 1024) {
+  let end = -1
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--)
+    if (bytes.readUInt32LE(i) === 0x06054b50) {
+      end = i
+      break
+    }
+  if (end < 0) throw Error('ZIP directory missing')
+  const count = bytes.readUInt16LE(end + 10)
+  let at = bytes.readUInt32LE(end + 16)
+  for (let i = 0; i < count; i++) {
+    if (bytes.readUInt32LE(at) !== 0x02014b50) throw Error('Invalid ZIP entry')
+    const method = bytes.readUInt16LE(at + 10),
+      size = bytes.readUInt32LE(at + 24),
+      compressed = bytes.readUInt32LE(at + 20)
+    const length = bytes.readUInt16LE(at + 28),
+      extra = bytes.readUInt16LE(at + 30),
+      comment = bytes.readUInt16LE(at + 32)
+    const file = bytes.subarray(at + 46, at + 46 + length).toString('utf8')
+    if (file === name) {
+      if (size > maxSize || ![0, 8].includes(method))
+        throw Error('Unsupported ZIP member')
+      const local = bytes.readUInt32LE(at + 42)
+      if (bytes.readUInt32LE(local) !== 0x04034b50)
+        throw Error('Invalid ZIP local header')
+      const start =
+        local +
+        30 +
+        bytes.readUInt16LE(local + 26) +
+        bytes.readUInt16LE(local + 28)
+      if (start + compressed > bytes.length) throw Error('Truncated ZIP member')
+      const data = bytes.subarray(start, start + compressed)
+      const output =
+        method === 8 ? inflateRawSync(data, { maxOutputLength: maxSize }) : data
+      if (output.length !== size) throw Error('Invalid ZIP member size')
+      return output
+    }
+    at += 46 + length + extra + comment
+  }
+  throw Error(`ZIP member missing: ${name}`)
+}
+
+/** Original bitmap icon generated from a small I/V/C glyph grid. */
+export function desktopIcon() {
+  const glyphs = [
+    '11111/00100/00100/00100/00100/00100/11111',
+    '10001/10001/10001/10001/10001/01010/00100',
+    '01111/10000/10000/10000/10000/10000/01111',
+  ].map((g) => g.split('/'))
+  const sizes = [32, 48, 64],
+    header = Buffer.alloc(6 + sizes.length * 16),
+    images = []
+  header.writeUInt16LE(1, 2)
+  header.writeUInt16LE(sizes.length, 4)
+  let offset = header.length
+  sizes.forEach((size, index) => {
+    const stride = Math.ceil(size / 32) * 4,
+      bitmap = Buffer.alloc(40 + size * size * 4 + stride * size)
+    bitmap.writeUInt32LE(40)
+    bitmap.writeInt32LE(size, 4)
+    bitmap.writeInt32LE(size * 2, 8)
+    bitmap.writeUInt16LE(1, 12)
+    bitmap.writeUInt16LE(32, 14)
+    bitmap.writeUInt32LE(size * size * 4, 20)
+    const scale = Math.floor(size / 22),
+      left = Math.floor((size - 17 * scale) / 2),
+      top = Math.floor((size - 7 * scale) / 2)
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size; x++) {
+        const gx = Math.floor((x - left) / scale),
+          gy = Math.floor((y - top) / scale)
+        const letter = Math.floor(gx / 6),
+          column = gx % 6
+        const ink =
+          gx >= 0 &&
+          gy >= 0 &&
+          gy < 7 &&
+          letter < 3 &&
+          column < 5 &&
+          glyphs[letter][gy][column] === '1'
+        const i = 40 + ((size - y - 1) * size + x) * 4
+        bitmap.set(ink ? [245, 248, 245, 255] : [70, 79, 44, 255], i)
+      }
+    const at = 6 + index * 16
+    header[at] = size
+    header[at + 1] = size
+    header.writeUInt16LE(1, at + 4)
+    header.writeUInt16LE(32, at + 6)
+    header.writeUInt32LE(bitmap.length, at + 8)
+    header.writeUInt32LE(offset, at + 12)
+    offset += bitmap.length
+    images.push(bitmap)
+  })
+  return Buffer.concat([header, ...images])
+}
+```
+
+<a id="source-24"></a>
+
+## scripts/package-desktop.mjs
+
+원본: [scripts/package-desktop.mjs](../../scripts/package-desktop.mjs) · 188줄 · SHA-256: `2206db2bbbda7e2f7fa6038aa0b742b1ff71949de801b82d256bddda100e0625`
+
+```javascript
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { createHash } from 'node:crypto'
+import { mkdir, readFile, writeFile, cp, readdir, rm } from 'node:fs/promises'
+import { resolve, join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { desktopIcon, zipMember } from './desktop-assets.mjs'
+const run = promisify(execFile)
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const nodeVersion = '24.22.1'
+const out = join(root, 'release'),
+  stage = join(out, 'IVC-Desktop-Windows-x64')
+const cache = resolve(
+  process.env.IVC_PACKAGE_CACHE ?? join(root, '.desktop-build-cache'),
+)
+const hash = (bytes) => createHash('sha256').update(bytes).digest('hex')
+const execute = (file, args, options = {}) =>
+  run(file, args, { cwd: root, maxBuffer: 4 * 1024 * 1024, ...options })
+async function download(url, target) {
+  await execute('curl', [
+    '--fail',
+    '--silent',
+    '--show-error',
+    '--location',
+    '--proto',
+    '=https',
+    '--max-time',
+    '180',
+    url,
+    '--output',
+    target,
+  ])
+}
+async function files(directory) {
+  const result = []
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) result.push(...(await files(path)))
+    else if (entry.isFile()) result.push(path)
+  }
+  return result
+}
+await mkdir(cache, { recursive: true })
+await writeFile(join(root, 'desktop/ivc.ico'), desktopIcon())
+const dotnet = process.env.IVC_DOTNET ?? 'dotnet'
+await execute(dotnet, [
+  'restore',
+  'desktop/IVC.Desktop.csproj',
+  '--locked-mode',
+])
+await execute(dotnet, [
+  'build',
+  'desktop/IVC.Desktop.csproj',
+  '--configuration',
+  'Release',
+  '--no-restore',
+])
+const archiveName = `node-v${nodeVersion}-win-x64.zip`,
+  archive = join(cache, archiveName)
+const checksums = join(cache, `node-${nodeVersion}-SHASUMS256.txt`)
+await download(
+  `https://nodejs.org/dist/v${nodeVersion}/SHASUMS256.txt`,
+  checksums,
+)
+const expected = (await readFile(checksums, 'utf8'))
+  .split(/\r?\n/)
+  .map((line) => line.trim().split(/\s+/))
+  .find((parts) => parts[1] === archiveName)?.[0]
+if (!/^[a-f0-9]{64}$/.test(expected ?? ''))
+  throw Error('Official runtime checksum missing')
+let runtime
+try {
+  runtime = await readFile(archive)
+} catch {}
+if (!runtime || hash(runtime) !== expected) {
+  await download(
+    `https://nodejs.org/dist/v${nodeVersion}/${archiveName}`,
+    archive,
+  )
+  runtime = await readFile(archive)
+}
+if (hash(runtime) !== expected)
+  throw Error('Windows Node.js runtime checksum mismatch')
+await rm(stage, { recursive: true, force: true })
+await mkdir(join(stage, 'runtime'), { recursive: true })
+await mkdir(join(stage, 'app/desktop'), { recursive: true })
+await writeFile(
+  join(stage, 'runtime/node.exe'),
+  zipMember(runtime, `node-v${nodeVersion}-win-x64/node.exe`),
+)
+await writeFile(
+  join(stage, 'runtime/NODE-LICENSE.txt'),
+  zipMember(runtime, `node-v${nodeVersion}-win-x64/LICENSE`),
+)
+const build = join(root, 'desktop/bin/Release/net48')
+for (const name of [
+  'IVC.exe',
+  'IVC.exe.config',
+  'Microsoft.Web.WebView2.Core.dll',
+  'Microsoft.Web.WebView2.WinForms.dll',
+])
+  await cp(join(build, name), join(stage, name))
+const loader =
+  (await files(build)).find((f) =>
+    /(?:^|[\\/])(?:x64|win-x64)[\\/].*WebView2Loader\.dll$/.test(f),
+  ) ?? join(build, 'WebView2Loader.dll')
+await cp(loader, join(stage, 'WebView2Loader.dll'))
+await cp(join(root, 'server'), join(stage, 'app/server'), { recursive: true })
+// Only the protected server is used, never Vite or the deployment entry script.
+for (const name of ['start.mjs', 'dev.mjs', 'setup.mjs'])
+  await rm(join(stage, 'app/server', name))
+await cp(
+  join(root, 'desktop/backend.mjs'),
+  join(stage, 'app/desktop/backend.mjs'),
+)
+await cp(join(root, 'dist'), join(stage, 'app/dist'), { recursive: true })
+await writeFile(
+  join(stage, 'app/package.json'),
+  '{"private":true,"type":"module"}\n',
+)
+await cp(join(root, 'desktop/읽어주세요.txt'), join(stage, '읽어주세요.txt'))
+await cp(join(root, 'docs/DESKTOP_APP.md'), join(stage, 'DESKTOP_APP.md'))
+const nuget = resolve(
+  process.env.NUGET_PACKAGES ??
+    join(process.env.USERPROFILE ?? process.env.HOME, '.nuget/packages'),
+)
+const webview = join(nuget, 'microsoft.web.webview2/1.0.4314.35')
+const license = (await files(webview)).find((f) =>
+  /[\\/]license(?:\.txt|\.md)?$/i.test(f),
+)
+if (!license) throw Error('WebView2 SDK license missing')
+await cp(license, join(stage, 'WEBVIEW2-LICENSE.txt'))
+const lock = JSON.parse(await readFile(join(root, 'package-lock.json'), 'utf8'))
+const notices = ['IVC client dependencies · third-party notices\n']
+for (const [path, entry] of Object.entries(lock.packages)) {
+  if (!path.startsWith('node_modules/') || entry.dev) continue
+  if (path.split('/').includes('..')) throw Error('Invalid dependency path')
+  const directory = join(root, path)
+  const metadata = JSON.parse(
+    await readFile(join(directory, 'package.json'), 'utf8'),
+  )
+  if (metadata.version !== entry.version)
+    throw Error('Installed dependency version mismatch')
+  notices.push(
+    `\n${metadata.name} ${metadata.version} · ${metadata.license ?? 'See notice'}\n`,
+  )
+  const names = (await readdir(directory)).filter((name) =>
+    /^licen[cs]e(?:[.-].*)?$/i.test(name),
+  )
+  if (!names.length)
+    throw Error('Dependency license file missing: ' + metadata.name)
+  for (const name of names)
+    notices.push(await readFile(join(directory, name), 'utf8'))
+}
+await writeFile(join(stage, 'THIRD-PARTY-NOTICES.txt'), notices.join('\n'))
+const manifest = {
+  product: 'IVC Personal Desktop',
+  platform: 'win-x64',
+  nodeVersion,
+  runtimeArchiveSha256: expected,
+  files: {},
+}
+for (const file of await files(stage))
+  manifest.files[file.slice(stage.length + 1).replaceAll('\\', '/')] = hash(
+    await readFile(file),
+  )
+await writeFile(
+  join(stage, 'manifest.json'),
+  JSON.stringify(manifest, null, 2) + '\n',
+)
+const zip = join(out, 'IVC-Desktop-Windows-x64.zip')
+await rm(zip, { force: true })
+if (process.platform === 'win32')
+  await execute(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-Command',
+      'Compress-Archive -LiteralPath $env:IVC_ZIP_SOURCE -DestinationPath $env:IVC_ZIP_TARGET -CompressionLevel Optimal',
+    ],
+    { env: { ...process.env, IVC_ZIP_SOURCE: stage, IVC_ZIP_TARGET: zip } },
+  )
+else await execute('zip', ['-qr', zip, 'IVC-Desktop-Windows-x64'], { cwd: out })
+await writeFile(
+  zip + '.sha256',
+  hash(await readFile(zip)) + '  IVC-Desktop-Windows-x64.zip\n',
+)
+console.log(`Windows personal app ready: ${zip}`)
+```
+
+<a id="source-25"></a>
+
+## scripts/verify-desktop-package.mjs
+
+원본: [scripts/verify-desktop-package.mjs](../../scripts/verify-desktop-package.mjs) · 72줄 · SHA-256: `b719bbb100ed60906398145da1d03849a764be67c1179a10951a30aa75a74fa6`
+
+```javascript
+import { createHash } from 'node:crypto'
+import { readdir, readFile, stat } from 'node:fs/promises'
+import { resolve, join } from 'node:path'
+const directory = resolve('release/IVC-Desktop-Windows-x64')
+const manifest = JSON.parse(
+  await readFile(join(directory, 'manifest.json'), 'utf8'),
+)
+if (manifest.platform !== 'win-x64') throw Error('Unexpected package platform')
+const found = new Set()
+async function inspect(path) {
+  for (const entry of await readdir(path, { withFileTypes: true })) {
+    const file = join(path, entry.name),
+      relative = file.slice(directory.length + 1).replaceAll('\\', '/')
+    if (entry.isSymbolicLink()) throw Error('Unexpected package link')
+    if (entry.isDirectory()) {
+      await inspect(file)
+      continue
+    }
+    if (
+      /\.env(?:\.|$)|\.sqlite|ivc-data|Browser\/|node_modules\/|\/setup\.mjs$|\.pdb$/i.test(
+        relative,
+      )
+    )
+      throw Error('Unexpected private/development file: ' + relative)
+    if (relative === 'manifest.json') continue
+    const expected = manifest.files[relative]
+    const bytes = await readFile(file)
+    if (createHash('sha256').update(bytes).digest('hex') !== expected)
+      throw Error('Package file mismatch: ' + relative)
+    found.add(relative)
+    if (
+      ['IVC.exe', 'runtime/node.exe', 'WebView2Loader.dll'].includes(relative)
+    ) {
+      const pe = bytes.readUInt32LE(0x3c)
+      if (
+        bytes.toString('ascii', 0, 2) !== 'MZ' ||
+        bytes.readUInt32LE(pe) !== 0x4550 ||
+        bytes.readUInt16LE(pe + 4) !== 0x8664
+      )
+        throw Error('Expected x64 Windows executable: ' + relative)
+    }
+  }
+}
+await inspect(directory)
+if (found.size !== Object.keys(manifest.files).length)
+  throw Error('Package contains missing files')
+for (const path of [
+  'IVC.exe',
+  'IVC.exe.config',
+  'WebView2Loader.dll',
+  'Microsoft.Web.WebView2.Core.dll',
+  'Microsoft.Web.WebView2.WinForms.dll',
+  'runtime/node.exe',
+  'runtime/NODE-LICENSE.txt',
+  'WEBVIEW2-LICENSE.txt',
+  'THIRD-PARTY-NOTICES.txt',
+  'app/dist/index.html',
+  'app/dist/solver.wasm',
+  'app/desktop/backend.mjs',
+])
+  if (!found.has(path)) throw Error('Required file missing: ' + path)
+const zip = directory + '.zip'
+const checksum = (await readFile(zip + '.sha256', 'utf8')).split(/\s+/)[0]
+if (
+  createHash('sha256')
+    .update(await readFile(zip))
+    .digest('hex') !== checksum
+)
+  throw Error('Package ZIP checksum mismatch')
+console.log(
+  `Verified ${found.size} files · Windows x64 · ${Math.ceil((await stat(zip)).size / 1024 / 1024)} MB · private data excluded`,
+)
+```
+
+<a id="source-26"></a>
+
 ## .vscode/settings.json
 
 원본: [.vscode/settings.json](../../.vscode/settings.json) · 19줄 · SHA-256: `dbb189e4c248ed6bbe8e10fca8b5c02deff20d9f3873463dce76931e4c8af62d`
@@ -2800,11 +3785,11 @@ if (
 }
 ```
 
-<a id="source-19"></a>
+<a id="source-27"></a>
 
 ## package.json
 
-원본: [package.json](../../package.json) · 43줄 · SHA-256: `0e64714e33729b500bea930e31e7317504bb6561461232d9f94f073ffc0ec603`
+원본: [package.json](../../package.json) · 45줄 · SHA-256: `fec55129e4b53cb390350224bf21d98deda15ca6f0212eec76c32b5967eeef97`
 
 ```text
 {
@@ -2826,7 +3811,9 @@ if (
     "share:codespaces": "node scripts/share-codespaces.mjs",
     "diagnose:codespaces": "node scripts/diagnose-codespaces.mjs",
     "test:auth": "node --test tests/auth-server.test.mjs tests/auth-invitation.test.mjs tests/auth-session.test.mjs tests/site-entry.test.mjs",
-    "open": "node scripts/open-site.mjs"
+    "open": "node scripts/open-site.mjs",
+    "desktop:package": "npm run build && node scripts/package-desktop.mjs",
+    "test:desktop": "node --test tests/desktop-backend.test.mjs tests/desktop-package.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -2852,7 +3839,7 @@ if (
 }
 ```
 
-<a id="source-20"></a>
+<a id="source-28"></a>
 
 ## server/setup.mjs
 
@@ -2924,7 +3911,7 @@ try {
 }
 ```
 
-<a id="source-21"></a>
+<a id="source-29"></a>
 
 ## server/dev.mjs
 
@@ -2938,7 +3925,7 @@ if (built.status !== 0) process.exit(built.status ?? 1)
 await import('./start.mjs')
 ```
 
-<a id="source-22"></a>
+<a id="source-30"></a>
 
 ## src/equation-count.ts
 
@@ -2979,7 +3966,7 @@ export function countEquations(
 }
 ```
 
-<a id="source-23"></a>
+<a id="source-31"></a>
 
 ## src/csv.ts
 
@@ -3002,7 +3989,7 @@ export function encodeCsv(rows: readonly (readonly (string | number)[])[]) {
 }
 ```
 
-<a id="source-24"></a>
+<a id="source-32"></a>
 
 ## src/engine/sweep.ts
 
@@ -3193,7 +4180,7 @@ export function computeSweeps(
 }
 ```
 
-<a id="source-25"></a>
+<a id="source-33"></a>
 
 ## src/engine/branches.ts
 
@@ -3718,7 +4705,7 @@ export function computeBranchSweeps(
 }
 ```
 
-<a id="source-26"></a>
+<a id="source-34"></a>
 
 ## src/engine/branch-events.ts
 
@@ -3801,7 +4788,7 @@ export function branchEventText(
 }
 ```
 
-<a id="source-27"></a>
+<a id="source-35"></a>
 
 ## src/engine/simulation-panels.ts
 
@@ -4355,7 +5342,7 @@ export function detectMergedBranchEvents(
 }
 ```
 
-<a id="source-28"></a>
+<a id="source-36"></a>
 
 ## src/engine/manual-simulation.ts
 
@@ -4432,7 +5419,7 @@ export function createManualSimulation(
 }
 ```
 
-<a id="source-29"></a>
+<a id="source-37"></a>
 
 ## src/use-interaction-viewport.ts
 
@@ -4509,7 +5496,7 @@ export function useInteractionViewport(busy: boolean) {
 }
 ```
 
-<a id="source-30"></a>
+<a id="source-38"></a>
 
 ## src/engine/default-overview.ts
 
@@ -4635,7 +5622,7 @@ export function createDefaultOverview(search: AutomaticSolver) {
 }
 ```
 
-<a id="source-31"></a>
+<a id="source-39"></a>
 
 ## src/engine/solver.worker.ts
 
@@ -5051,7 +6038,7 @@ async function handleRequest(work: QueuedRequest) {
 }
 ```
 
-<a id="source-32"></a>
+<a id="source-40"></a>
 
 ## src/App.tsx
 
