@@ -28,7 +28,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: npm ci
-      - run: npm run desktop:package
+      - run: npm run build
+      - run: node scripts/package-desktop.mjs
       - run: npm run test:desktop
       - name: Verify package contents
         run: node scripts/verify-desktop-package.mjs

@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `b4f24391e44bbcd2054094e9ee866b2f7d78f77adab0badf89ba1df2c6ad5d8c`
+소스 묶음 SHA-256: `5a8472b6555ceb3b565f190392908be6ed84359d6d992225f493d3bc8682b5ac`
 
 ## 다른 코드 묶음
 
@@ -3485,7 +3485,7 @@ export function desktopIcon() {
 
 ## scripts/package-desktop.mjs
 
-원본: [scripts/package-desktop.mjs](../../scripts/package-desktop.mjs) · 188줄 · SHA-256: `2206db2bbbda7e2f7fa6038aa0b742b1ff71949de801b82d256bddda100e0625`
+원본: [scripts/package-desktop.mjs](../../scripts/package-desktop.mjs) · 205줄 · SHA-256: `e1f88090694cbb55832766f46a04dbd260c02b8f38b437aa5623f4ab2eb6846a`
 
 ```javascript
 import { execFile } from 'node:child_process'
@@ -3496,6 +3496,22 @@ import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { desktopIcon, zipMember } from './desktop-assets.mjs'
 const run = promisify(execFile)
+process.on('uncaughtException', (error) => {
+  const diagnostic = [error.message, error.stderr, error.stdout]
+    .filter(Boolean)
+    .join('\n')
+    .slice(-6000)
+  console.error(diagnostic)
+  if (process.env.GITHUB_ACTIONS === 'true')
+    console.error(
+      '::error title=IVC Windows package::' +
+        diagnostic
+          .replaceAll('%', '%25')
+          .replaceAll('\r', '%0D')
+          .replaceAll('\n', '%0A'),
+    )
+  process.exitCode = 1
+})
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const nodeVersion = '24.22.1'
 const out = join(root, 'release'),
@@ -3610,10 +3626,11 @@ await writeFile(
 )
 await cp(join(root, 'desktop/읽어주세요.txt'), join(stage, '읽어주세요.txt'))
 await cp(join(root, 'docs/DESKTOP_APP.md'), join(stage, 'DESKTOP_APP.md'))
-const nuget = resolve(
-  process.env.NUGET_PACKAGES ??
-    join(process.env.USERPROFILE ?? process.env.HOME, '.nuget/packages'),
+const assets = JSON.parse(
+  await readFile(join(root, 'desktop/obj/project.assets.json'), 'utf8'),
 )
+const nuget = Object.keys(assets.packageFolders ?? {})[0]
+if (!nuget) throw Error('Restored NuGet package directory missing')
 const webview = join(nuget, 'microsoft.web.webview2/1.0.4314.35')
 const license = (await files(webview)).find((f) =>
   /[\\/]license(?:\.txt|\.md)?$/i.test(f),

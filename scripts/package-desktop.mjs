@@ -6,6 +6,22 @@ import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { desktopIcon, zipMember } from './desktop-assets.mjs'
 const run = promisify(execFile)
+process.on('uncaughtException', (error) => {
+  const diagnostic = [error.message, error.stderr, error.stdout]
+    .filter(Boolean)
+    .join('\n')
+    .slice(-6000)
+  console.error(diagnostic)
+  if (process.env.GITHUB_ACTIONS === 'true')
+    console.error(
+      '::error title=IVC Windows package::' +
+        diagnostic
+          .replaceAll('%', '%25')
+          .replaceAll('\r', '%0D')
+          .replaceAll('\n', '%0A'),
+    )
+  process.exitCode = 1
+})
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const nodeVersion = '24.22.1'
 const out = join(root, 'release'),
@@ -120,10 +136,11 @@ await writeFile(
 )
 await cp(join(root, 'desktop/읽어주세요.txt'), join(stage, '읽어주세요.txt'))
 await cp(join(root, 'docs/DESKTOP_APP.md'), join(stage, 'DESKTOP_APP.md'))
-const nuget = resolve(
-  process.env.NUGET_PACKAGES ??
-    join(process.env.USERPROFILE ?? process.env.HOME, '.nuget/packages'),
+const assets = JSON.parse(
+  await readFile(join(root, 'desktop/obj/project.assets.json'), 'utf8'),
 )
+const nuget = Object.keys(assets.packageFolders ?? {})[0]
+if (!nuget) throw Error('Restored NuGet package directory missing')
 const webview = join(nuget, 'microsoft.web.webview2/1.0.4314.35')
 const license = (await files(webview)).find((f) =>
   /[\\/]license(?:\.txt|\.md)?$/i.test(f),
