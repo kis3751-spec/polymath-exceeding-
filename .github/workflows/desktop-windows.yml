@@ -33,11 +33,40 @@ jobs:
       - run: npm run test:desktop
       - name: Verify package contents
         run: node scripts/verify-desktop-package.mjs
+      - name: Verify Windows launcher opens and stops its owned runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path 'release/IVC-Desktop-Windows-x64/IVC.exe').Path
+          $app = Start-Process -FilePath $exe -PassThru
+          try {
+            if (-not $app.WaitForInputIdle(15000)) { throw 'The desktop launcher did not become ready.' }
+            $deadline = [DateTime]::UtcNow.AddSeconds(20)
+            $children = @()
+            do {
+              $app.Refresh()
+              if ($app.HasExited) { throw 'The desktop launcher exited during startup.' }
+              $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $($app.Id)" | Where-Object { $_.Name -eq 'node.exe' })
+              if ($app.MainWindowTitle -like '*Interaction Visual Calculator*' -and $children.Count -eq 1) { break }
+              Start-Sleep -Milliseconds 250
+            } while ([DateTime]::UtcNow -lt $deadline)
+            if ($app.MainWindowTitle -notlike '*Interaction Visual Calculator*' -or $children.Count -ne 1) { throw 'The native app window and private runtime did not start.' }
+            $owned = Get-Process -Id $children[0].ProcessId
+            if (-not $app.CloseMainWindow()) { throw 'The native window did not accept close.' }
+            if (-not $app.WaitForExit(15000)) { throw 'The native app did not stop after its window closed.' }
+            if (-not $owned.WaitForExit(5000)) { throw 'The private runtime remained after the app closed.' }
+            Write-Output 'Windows native window opened; closing it stopped the owned runtime.'
+          } catch {
+            $message = $_.Exception.Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=IVC Windows launcher::$message"
+            throw
+          } finally {
+            if (-not $app.HasExited) { $app.Kill() }
+            $app.Dispose()
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: IVC-Desktop-Windows-x64
-          path: |
-            release/IVC-Desktop-Windows-x64.zip
-            release/IVC-Desktop-Windows-x64.zip.sha256
+          path: release/IVC-Desktop-Windows-x64/
           retention-days: 14
           if-no-files-found: error
