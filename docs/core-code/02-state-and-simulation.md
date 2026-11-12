@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `5a8472b6555ceb3b565f190392908be6ed84359d6d992225f493d3bc8682b5ac`
+소스 묶음 SHA-256: `05fe234e70494ca3ec7c97c0eb0f84c8f314926b7787e6657833645f16270975`
 
 ## 다른 코드 묶음
 
@@ -3317,7 +3317,7 @@ internal sealed class SetupDialog : Form
 
 ## desktop/IVC.Desktop.csproj
 
-원본: [desktop/IVC.Desktop.csproj](../../desktop/IVC.Desktop.csproj) · 22줄 · SHA-256: `4a34aa12a23e0328dd3d13676a923830c4d01e9e031fcccbf66e3ba39c333c07`
+원본: [desktop/IVC.Desktop.csproj](../../desktop/IVC.Desktop.csproj) · 25줄 · SHA-256: `cd26bdf6784a891e4e9d25241e1b4e045139bd0aaea667d6adf991d4d7a31cfc`
 
 ```text
 <Project Sdk="Microsoft.NET.Sdk">
@@ -3325,6 +3325,9 @@ internal sealed class SetupDialog : Form
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <SelfContained>false</SelfContained>
     <LangVersion>7.3</LangVersion>
     <AssemblyName>IVC</AssemblyName>
     <ApplicationIcon>ivc.ico</ApplicationIcon>
