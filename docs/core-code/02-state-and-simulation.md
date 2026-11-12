@@ -14,7 +14,7 @@
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `2231222f5b4ec26019fd4d0a8fe82eccd1b9c431e721e890368f340b6e843355`
+소스 묶음 SHA-256: `b4f24391e44bbcd2054094e9ee866b2f7d78f77adab0badf89ba1df2c6ad5d8c`
 
 ## 다른 코드 묶음
 
@@ -2946,7 +2946,7 @@ if (
 
 ## desktop/IVC.cs
 
-원본: [desktop/IVC.cs](../../desktop/IVC.cs) · 360줄 · SHA-256: `1e14db2038c6c83360dd4d83e565f2b5c25097b5c9eae8cc09819002c628cf0d`
+원본: [desktop/IVC.cs](../../desktop/IVC.cs) · 362줄 · SHA-256: `3a8407245ac3ba13fbe5075385077677c2589008ee19b68c1c9fa881007f74f5`
 
 ```text
 using System;
@@ -3183,6 +3183,7 @@ internal sealed class CalculatorWindow : Form
             };
             browser.CoreWebView2.PermissionRequested += delegate(object sender, CoreWebView2PermissionRequestedEventArgs e) { e.State = CoreWebView2PermissionState.Deny; };
             browser.CoreWebView2.DownloadStarting += delegate(object sender, CoreWebView2DownloadStartingEventArgs e) {
+                if (closing) { e.Cancel = true; return; }
                 // Return from the WebView2 callback before showing a modal UI.
                 // The deferral keeps the download alive without reentrancy.
                 var deferral = e.GetDeferral();
@@ -3203,6 +3204,7 @@ internal sealed class CalculatorWindow : Form
             };
             browser.CoreWebView2.NavigationCompleted += delegate(object sender, CoreWebView2NavigationCompletedEventArgs e) {
                 if (closing) return;
+                if (!e.IsSuccess && e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled) return;
                 if (!e.IsSuccess) { Fail("계산기 화면을 열지 못했습니다. 앱을 닫고 다시 실행하세요."); return; }
                 browser.Visible = true; splash.Visible = false;
             };

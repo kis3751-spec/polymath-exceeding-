@@ -232,6 +232,7 @@ internal sealed class CalculatorWindow : Form
             };
             browser.CoreWebView2.PermissionRequested += delegate(object sender, CoreWebView2PermissionRequestedEventArgs e) { e.State = CoreWebView2PermissionState.Deny; };
             browser.CoreWebView2.DownloadStarting += delegate(object sender, CoreWebView2DownloadStartingEventArgs e) {
+                if (closing) { e.Cancel = true; return; }
                 // Return from the WebView2 callback before showing a modal UI.
                 // The deferral keeps the download alive without reentrancy.
                 var deferral = e.GetDeferral();
@@ -252,6 +253,7 @@ internal sealed class CalculatorWindow : Form
             };
             browser.CoreWebView2.NavigationCompleted += delegate(object sender, CoreWebView2NavigationCompletedEventArgs e) {
                 if (closing) return;
+                if (!e.IsSuccess && e.WebErrorStatus == CoreWebView2WebErrorStatus.OperationCanceled) return;
                 if (!e.IsSuccess) { Fail("계산기 화면을 열지 못했습니다. 앱을 닫고 다시 실행하세요."); return; }
                 browser.Visible = true; splash.Visible = false;
             };
