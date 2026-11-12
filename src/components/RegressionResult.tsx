@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { ScientificResult } from '../engine/scientific/types'
 import ScientificChart from './ScientificChart'
+import RegressionResidualPlot from './RegressionResidualPlot'
 import './RegressionResult.css'
 
 const format = (value: number | string) => {
@@ -211,6 +212,7 @@ export default function RegressionResult({
           오차와 통계 가정도 변환한 값의 단위에 적용됩니다.
         </p>
       </details>
+      <RegressionResidualPlot result={result} />
       {comparison.length > 0 && (
         <section className="regression-comparison">
           <h3>Observed vs Predicted</h3>

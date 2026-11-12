@@ -12,7 +12,7 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 
 원본을 수정한 뒤 `npm run docs:core`로 다시 만들고, `npm run docs:core -- --check`로 문서와 현재 소스가 같은지 확인할 수 있습니다. 각 파일의 SHA-256은 원문 일치 확인용이며 생성 시각을 넣지 않아 같은 소스에서 같은 문서를 만듭니다.
 
-소스 묶음 SHA-256: `b0b00c44626ea0acde872c848627ab87f3239ca648ca7894a5b0af936d660211`
+소스 묶음 SHA-256: `2b8a57213e01c55a1e40a92c8bba8dface8ad5ab5094a73bbdee406f5e32ab5b`
 
 ## 다른 코드 묶음
 
@@ -46,12 +46,15 @@ ScientificWorkspace는 모델·시뮬레이션·리포트를 분리하고, 시�
 - [src/components/ScientificOutput.tsx](#source-21) · [저장소 원본](../../src/components/ScientificOutput.tsx)
 - [src/components/RegressionResult.tsx](#source-22) · [저장소 원본](../../src/components/RegressionResult.tsx)
 - [src/components/RegressionResult.css](#source-23) · [저장소 원본](../../src/components/RegressionResult.css)
+- [src/components/RegressionResidualPlot.tsx](#source-24) · [저장소 원본](../../src/components/RegressionResidualPlot.tsx)
+- [src/components/PolynomialComparison.tsx](#source-25) · [저장소 원본](../../src/components/PolynomialComparison.tsx)
+- [src/regression-report.ts](#source-26) · [저장소 원본](../../src/regression-report.ts)
 
 <a id="source-1"></a>
 
 ## src/engine/scientific/types.ts
 
-원본: [src/engine/scientific/types.ts](../../src/engine/scientific/types.ts) · 81줄 · SHA-256: `b5e5e0c68b8b00be7691b55f5a8b81c3dba63743f7ce91643064fe65c6eff3c1`
+원본: [src/engine/scientific/types.ts](../../src/engine/scientific/types.ts) · 108줄 · SHA-256: `705207290c0dfae8fe5f377f0a5dcbebcd1ad0771c1dbd3caa33e0daa3a6e1c9`
 
 ```typescript
 export type ScientificModule =
@@ -68,6 +71,7 @@ export type ScientificOptions = {
   samples?: number
   degree?: number
   method?: string
+  compareDegrees?: number[]
 }
 export type ScientificRequest = {
   module: ScientificModule
@@ -81,6 +85,7 @@ export type ScientificSeries = {
   y: number[]
   style?: 'line' | 'points'
   axisLabel?: string
+  color?: string
 }
 export type ScientificMetric = {
   label: string
@@ -104,6 +109,26 @@ export type RegressionDiagnostics = {
   origin: boolean
   confidenceMethod: 'linear-normal' | 'nonlinear-local'
   confidenceUnavailableReason?: string
+  degree?: number
+  crossValidation?: { rmse?: number; unavailableReason?: string }
+}
+export type PolynomialCandidate = {
+  degree: number
+  status: 'completed' | 'unavailable'
+  metrics?: ScientificMetric[]
+  curve?: ScientificSeries
+  residuals?: ScientificSeries
+  crossValidation?: { rmse?: number; unavailableReason?: string }
+  warnings?: string[]
+  reason?: string
+}
+export type PolynomialComparison = {
+  independent: string
+  dependent: string
+  origin: boolean
+  observed: ScientificSeries
+  candidates: PolynomialCandidate[]
+  recommendedDegree?: number
 }
 export type ScientificResult = {
   module: ScientificModule
@@ -122,6 +147,11 @@ export type ScientificResult = {
   formula?: string
   coefficients?: ScientificCoefficient[]
   regression?: RegressionDiagnostics
+  residuals?: {
+    values: number[]
+    predictors: { name: string; values: number[] }[]
+  }
+  polynomialComparison?: PolynomialComparison
   comparison?: {
     observed: number[]
     predicted: number[]
@@ -1149,7 +1179,7 @@ t|0:1`,
 
 ## src/engine/scientific/fitting.ts
 
-원본: [src/engine/scientific/fitting.ts](../../src/engine/scientific/fitting.ts) · 1,016줄 · SHA-256: `6a4c8a633b2bafef0489773a3bdac9871ea12bbfd28f5b53b6e0bb596d75fd71`
+원본: [src/engine/scientific/fitting.ts](../../src/engine/scientific/fitting.ts) · 1,144줄 · SHA-256: `955d1048958025cdbc407d5eb95d9e8b8276159dee0bcd888ade6b10ca664a9c`
 
 ```typescript
 import { Matrix, SingularValueDecomposition } from 'ml-matrix'
@@ -1166,6 +1196,7 @@ import type {
   ScientificRequest,
   ScientificResult,
   ScientificSeries,
+  PolynomialCandidate,
 } from './types'
 
 const NAME = /^[A-Za-z][A-Za-z0-9_]*$/
@@ -1419,6 +1450,36 @@ function binomial(n: number, k: number) {
   for (let i = 1; i <= k; i++) r = (r * (n - i + 1)) / i
   return r
 }
+/** PRESS / leave-one-out errors for a full-rank linear least-squares fit.
+ * Scaling the columns leaves the hat matrix unchanged. A unit leverage means
+ * removing that row makes the fit unidentified, not a zero validation error. */
+function leaveOneOut(
+  svd: SingularValueDecomposition,
+  residuals: number[],
+  p: number,
+  yScale: number,
+): { rmse?: number; unavailableReason?: string } {
+  if (residuals.length <= p)
+    return {
+      unavailableReason: '관측 행 수가 계수 수보다 커야 LOOCV를 계산합니다.',
+    }
+  const u = svd.leftSingularVectors
+  const errors: number[] = []
+  for (let i = 0; i < residuals.length; i++) {
+    const leverage = sum(Array.from({ length: p }, (_, k) => u.get(i, k) ** 2))
+    const denominator = 1 - leverage
+    if (denominator <= 128 * Number.EPSILON * Math.max(residuals.length, p))
+      return {
+        unavailableReason:
+          '한 행을 제외하면 랭크가 부족하거나 수치적으로 불안정해 LOOCV를 산정하지 않았습니다.',
+      }
+    errors.push(residuals[i] / yScale / denominator)
+  }
+  const rmse = (magnitude(errors) / Math.sqrt(errors.length)) * yScale
+  return Number.isFinite(rmse)
+    ? { rmse }
+    : { unavailableReason: 'LOOCV 오차가 Float64 범위를 넘었습니다.' }
+}
 function linearFit(
   request: ScientificRequest,
   start: number,
@@ -1646,6 +1707,17 @@ function linearFit(
     formula,
     coefficients: coefficientRows,
     regression: {
+      ...(poly ? { degree } : {}),
+      ...(poly && request.options?.compareDegrees?.length
+        ? {
+            crossValidation: leaveOneOut(
+              solved.svd,
+              stats.residuals,
+              p,
+              yScale,
+            ),
+          }
+        : {}),
       model: poly
         ? `${dependent} = ${Array.from(
             { length: degree + (origin ? 0 : 1) },
@@ -1669,6 +1741,10 @@ function linearFit(
         : {}),
     },
     comparison: { observed: [...y], predicted: [...pred], dependent },
+    residuals: {
+      values: stats.residuals,
+      predictors: predictors.map((name, i) => ({ name, values: [...xs[i]] })),
+    },
   }
 }
 
@@ -2151,6 +2227,13 @@ function nonlinearFit(
       predicted: [...predicted],
       dependent: parsed.dependent,
     },
+    residuals: {
+      values: stats.residuals,
+      predictors: [...directRefs].map((name) => ({
+        name,
+        values: parsed.raw.map((row) => row[name]),
+      })),
+    },
   }
 }
 
@@ -2164,9 +2247,84 @@ export function solveFitting(request: ScientificRequest): ScientificResult {
   )
     throw new ModelError('그래프 샘플 수는 2 이상의 유한한 값이어야 합니다.')
   const parsed = dataScopes(request)
-  return /^nlinfit\b/i.test(parsed.command)
+  const degrees = request.options?.compareDegrees
+  if (
+    degrees !== undefined &&
+    (request.module !== 'curve-fit' ||
+      !Array.isArray(degrees) ||
+      degrees.length > 12 ||
+      degrees.some((d) => !Number.isInteger(d) || d < 1 || d > 12))
+  )
+    throw new ModelError(
+      '차수 비교는 Polynomial에서 1~12의 정수 차수를 최대 12개 선택하세요.',
+    )
+  const result = /^nlinfit\b/i.test(parsed.command)
     ? nonlinearFit(request, start, parsed)
     : linearFit(request, start, parsed)
+  if (degrees?.length) {
+    const [command, independent, dependent] = parsed.command.split(/\s+/)
+    const origin = result.regression!.origin
+    const candidates: PolynomialCandidate[] = [...new Set(degrees)]
+      .sort((a, b) => a - b)
+      .map((degree) => {
+        try {
+          const fit =
+            degree === result.regression?.degree
+              ? result
+              : linearFit(request, start, {
+                  ...parsed,
+                  command: `${command} ${independent} ${dependent} ${degree}${origin ? ' origin' : ''}`,
+                })
+          return {
+            degree,
+            status: 'completed',
+            metrics: fit.metrics,
+            curve: { ...fit.series[1], name: `Degree ${degree}` },
+            residuals: {
+              name: `Degree ${degree}`,
+              x: fit.residuals!.predictors[0].values,
+              y: fit.residuals!.values,
+              style: 'points',
+            },
+            crossValidation: fit.regression!.crossValidation,
+            warnings: fit.warnings,
+          }
+        } catch (error) {
+          return {
+            degree,
+            status: 'unavailable',
+            reason:
+              error instanceof Error ? error.message : '계산하지 못했습니다.',
+          }
+        }
+      })
+    const available = candidates.filter(
+      (c) => c.crossValidation?.rmse !== undefined,
+    )
+    const best = available.reduce<number | undefined>(
+      (v, c) => Math.min(v ?? Infinity, c.crossValidation!.rmse!),
+      undefined,
+    )
+    const scale = Math.max(...result.comparison!.observed.map(Math.abs)) || 1
+    const recommended =
+      best === undefined
+        ? undefined
+        : available.find(
+            (c) =>
+              c.crossValidation!.rmse! <=
+              best + Math.abs(best) * 1e-8 + scale * 128 * Number.EPSILON,
+          )?.degree
+    result.polynomialComparison = {
+      independent,
+      dependent,
+      origin,
+      observed: { ...result.series[0], name: 'Observed data' },
+      candidates,
+      ...(recommended === undefined ? {} : { recommendedDegree: recommended }),
+    }
+  }
+  result.durationMs = performance.now() - start
+  return result
 }
 ```
 
@@ -2844,7 +3002,7 @@ integrate y(x) 0 4 200 akm`,
 
 ## src/engine/scientific/optimization.ts
 
-원본: [src/engine/scientific/optimization.ts](../../src/engine/scientific/optimization.ts) · 798줄 · SHA-256: `d4a64d47c50371495eb61c409b2e3239fc2e641eeed8e9c235be3633528850a9`
+원본: [src/engine/scientific/optimization.ts](../../src/engine/scientific/optimization.ts) · 824줄 · SHA-256: `ff333f61f7816c0979937654b55d051f324228bb1014099ee27d5a674b11a325`
 
 ```typescript
 import { ModelError } from '../index'
@@ -3616,6 +3774,32 @@ export function solveOptimization(
     formula: main.target
       ? `${main.target} = ${main.text}`
       : `min: ${main.text}`,
+    ...(main.target
+      ? {
+          comparison: {
+            dependent: main.target,
+            observed: table.rows.map(
+              (row) => row[table.columns.indexOf(main.target!)],
+            ),
+            predicted: [...current.predictions!],
+          },
+          residuals: {
+            values: table.rows.map(
+              (row, i) =>
+                row[table.columns.indexOf(main.target!)] -
+                current.predictions![i],
+            ),
+            predictors: table.columns
+              .filter((name) => name !== main.target)
+              .map((name) => ({
+                name,
+                values: table.rows.map(
+                  (row) => row[table.columns.indexOf(name)],
+                ),
+              })),
+          },
+        }
+      : {}),
   }
 }
 
@@ -3769,7 +3953,7 @@ export default defineConfig({
 
 ## src/components/ScientificWorkspace.tsx
 
-원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,448줄 · SHA-256: `ab7ba6d71a7d638b3b2e7376f75afc98555fddd3e8cef3c49fe0210f2b204e6a`
+원본: [src/components/ScientificWorkspace.tsx](../../src/components/ScientificWorkspace.tsx) · 1,487줄 · SHA-256: `8bf836f88556e594f9cb365a3d95be9cb48a1bb2280277cb06750a321a534612`
 
 ```tsx
 import { AxisTransformProvider, type AxisPreferences } from './AxisTransforms'
@@ -3787,6 +3971,7 @@ import {
   Code2,
 } from 'lucide-react'
 import { encodeCsv } from '../csv'
+import { regressionReportSections } from '../regression-report'
 import type {
   ScientificModule,
   ScientificOptions,
@@ -3801,6 +3986,8 @@ import {
 import ScientificChart from './ScientificChart'
 import ModuleGuide from './ModuleGuide'
 import RegressionResult from './RegressionResult'
+import RegressionResidualPlot from './RegressionResidualPlot'
+import PolynomialComparison from './PolynomialComparison'
 import ScientificOutput, { IntegralFormula } from './ScientificOutput'
 import './ScientificWorkspace.css'
 
@@ -4193,6 +4380,7 @@ export default function ScientificWorkspace({
             `- ${k}: ${Number.isFinite(v) ? v.toPrecision(17) : '산정 불가'}`,
         ),
         result.formula ? `\n모델: ${result.formula}` : '',
+        regressionReportSections(result),
         result.coefficients?.length
           ? [
               '\n## Coefficients · 95% Confidence Interval',
@@ -5169,13 +5357,48 @@ export default function ScientificWorkspace({
                     {['curve-fit', 'multilinear', 'nonlinear-fit'].includes(
                       module,
                     ) ? (
-                      <RegressionResult result={result} />
+                      <>
+                        <RegressionResult result={result} />
+                        {module === 'curve-fit' && (
+                          <PolynomialComparison
+                            result={result}
+                            onCompare={(compareDegrees) => {
+                              const next = {
+                                ...draft,
+                                options: { ...draft.options, compareDegrees },
+                              }
+                              setDraft(next)
+                              start(next)
+                            }}
+                            onApply={(degree) => {
+                              if (!polyfit) return
+                              const command = `polyfit ${polyfit[1]} ${polyfit[2]} ${degree}${polyfit[4] ? ' origin' : ''}`
+                              const next = {
+                                ...draft,
+                                source:
+                                  draft.source.slice(0, polyfit.index) +
+                                  command +
+                                  draft.source.slice(
+                                    polyfit.index + polyfit[0].length,
+                                  ),
+                              }
+                              setDraft(next)
+                              start(next)
+                            }}
+                          />
+                        )}
+                      </>
                     ) : (
-                      <ScientificOutput
-                        result={result}
-                        source={draft.source}
-                        options={draft.options}
-                      />
+                      <>
+                        <ScientificOutput
+                          result={result}
+                          source={draft.source}
+                          options={draft.options}
+                        />
+                        {module === 'lsq' && (
+                          <RegressionResidualPlot result={result} />
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -5885,7 +6108,7 @@ export default function ScientificWorkspace({
 
 ## src/components/ScientificChart.tsx
 
-원본: [src/components/ScientificChart.tsx](../../src/components/ScientificChart.tsx) · 620줄 · SHA-256: `8cd9bef9723c113edf8995b0d6947a13238bd1521f670d2f6e6dfaba5eb1251b`
+원본: [src/components/ScientificChart.tsx](../../src/components/ScientificChart.tsx) · 648줄 · SHA-256: `875b98e41229f2cd998b41618d9df9842817732b46016d146e76405af01089d0`
 
 ```tsx
 import AxisTransforms, { useAxisTransform } from './AxisTransforms'
@@ -5922,6 +6145,7 @@ type Props = {
   yLabel?: string
   area?: { from: number; to: number; seriesName?: string }
   identityLine?: boolean
+  zeroLine?: boolean
   cursorIndex?: number
   onSelectIndex?: (i: number) => void
 }
@@ -5934,6 +6158,7 @@ export default function ScientificChart({
   yLabel = '',
   area: rawArea,
   identityLine: rawIdentityLine = false,
+  zeroLine: rawZeroLine = false,
   cursorIndex,
   onSelectIndex,
 }: Props) {
@@ -5944,9 +6169,25 @@ export default function ScientificChart({
   const changedAxes = !identityAxes(axes)
   const area = changedAxes ? undefined : rawArea
   const identityLine = !changedAxes && rawIdentityLine
+  const zeroLine = !changedAxes && rawZeroLine
   const series = useMemo(() => {
     if (!changedAxes) return rawSeries
     let data = rawSeries
+    if (rawZeroLine) {
+      const xs = rawSeries.flatMap((s) => s.x).filter(Number.isFinite)
+      const lo = xs.reduce((a, b) => Math.min(a, b), Infinity),
+        hi = xs.reduce((a, b) => Math.max(a, b), -Infinity)
+      if (Number.isFinite(lo) && Number.isFinite(hi)) {
+        const x = Array.from(
+          { length: 201 },
+          (_, i) => lo * (1 - i / 200) + (hi * i) / 200,
+        )
+        data = [
+          ...data,
+          { name: 'Reference: original residual = 0', x, y: x.map(() => 0) },
+        ]
+      }
+    }
     if (rawIdentityLine) {
       const finite = rawSeries
         .flatMap((s) => [...s.x, ...s.y])
@@ -5962,7 +6203,7 @@ export default function ScientificChart({
       }
     }
     return transformSeries(data, axes)
-  }, [rawSeries, axes.x, axes.y, changedAxes, rawIdentityLine])
+  }, [rawSeries, axes.x, axes.y, changedAxes, rawIdentityLine, rawZeroLine])
   const omitted = changedAxes
     ? series.reduce(
         (n, s) =>
@@ -6036,7 +6277,7 @@ export default function ScientificChart({
         ymax = Math.max(ymax, y)
       }
     if (!Number.isFinite(xmin)) return null
-    if (area) {
+    if (area || zeroLine) {
       ymin = Math.min(ymin, 0)
       ymax = Math.max(ymax, 0)
     }
@@ -6053,7 +6294,7 @@ export default function ScientificChart({
     y0 -= dy * 0.08
     y1 += dy * 0.08
     return { xs, ys, x0, x1, y0, y1 }
-  }, [series, area])
+  }, [series, area, zeroLine])
   const width = size.width,
     height = size.height,
     left = 70,
@@ -6244,7 +6485,7 @@ export default function ScientificChart({
                 )
               }
             >
-              <i style={{ background: colors[i % colors.length] }} />
+              <i style={{ background: s.color ?? colors[i % colors.length] }} />
               {s.name}
             </button>
           ))}
@@ -6272,7 +6513,7 @@ export default function ScientificChart({
         <svg
           ref={svg}
           role="img"
-          aria-label={`X: ${displayX || 'x'}, Y: ${displayY || 'y'}${identityLine ? ', y = x reference' : ''}`}
+          aria-label={`X: ${displayX || 'x'}, Y: ${displayY || 'y'}${identityLine ? ', y = x reference' : ''}${zeroLine ? ', residual zero reference' : ''}`}
           tabIndex={0}
           width={width}
           height={height}
@@ -6359,6 +6600,16 @@ export default function ScientificChart({
               )
             })}
           <g clipPath={`url(#${clip})`}>
+            {zeroLine && !area && geometry && (
+              <line
+                x1={left}
+                y1={geometry.y(0)}
+                x2={right}
+                y2={geometry.y(0)}
+                className="science-zero-line"
+                strokeDasharray="6 5"
+              />
+            )}
             {areaPolygons.map((polygon, i) => (
               <polygon
                 key={i}
@@ -6409,7 +6660,7 @@ export default function ScientificChart({
                     <path
                       d={paths[i]}
                       fill="none"
-                      stroke={colors[i % colors.length]}
+                      stroke={s.color ?? colors[i % colors.length]}
                       strokeWidth="2.3"
                     />
                   )}
@@ -6424,7 +6675,7 @@ export default function ScientificChart({
                           cy={geometry.y(s.y[j])}
                           r="3.4"
                           fill="white"
-                          stroke={colors[i % colors.length]}
+                          stroke={s.color ?? colors[i % colors.length]}
                           strokeWidth="1.7"
                         />
                       ) : null,
@@ -6438,7 +6689,7 @@ export default function ScientificChart({
                         cx={geometry.x(s.x[cursorIndex])}
                         cy={geometry.y(s.y[cursorIndex])}
                         r="5"
-                        fill={colors[i % colors.length]}
+                        fill={s.color ?? colors[i % colors.length]}
                         stroke="white"
                         strokeWidth="2"
                       />
@@ -7041,12 +7292,13 @@ export default function ScientificOutput({
 
 ## src/components/RegressionResult.tsx
 
-원본: [src/components/RegressionResult.tsx](../../src/components/RegressionResult.tsx) · 330줄 · SHA-256: `c9ea69a6bc71f705d7b967445997cd6af48fbc30072de00de0e4dd187e6fc5d5`
+원본: [src/components/RegressionResult.tsx](../../src/components/RegressionResult.tsx) · 332줄 · SHA-256: `312a83ee1ceccd5f33a7638711640400925f9dcf55bf536d75482244ef14070c`
 
 ```tsx
 import { useMemo } from 'react'
 import type { ScientificResult } from '../engine/scientific/types'
 import ScientificChart from './ScientificChart'
+import RegressionResidualPlot from './RegressionResidualPlot'
 import './RegressionResult.css'
 
 const format = (value: number | string) => {
@@ -7257,6 +7509,7 @@ export default function RegressionResult({
           오차와 통계 가정도 변환한 값의 단위에 적용됩니다.
         </p>
       </details>
+      <RegressionResidualPlot result={result} />
       {comparison.length > 0 && (
         <section className="regression-comparison">
           <h3>Observed vs Predicted</h3>
@@ -7380,7 +7633,7 @@ export default function RegressionResult({
 
 ## src/components/RegressionResult.css
 
-원본: [src/components/RegressionResult.css](../../src/components/RegressionResult.css) · 189줄 · SHA-256: `62032f3f7d45be69a60964b574ac316a49da5af21f1074155ff210dc9dec59db`
+원본: [src/components/RegressionResult.css](../../src/components/RegressionResult.css) · 316줄 · SHA-256: `2a39ae8c2e34a5a182c0334b2893d52107f1ee7d12d434d893247eeacc189e7d`
 
 ```css
 .regression-result {
@@ -7529,6 +7782,133 @@ export default function RegressionResult({
   font-weight: 600;
   margin: 0 0 10px;
 }
+.regression-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.regression-comparison > p {
+  color: #52616e;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.regression-section-heading label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.regression-section-heading select {
+  padding: 7px 10px;
+  max-width: 230px;
+  border: 1px solid #cbd4dc;
+  border-radius: 5px;
+  background: white;
+}
+.regression-degree-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #d7dce1;
+  border-radius: 6px;
+}
+.regression-degree-picker legend {
+  font-size: 12px;
+  color: #52616e;
+}
+.regression-degree-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.regression-degree-picker input {
+  accent-color: #376eae;
+}
+.regression-compare-button,
+.regression-degree-table button,
+.regression-view-switch button {
+  border: 1px solid #cbd4dc;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  color: #305876;
+  cursor: pointer;
+}
+.regression-compare-button {
+  background: #305876;
+  color: white;
+}
+.regression-compare-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.regression-recommendation {
+  padding: 12px;
+  background: #edf4f6;
+  border-left: 3px solid #376eae;
+}
+.regression-degree-table {
+  min-width: 850px;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.regression-degree-table :is(th, td) {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e1e5e9;
+  vertical-align: top;
+}
+.regression-degree-table thead th {
+  background: #f2f4f7;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.regression-degree-table tbody th {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.regression-degree-table small {
+  display: block;
+  margin-top: 4px;
+  color: #5c6877;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.regression-degree-table caption {
+  text-align: left;
+  padding: 5px 0 8px;
+  color: #4c5967;
+}
+.regression-degree-table tr[data-recommended='true'] {
+  background: #f0f6f9;
+}
+.regression-degree-table td:last-child {
+  max-width: 32ch;
+  min-width: 140px;
+  line-height: 1.6;
+}
+.regression-degree-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+.regression-view-switch {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.regression-view-switch button[aria-pressed='true'] {
+  background: #eaf0f6;
+  border-color: #5a7a9a;
+}
 .regression-comparison .scientific-chart-stage {
   height: 340px;
   min-height: 260px;
@@ -7571,5 +7951,416 @@ export default function RegressionResult({
   .regression-primary strong {
     font-size: 18px;
   }
+}
+```
+
+<a id="source-24"></a>
+
+## src/components/RegressionResidualPlot.tsx
+
+원본: [src/components/RegressionResidualPlot.tsx](../../src/components/RegressionResidualPlot.tsx) · 94줄 · SHA-256: `9166919e0d5d307d5e3ff83de07ad545f0fb5638f86ca682baad4ef6a8166e7a`
+
+```tsx
+import { useMemo, useState } from 'react'
+import type { ScientificResult } from '../engine/scientific/types'
+import ScientificChart from './ScientificChart'
+import './RegressionResult.css'
+
+export default function RegressionResidualPlot({
+  result,
+}: {
+  result: ScientificResult
+}) {
+  const [against, setAgainst] = useState('fitted')
+  const residuals = result.residuals
+  const data = result.comparison
+  const predictor = residuals?.predictors[Number(against.split(':')[1])]
+  const xLabel =
+    against === 'row'
+      ? 'Observation row'
+      : predictor
+        ? predictor.name
+        : `Predicted ${data?.dependent ?? ''}`
+  const series = useMemo(
+    () =>
+      residuals && data
+        ? [
+            {
+              name: 'Residuals',
+              style: 'points' as const,
+              y: residuals.values,
+              x:
+                against === 'row'
+                  ? residuals.values.map((_, i) => i + 1)
+                  : (predictor?.values ?? data.predicted),
+            },
+          ]
+        : [],
+    [residuals, data, against, predictor],
+  )
+  if (!residuals || !data) return null
+  return (
+    <section
+      className="regression-comparison regression-residuals"
+      aria-label="Residual plot"
+    >
+      <div className="regression-section-heading">
+        <h3>Residual Plot</h3>
+        <label>
+          Plot residuals against
+          <select
+            aria-label="Plot residuals against"
+            value={against}
+            onChange={(e) => setAgainst(e.target.value)}
+          >
+            <option value="fitted">Predicted value</option>
+            <option value="row">Observation row</option>
+            {residuals.predictors.map((p, i) => (
+              <option key={p.name} value={`predictor:${i}`}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p>
+        Residual = Observed − Predicted · {residuals.values.length} observations
+      </p>
+      {result.status === 'stopped' && (
+        <p className="regression-stop">
+          마지막 유효 반복의 잔차입니다. 수렴한 적합으로 해석하지 마세요.
+        </p>
+      )}
+      <ScientificChart
+        series={series}
+        xLabel={xLabel}
+        yLabel={`Residual (${data.dependent})`}
+        zeroLine
+      />
+      <details className="regression-help">
+        <summary>How to read residuals</summary>
+        <p>
+          0 기준선 위의 점은 모델이 낮게 예측한 관측, 아래의 점은 높게 예측한
+          관측입니다. 0 주위에 고르게 섞이는지 보세요. 휘어진 패턴은 빠진 곡률,
+          부채꼴은 일정하지 않은 오차 분산, 행 순서에 따른 패턴은 오차의 상관
+          가능성을 시사합니다. 패턴만으로 원인을 확정할 수는 없습니다.
+        </p>
+        <p>
+          예측값·각 설명변수·관측 행 번호를 바꿔 확인할 수 있습니다. 행 번호는
+          원래 입력 순서이며 시간으로 가정하지 않습니다. 이 잔차는 적합에 사용한
+          데이터의 오차이고, 표준화 잔차나 별도 검증 데이터의 예측 오차는
+          아닙니다. 변환한 종속변수를 적합했다면 잔차도 그 단위입니다.
+        </p>
+      </details>
+    </section>
+  )
+}
+```
+
+<a id="source-25"></a>
+
+## src/components/PolynomialComparison.tsx
+
+원본: [src/components/PolynomialComparison.tsx](../../src/components/PolynomialComparison.tsx) · 242줄 · SHA-256: `86f1f3d983dcc815a2d8b3bf86efb8811b9f70f56c607e69f61f215044e9c413`
+
+```tsx
+import { useMemo, useState } from 'react'
+import type { ScientificResult } from '../engine/scientific/types'
+import ScientificChart from './ScientificChart'
+
+const colors = [
+  '#376eae',
+  '#b37836',
+  '#7961a8',
+  '#368078',
+  '#a85773',
+  '#6c8039',
+  '#2d4b73',
+  '#97412a',
+  '#565478',
+  '#207254',
+  '#a63e88',
+  '#80621c',
+]
+const format = (v: number | string | undefined) =>
+  v === undefined
+    ? 'Not available'
+    : typeof v === 'string'
+      ? v
+      : Number(v.toPrecision(6)).toString()
+export default function PolynomialComparison({
+  result,
+  onCompare,
+  onApply,
+}: {
+  result: ScientificResult
+  onCompare: (degrees: number[]) => void
+  onApply: (degree: number) => void
+}) {
+  const comparison = result.polynomialComparison
+  const [degrees, setDegrees] = useState(
+    () => comparison?.candidates.map((c) => c.degree) ?? [1, 2, 3, 4, 5],
+  )
+  const [view, setView] = useState('fits')
+  const series = useMemo(() => {
+    if (!comparison) return []
+    const candidates = comparison.candidates.flatMap((c) => {
+      const s = view === 'fits' ? c.curve : c.residuals
+      return s ? [{ ...s, color: colors[c.degree - 1] }] : []
+    })
+    return view === 'fits'
+      ? [{ ...comparison.observed, color: '#52616e' }, ...candidates]
+      : candidates
+  }, [comparison, view])
+  return (
+    <section
+      className="regression-comparison regression-degree-comparison"
+      aria-label="Polynomial degree comparison"
+    >
+      <div className="regression-section-heading">
+        <h3>Compare Polynomial Degrees</h3>
+        <span>Current degree: {result.regression?.degree}</span>
+      </div>
+      <p>
+        같은 데이터·종속변수·Origin 조건으로 차수를 비교합니다. 차수 선택 후
+        Compare Fits를 누르세요.
+      </p>
+      <fieldset className="regression-degree-picker">
+        <legend>Degrees to compare</legend>
+        {Array.from({ length: 12 }, (_, i) => i + 1).map((d) => (
+          <label key={d}>
+            <input
+              type="checkbox"
+              checked={degrees.includes(d)}
+              onChange={(e) =>
+                setDegrees(
+                  e.target.checked
+                    ? [...degrees, d]
+                    : degrees.filter((v) => v !== d),
+                )
+              }
+            />
+            Degree {d}
+          </label>
+        ))}
+      </fieldset>
+      <button
+        type="button"
+        className="regression-compare-button"
+        disabled={degrees.length < 2}
+        onClick={() => onCompare(degrees)}
+      >
+        Compare Fits
+      </button>
+      {degrees.length < 2 && <p>비교할 차수를 두 개 이상 선택하세요.</p>}
+      {comparison && (
+        <>
+          {degrees
+            .slice()
+            .sort((a, b) => a - b)
+            .join(',') !==
+            comparison.candidates.map((c) => c.degree).join(',') && (
+            <p role="status">
+              선택한 차수가 바뀌었습니다. 아래는 이전 비교 결과입니다. Compare
+              Fits로 갱신하세요.
+            </p>
+          )}
+          <p className="regression-recommendation" role="status">
+            {comparison.recommendedDegree === undefined
+              ? 'LOOCV를 산정할 수 있는 후보가 없어 추천 차수를 표시하지 않았습니다.'
+              : `Lowest LOOCV error: Degree ${comparison.recommendedDegree} · 선택한 후보 중 추천 (수치적으로 같은 점수이면 낮은 차수)`}
+          </p>
+          <div className="regression-table-scroll">
+            <table className="regression-degree-table">
+              <caption>
+                Same-data model comparison ·{' '}
+                {comparison.origin ? 'Through origin' : 'With intercept'}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Degree</th>
+                  <th scope="col">Parameters</th>
+                  <th scope="col">Training RMSE ↓</th>
+                  <th scope="col">LOOCV RMSE ↓</th>
+                  <th scope="col">Adjusted R² ↑</th>
+                  <th scope="col">AIC ↓</th>
+                  <th scope="col">Action / Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.candidates.map((c) => {
+                  const metric = (label: string) =>
+                    c.metrics?.find((m) => m.label === label)?.value
+                  return (
+                    <tr
+                      key={c.degree}
+                      data-recommended={
+                        c.degree === comparison.recommendedDegree
+                      }
+                    >
+                      <th scope="row">
+                        <i
+                          className="regression-degree-swatch"
+                          style={{ background: colors[c.degree - 1] }}
+                        />
+                        Degree {c.degree}
+                        {c.degree === comparison.recommendedDegree && (
+                          <small>Lowest LOOCV</small>
+                        )}
+                      </th>
+                      <td>{c.degree + (comparison.origin ? 0 : 1)}</td>
+                      <td>{format(metric('RMSE'))}</td>
+                      <td>
+                        {format(c.crossValidation?.rmse)}
+                        {c.crossValidation?.unavailableReason && (
+                          <small>{c.crossValidation.unavailableReason}</small>
+                        )}
+                      </td>
+                      <td>{format(metric('Adjusted R²'))}</td>
+                      <td>{format(metric('AIC'))}</td>
+                      <td>
+                        {c.status === 'unavailable' ? (
+                          <span>{c.reason}</span>
+                        ) : c.degree === result.regression?.degree ? (
+                          'Current fit'
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onApply(c.degree)}
+                          >
+                            Use Degree {c.degree}
+                          </button>
+                        )}
+                        {!!c.warnings?.length && (
+                          <details>
+                            <summary>Warnings</summary>
+                            {c.warnings.map((w) => (
+                              <p key={w}>{w}</p>
+                            ))}
+                          </details>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div
+            className="regression-view-switch"
+            role="group"
+            aria-label="Degree comparison plot"
+          >
+            <button
+              type="button"
+              aria-pressed={view === 'fits'}
+              onClick={() => setView('fits')}
+            >
+              Fit Overlay
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'residuals'}
+              onClick={() => setView('residuals')}
+            >
+              Residual Overlay
+            </button>
+          </div>
+          <ScientificChart
+            series={series}
+            xLabel={comparison.independent}
+            yLabel={
+              view === 'fits'
+                ? comparison.dependent
+                : `Residual (${comparison.dependent})`
+            }
+            zeroLine={view === 'residuals'}
+          />
+          <details className="regression-help">
+            <summary>Choosing a degree · LOOCV, overfitting and limits</summary>
+            <p>
+              LOOCV RMSE는 각 관측을 한 행씩 빼고 그 점을 예측한 오차의
+              제곱평균제곱근입니다. 선형 최소제곱의 PRESS 공식으로 계산합니다.
+              작은 값이 같은 데이터의 후보 사이에서 선호됩니다. 훈련 RMSE만 보고
+              차수를 높이면 과적합할 수 있으므로 LOOCV와 잔차 패턴을 함께
+              확인하세요. 수치 반올림 수준에서 같은 점수는 더 낮은 차수를
+              추천합니다.
+            </p>
+            <p>
+              차수 비교는 선택한 후보에 한합니다. 관측 수 부족·랭크 부족은 실패
+              이유를 표시하고, 행 제외 시 불안정하거나 자유도가 없으면 LOOCV를
+              비워 둡니다. AIC·Adjusted R²도 산정할 수 없으면 표시하지 않습니다.
+              LOOCV는 외부 검증 데이터나 외삽 정확도 보장이 아니며, 시간·그룹
+              상관 데이터에서는 별도의 블록·그룹 검증이 필요합니다. Through
+              Origin 조건과 보조식은 모든 후보에 동일하게 적용됩니다.
+            </p>
+            <p>
+              Use Degree는 실제 Input의 polyfit 차수를 바꾸고 현재
+              계수·Simulation·Report를 다시 계산합니다. 비교 그래프의 범례를
+              눌러 곡선을 숨길 수 있으며 같은 차수는 두 그림에서 같은 색을
+              사용합니다.
+            </p>
+          </details>
+        </>
+      )}
+    </section>
+  )
+}
+```
+
+<a id="source-26"></a>
+
+## src/regression-report.ts
+
+원본: [src/regression-report.ts](../../src/regression-report.ts) · 48줄 · SHA-256: `47b377adde562e0a79ca163fa4a7dab2264a6f0c2b20c3173732e039b37b150a`
+
+```typescript
+import type { ScientificResult } from './engine/scientific/types'
+const cell = (value: number | string | undefined) =>
+  value === undefined
+    ? 'Not available'
+    : String(value)
+        .replace(/\|/g, '\\|')
+        .replace(/[\r\n]+/g, ' ')
+
+/** Keep the downloadable report's residual sign and comparison scores identical
+ * to the report on screen. Use full precision and preserve original row order. */
+export function regressionReportSections(result: ScientificResult): string {
+  const sections: string[] = []
+  if (result.residuals && result.comparison) {
+    sections.push(
+      [
+        '## Residuals · Observed − Predicted',
+        'Original input row order; errors in the fitted dependent variable units. These are training residuals, not validation errors.',
+        '| Row | Observed | Predicted | Residual |',
+        '| --- | --- | --- | --- |',
+        ...result.residuals.values.map(
+          (v, i) =>
+            `| ${i + 1} | ${cell(result.comparison!.observed[i])} | ${cell(result.comparison!.predicted[i])} | ${cell(v)} |`,
+        ),
+      ].join('\n'),
+    )
+  }
+  if (result.polynomialComparison) {
+    const comparison = result.polynomialComparison
+    sections.push(
+      [
+        '## Polynomial degree comparison',
+        `Same observations and dependent variable (${cell(comparison.dependent)}); ${comparison.origin ? 'through origin' : 'with intercept'}.`,
+        comparison.recommendedDegree === undefined
+          ? 'No LOOCV recommendation available.'
+          : `Lowest LOOCV error among selected candidates: Degree ${comparison.recommendedDegree}. Numerical ties prefer the lower degree.`,
+        '| Degree | Training RMSE | LOOCV RMSE | Adjusted R² | AIC | Status |',
+        '| --- | --- | --- | --- | --- | --- |',
+        ...comparison.candidates.map((c) => {
+          const metric = (label: string) =>
+            c.metrics?.find((m) => m.label === label)?.value
+          return `| ${c.degree} | ${cell(metric('RMSE'))} | ${cell(c.crossValidation?.rmse)} | ${cell(metric('Adjusted R²'))} | ${cell(metric('AIC'))} | ${cell(c.reason ?? c.crossValidation?.unavailableReason ?? c.status)} |`
+        }),
+        'LOOCV uses PRESS residuals / (1 − leverage) for linear least squares. It is not independent external validation or an extrapolation guarantee. Rank loss, insufficient observations or numerical instability are not zero errors.',
+      ].join('\n'),
+    )
+  }
+  return sections.join('\n\n')
 }
 ```

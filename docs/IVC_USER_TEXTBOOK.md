@@ -521,7 +521,36 @@ polyfit x y 2
 
 한 점의 큰 오차는 이상 측정일 수도 있고 중요한 실제 현상일 수도 있습니다. 잘 맞는 결과를 만들기 위해 근거 없이 지우지 마세요. 자료 범위 바깥 Extrapolation은 높은 R²라도 불안정합니다. 고차 다항식은 특히 양 끝 밖에서 급격히 커질 수 있습니다.
 
+### 4.1 Compare Polynomial Degrees
+
+Report → Compare Polynomial Degrees에서 차수 1~12 중 두 개 이상을 선택하고 Compare Fits를 누릅니다. 같은 관측·종속변수·보조식·Origin 조건으로 모든 후보를 다시 적합합니다. Fit Overlay는 관측점과 후보 곡선, Residual Overlay는 같은 x에서의 관측값−예측값을 표시합니다. 같은 차수는 두 그래프에서 같은 색입니다. 범례로 후보를 숨기거나 표시할 수 있습니다.
+
+Training RMSE는 훈련 적합 정도이며 고차식은 이 값만 줄여 과적합할 수 있습니다. LOOCV RMSE는 한 관측을 제외하고 적합한 모델로 그 관측을 예측한 오차입니다. 선형 최소제곱의 PRESS 공식 residual/(1−leverage)으로 계산합니다. 가장 작은 유효 LOOCV를 추천하고 반올림 오차 수준에서 같으면 낮은 차수를 선택합니다. 관측 수·랭크가 부족하거나 행 제외 시 불안정하면 미산정 사유를 표시합니다. Adjusted R²와 AIC도 함께 확인하세요.
+
+Compare degrees 1, 2, 3: the known y=1+x^2 model prefers degree 2
+
+```text
+[
+x y
+-2 5
+-1 2
+0 1
+1 2
+2 5
+3 10
+]
+polyfit x y 1
+```
+
+이 예제는 2차식에 정확히 놓입니다. 1차의 잔차는 곡선 패턴을 보이고, 2차와 3차는 수치 반올림 수준의 오차를 내므로 더 낮은 2차를 추천합니다. Use Degree 2를 누르면 Input의 polyfit 명령과 현재 계수·Simulation·Report를 실제로 바꿉니다. 비교 차수 목록은 프로젝트와 자동 저장에 포함됩니다.
+
+> **Validation limits**
+>
+> 추천은 선택한 차수 중에서만 계산합니다. LOOCV도 같은 자료를 재사용하므로 독립적인 외부 검증이나 데이터 범위 밖 예측을 보장하지 않습니다. 시간·그룹 상관이 있는 데이터에는 별도의 블록·그룹 검증이 필요합니다. 회귀 계수의 신뢰구간이나 모델이 맞을 확률을 뜻하지 않습니다.
+
 ### 5. Report · Fit Quality
+
+Report의 Residual Plot은 관측값−예측값을 0 기준선과 함께 표시합니다. 양수는 과소 예측, 음수는 과대 예측입니다. Plot residuals against에서 Predicted value, 각 설명변수 또는 Observation row를 선택하세요. 행 번호는 원래 입력 순서이며 시간이라고 가정하지 않습니다. 곡률·부채꼴·순서 패턴을 점검하되, 그림만으로 원인을 확정하지 않습니다. 적합한 데이터의 잔차이며 별도 검증 오차나 표준화 잔차는 아닙니다.
 
 | Metric | How to read it |
 | --- | --- |
@@ -649,6 +678,8 @@ T가 K, flow가 L/min, y가 kg라면 b_T는 kg/K, b_flow는 kg/(L/min)입니다.
 데이터를 추가할 때 같은 비율의 행만 늘리는 것보다 설명변수들을 독립적으로 바꾼 실험이 계수 구분에 도움이 됩니다. 예측은 안정돼 보여도 개별 계수의 해석은 매우 불안정할 수 있습니다.
 
 ### 6. Report · Model Quality
+
+Report의 Residual Plot은 관측값−예측값을 0 기준선과 함께 표시합니다. 양수는 과소 예측, 음수는 과대 예측입니다. Plot residuals against에서 Predicted value, 각 설명변수 또는 Observation row를 선택하세요. 행 번호는 원래 입력 순서이며 시간이라고 가정하지 않습니다. 곡률·부채꼴·순서 패턴을 점검하되, 그림만으로 원인을 확정하지 않습니다. 적합한 데이터의 잔차이며 별도 검증 오차나 표준화 잔차는 아닙니다.
 
 | Metric | How to read it |
 | --- | --- |
@@ -792,6 +823,8 @@ Michaelis–Menten에서 S가 모두 Km보다 훨씬 작으면 v≈(Vmax/Km)*S�
 계수를 크게 바꿔도 곡선이 거의 같다면 불확실성이 큰 것입니다. 단순히 반복 수나 표시 자릿수를 늘려 해결할 수 없고, 모델을 단순화하거나 다른 영역의 측정이 필요할 수 있습니다.
 
 ### 6. Report · Fit & Convergence
+
+Report의 Residual Plot은 관측값−예측값을 0 기준선과 함께 표시합니다. 양수는 과소 예측, 음수는 과대 예측입니다. Plot residuals against에서 Predicted value, 각 설명변수 또는 Observation row를 선택하세요. 행 번호는 원래 입력 순서이며 시간이라고 가정하지 않습니다. 곡률·부채꼴·순서 패턴을 점검하되, 그림만으로 원인을 확정하지 않습니다. 적합한 데이터의 잔차이며 별도 검증 오차나 표준화 잔차는 아닙니다.
 
 | Metric | How to read it |
 | --- | --- |
@@ -1200,6 +1233,8 @@ Km|0.4 0.001 5
 Converged는 수치적 제약·정상성 조건을 만족한 상태입니다. 데이터가 충분한지·모델이 과학적으로 타당한지는 별도로 검토해야 합니다. Stopped 결과는 마지막 유효 후보이며 완성된 추정으로 표시하지 않습니다.
 
 ### 5. Report · Fit Quality & Feasibility
+
+Report의 Residual Plot은 관측값−예측값을 0 기준선과 함께 표시합니다. 양수는 과소 예측, 음수는 과대 예측입니다. Plot residuals against에서 Predicted value, 각 설명변수 또는 Observation row를 선택하세요. 행 번호는 원래 입력 순서이며 시간이라고 가정하지 않습니다. 곡률·부채꼴·순서 패턴을 점검하되, 그림만으로 원인을 확정하지 않습니다. 적합한 데이터의 잔차이며 별도 검증 오차나 표준화 잔차는 아닙니다.
 
 | Metric | How to read it |
 | --- | --- |

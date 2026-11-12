@@ -12,6 +12,7 @@ export type ScientificOptions = {
   samples?: number
   degree?: number
   method?: string
+  compareDegrees?: number[]
 }
 export type ScientificRequest = {
   module: ScientificModule
@@ -25,6 +26,7 @@ export type ScientificSeries = {
   y: number[]
   style?: 'line' | 'points'
   axisLabel?: string
+  color?: string
 }
 export type ScientificMetric = {
   label: string
@@ -48,6 +50,26 @@ export type RegressionDiagnostics = {
   origin: boolean
   confidenceMethod: 'linear-normal' | 'nonlinear-local'
   confidenceUnavailableReason?: string
+  degree?: number
+  crossValidation?: { rmse?: number; unavailableReason?: string }
+}
+export type PolynomialCandidate = {
+  degree: number
+  status: 'completed' | 'unavailable'
+  metrics?: ScientificMetric[]
+  curve?: ScientificSeries
+  residuals?: ScientificSeries
+  crossValidation?: { rmse?: number; unavailableReason?: string }
+  warnings?: string[]
+  reason?: string
+}
+export type PolynomialComparison = {
+  independent: string
+  dependent: string
+  origin: boolean
+  observed: ScientificSeries
+  candidates: PolynomialCandidate[]
+  recommendedDegree?: number
 }
 export type ScientificResult = {
   module: ScientificModule
@@ -66,6 +88,11 @@ export type ScientificResult = {
   formula?: string
   coefficients?: ScientificCoefficient[]
   regression?: RegressionDiagnostics
+  residuals?: {
+    values: number[]
+    predictors: { name: string; values: number[] }[]
+  }
+  polynomialComparison?: PolynomialComparison
   comparison?: {
     observed: number[]
     predicted: number[]

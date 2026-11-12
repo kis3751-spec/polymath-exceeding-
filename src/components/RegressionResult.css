@@ -144,6 +144,133 @@
   font-weight: 600;
   margin: 0 0 10px;
 }
+.regression-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.regression-comparison > p {
+  color: #52616e;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.regression-section-heading label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.regression-section-heading select {
+  padding: 7px 10px;
+  max-width: 230px;
+  border: 1px solid #cbd4dc;
+  border-radius: 5px;
+  background: white;
+}
+.regression-degree-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #d7dce1;
+  border-radius: 6px;
+}
+.regression-degree-picker legend {
+  font-size: 12px;
+  color: #52616e;
+}
+.regression-degree-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.regression-degree-picker input {
+  accent-color: #376eae;
+}
+.regression-compare-button,
+.regression-degree-table button,
+.regression-view-switch button {
+  border: 1px solid #cbd4dc;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  color: #305876;
+  cursor: pointer;
+}
+.regression-compare-button {
+  background: #305876;
+  color: white;
+}
+.regression-compare-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.regression-recommendation {
+  padding: 12px;
+  background: #edf4f6;
+  border-left: 3px solid #376eae;
+}
+.regression-degree-table {
+  min-width: 850px;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.regression-degree-table :is(th, td) {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e1e5e9;
+  vertical-align: top;
+}
+.regression-degree-table thead th {
+  background: #f2f4f7;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.regression-degree-table tbody th {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.regression-degree-table small {
+  display: block;
+  margin-top: 4px;
+  color: #5c6877;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.regression-degree-table caption {
+  text-align: left;
+  padding: 5px 0 8px;
+  color: #4c5967;
+}
+.regression-degree-table tr[data-recommended='true'] {
+  background: #f0f6f9;
+}
+.regression-degree-table td:last-child {
+  max-width: 32ch;
+  min-width: 140px;
+  line-height: 1.6;
+}
+.regression-degree-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+.regression-view-switch {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.regression-view-switch button[aria-pressed='true'] {
+  background: #eaf0f6;
+  border-color: #5a7a9a;
+}
 .regression-comparison .scientific-chart-stage {
   height: 340px;
   min-height: 260px;

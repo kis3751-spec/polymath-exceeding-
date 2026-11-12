@@ -364,6 +364,8 @@ Nonlinear 자동 탐색의 시뮬레이션은 이제 [기본 병합 그래프](d
 
 ## 확장된 과학 계산 모듈
 
+모든 회귀 Report에 **Residual Plot**을 표시합니다. `Observed − Predicted`를 예측값·설명변수·입력 행 순서에 대해 확인할 수 있습니다. Curve Fitting의 **Compare Polynomial Degrees**에서 차수 1~12를 선택해 **Fit Overlay / Residual Overlay**와 Training RMSE·LOOCV RMSE·Adjusted R²·AIC를 비교합니다. **Use Degree**로 실제 모델에 적용하며, 비교 차수 목록은 프로젝트에 저장됩니다. 사용법과 검증 범위는 [회귀 보고서·차수 비교](docs/REGRESSION_REPORTS.md)에 있습니다.
+
 | 도구                   | 입력의 핵심                                | 계산·시각화                                       |
 | ---------------------- | ------------------------------------------ | ------------------------------------------------- |
 | Differential Equations | `d(A)/d(t)=-k*A`, `A(0)=1`, `t\|0:10`      | 적응 RK45·강성 대응 음해법, 시간 재생·위상 그래프 |

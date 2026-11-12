@@ -107,6 +107,13 @@ describe('bounded local optimization and constrained least squares', () => {
     expect(result.values.b).toBeCloseTo(1, 5)
     expect(result.values.objective).toBeLessThan(1e-9)
     expect(result.columns.slice(-2)).toEqual(['prediction', 'error'])
+    expect(result.residuals!.values).toHaveLength(5)
+    result.residuals!.values.forEach((r, i) => {
+      expect(r).toBe(
+        result.comparison!.observed[i] - result.comparison!.predicted[i],
+      )
+      expect(r).toBe(-result.rows[i].at(-1)!)
+    })
   })
   it('rejects measured-value leakage through a model helper', () => {
     expect(() =>

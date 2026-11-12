@@ -178,6 +178,9 @@ const books = [
       'src/components/ScientificOutput.tsx',
       'src/components/RegressionResult.tsx',
       'src/components/RegressionResult.css',
+      'src/components/RegressionResidualPlot.tsx',
+      'src/components/PolynomialComparison.tsx',
+      'src/regression-report.ts',
     ],
   },
 ]

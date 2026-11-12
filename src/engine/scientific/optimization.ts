@@ -767,6 +767,32 @@ export function solveOptimization(
     formula: main.target
       ? `${main.target} = ${main.text}`
       : `min: ${main.text}`,
+    ...(main.target
+      ? {
+          comparison: {
+            dependent: main.target,
+            observed: table.rows.map(
+              (row) => row[table.columns.indexOf(main.target!)],
+            ),
+            predicted: [...current.predictions!],
+          },
+          residuals: {
+            values: table.rows.map(
+              (row, i) =>
+                row[table.columns.indexOf(main.target!)] -
+                current.predictions![i],
+            ),
+            predictors: table.columns
+              .filter((name) => name !== main.target)
+              .map((name) => ({
+                name,
+                values: table.rows.map(
+                  (row) => row[table.columns.indexOf(name)],
+                ),
+              })),
+          },
+        }
+      : {}),
   }
 }
 

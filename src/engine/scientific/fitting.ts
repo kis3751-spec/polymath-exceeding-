@@ -12,6 +12,7 @@ import type {
   ScientificRequest,
   ScientificResult,
   ScientificSeries,
+  PolynomialCandidate,
 } from './types'
 
 const NAME = /^[A-Za-z][A-Za-z0-9_]*$/
@@ -265,6 +266,36 @@ function binomial(n: number, k: number) {
   for (let i = 1; i <= k; i++) r = (r * (n - i + 1)) / i
   return r
 }
+/** PRESS / leave-one-out errors for a full-rank linear least-squares fit.
+ * Scaling the columns leaves the hat matrix unchanged. A unit leverage means
+ * removing that row makes the fit unidentified, not a zero validation error. */
+function leaveOneOut(
+  svd: SingularValueDecomposition,
+  residuals: number[],
+  p: number,
+  yScale: number,
+): { rmse?: number; unavailableReason?: string } {
+  if (residuals.length <= p)
+    return {
+      unavailableReason: '관측 행 수가 계수 수보다 커야 LOOCV를 계산합니다.',
+    }
+  const u = svd.leftSingularVectors
+  const errors: number[] = []
+  for (let i = 0; i < residuals.length; i++) {
+    const leverage = sum(Array.from({ length: p }, (_, k) => u.get(i, k) ** 2))
+    const denominator = 1 - leverage
+    if (denominator <= 128 * Number.EPSILON * Math.max(residuals.length, p))
+      return {
+        unavailableReason:
+          '한 행을 제외하면 랭크가 부족하거나 수치적으로 불안정해 LOOCV를 산정하지 않았습니다.',
+      }
+    errors.push(residuals[i] / yScale / denominator)
+  }
+  const rmse = (magnitude(errors) / Math.sqrt(errors.length)) * yScale
+  return Number.isFinite(rmse)
+    ? { rmse }
+    : { unavailableReason: 'LOOCV 오차가 Float64 범위를 넘었습니다.' }
+}
 function linearFit(
   request: ScientificRequest,
   start: number,
@@ -492,6 +523,17 @@ function linearFit(
     formula,
     coefficients: coefficientRows,
     regression: {
+      ...(poly ? { degree } : {}),
+      ...(poly && request.options?.compareDegrees?.length
+        ? {
+            crossValidation: leaveOneOut(
+              solved.svd,
+              stats.residuals,
+              p,
+              yScale,
+            ),
+          }
+        : {}),
       model: poly
         ? `${dependent} = ${Array.from(
             { length: degree + (origin ? 0 : 1) },
@@ -515,6 +557,10 @@ function linearFit(
         : {}),
     },
     comparison: { observed: [...y], predicted: [...pred], dependent },
+    residuals: {
+      values: stats.residuals,
+      predictors: predictors.map((name, i) => ({ name, values: [...xs[i]] })),
+    },
   }
 }
 
@@ -997,6 +1043,13 @@ function nonlinearFit(
       predicted: [...predicted],
       dependent: parsed.dependent,
     },
+    residuals: {
+      values: stats.residuals,
+      predictors: [...directRefs].map((name) => ({
+        name,
+        values: parsed.raw.map((row) => row[name]),
+      })),
+    },
   }
 }
 
@@ -1010,7 +1063,82 @@ export function solveFitting(request: ScientificRequest): ScientificResult {
   )
     throw new ModelError('그래프 샘플 수는 2 이상의 유한한 값이어야 합니다.')
   const parsed = dataScopes(request)
-  return /^nlinfit\b/i.test(parsed.command)
+  const degrees = request.options?.compareDegrees
+  if (
+    degrees !== undefined &&
+    (request.module !== 'curve-fit' ||
+      !Array.isArray(degrees) ||
+      degrees.length > 12 ||
+      degrees.some((d) => !Number.isInteger(d) || d < 1 || d > 12))
+  )
+    throw new ModelError(
+      '차수 비교는 Polynomial에서 1~12의 정수 차수를 최대 12개 선택하세요.',
+    )
+  const result = /^nlinfit\b/i.test(parsed.command)
     ? nonlinearFit(request, start, parsed)
     : linearFit(request, start, parsed)
+  if (degrees?.length) {
+    const [command, independent, dependent] = parsed.command.split(/\s+/)
+    const origin = result.regression!.origin
+    const candidates: PolynomialCandidate[] = [...new Set(degrees)]
+      .sort((a, b) => a - b)
+      .map((degree) => {
+        try {
+          const fit =
+            degree === result.regression?.degree
+              ? result
+              : linearFit(request, start, {
+                  ...parsed,
+                  command: `${command} ${independent} ${dependent} ${degree}${origin ? ' origin' : ''}`,
+                })
+          return {
+            degree,
+            status: 'completed',
+            metrics: fit.metrics,
+            curve: { ...fit.series[1], name: `Degree ${degree}` },
+            residuals: {
+              name: `Degree ${degree}`,
+              x: fit.residuals!.predictors[0].values,
+              y: fit.residuals!.values,
+              style: 'points',
+            },
+            crossValidation: fit.regression!.crossValidation,
+            warnings: fit.warnings,
+          }
+        } catch (error) {
+          return {
+            degree,
+            status: 'unavailable',
+            reason:
+              error instanceof Error ? error.message : '계산하지 못했습니다.',
+          }
+        }
+      })
+    const available = candidates.filter(
+      (c) => c.crossValidation?.rmse !== undefined,
+    )
+    const best = available.reduce<number | undefined>(
+      (v, c) => Math.min(v ?? Infinity, c.crossValidation!.rmse!),
+      undefined,
+    )
+    const scale = Math.max(...result.comparison!.observed.map(Math.abs)) || 1
+    const recommended =
+      best === undefined
+        ? undefined
+        : available.find(
+            (c) =>
+              c.crossValidation!.rmse! <=
+              best + Math.abs(best) * 1e-8 + scale * 128 * Number.EPSILON,
+          )?.degree
+    result.polynomialComparison = {
+      independent,
+      dependent,
+      origin,
+      observed: { ...result.series[0], name: 'Observed data' },
+      candidates,
+      ...(recommended === undefined ? {} : { recommendedDegree: recommended }),
+    }
+  }
+  result.durationMs = performance.now() - start
+  return result
 }

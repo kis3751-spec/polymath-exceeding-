@@ -13,6 +13,7 @@ import {
   Code2,
 } from 'lucide-react'
 import { encodeCsv } from '../csv'
+import { regressionReportSections } from '../regression-report'
 import type {
   ScientificModule,
   ScientificOptions,
@@ -27,6 +28,8 @@ import {
 import ScientificChart from './ScientificChart'
 import ModuleGuide from './ModuleGuide'
 import RegressionResult from './RegressionResult'
+import RegressionResidualPlot from './RegressionResidualPlot'
+import PolynomialComparison from './PolynomialComparison'
 import ScientificOutput, { IntegralFormula } from './ScientificOutput'
 import './ScientificWorkspace.css'
 
@@ -419,6 +422,7 @@ export default function ScientificWorkspace({
             `- ${k}: ${Number.isFinite(v) ? v.toPrecision(17) : '산정 불가'}`,
         ),
         result.formula ? `\n모델: ${result.formula}` : '',
+        regressionReportSections(result),
         result.coefficients?.length
           ? [
               '\n## Coefficients · 95% Confidence Interval',
@@ -1395,13 +1399,48 @@ export default function ScientificWorkspace({
                     {['curve-fit', 'multilinear', 'nonlinear-fit'].includes(
                       module,
                     ) ? (
-                      <RegressionResult result={result} />
+                      <>
+                        <RegressionResult result={result} />
+                        {module === 'curve-fit' && (
+                          <PolynomialComparison
+                            result={result}
+                            onCompare={(compareDegrees) => {
+                              const next = {
+                                ...draft,
+                                options: { ...draft.options, compareDegrees },
+                              }
+                              setDraft(next)
+                              start(next)
+                            }}
+                            onApply={(degree) => {
+                              if (!polyfit) return
+                              const command = `polyfit ${polyfit[1]} ${polyfit[2]} ${degree}${polyfit[4] ? ' origin' : ''}`
+                              const next = {
+                                ...draft,
+                                source:
+                                  draft.source.slice(0, polyfit.index) +
+                                  command +
+                                  draft.source.slice(
+                                    polyfit.index + polyfit[0].length,
+                                  ),
+                              }
+                              setDraft(next)
+                              start(next)
+                            }}
+                          />
+                        )}
+                      </>
                     ) : (
-                      <ScientificOutput
-                        result={result}
-                        source={draft.source}
-                        options={draft.options}
-                      />
+                      <>
+                        <ScientificOutput
+                          result={result}
+                          source={draft.source}
+                          options={draft.options}
+                        />
+                        {module === 'lsq' && (
+                          <RegressionResidualPlot result={result} />
+                        )}
+                      </>
                     )}
                   </>
                 )}

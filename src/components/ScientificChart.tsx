@@ -32,6 +32,7 @@ type Props = {
   yLabel?: string
   area?: { from: number; to: number; seriesName?: string }
   identityLine?: boolean
+  zeroLine?: boolean
   cursorIndex?: number
   onSelectIndex?: (i: number) => void
 }
@@ -44,6 +45,7 @@ export default function ScientificChart({
   yLabel = '',
   area: rawArea,
   identityLine: rawIdentityLine = false,
+  zeroLine: rawZeroLine = false,
   cursorIndex,
   onSelectIndex,
 }: Props) {
@@ -54,9 +56,25 @@ export default function ScientificChart({
   const changedAxes = !identityAxes(axes)
   const area = changedAxes ? undefined : rawArea
   const identityLine = !changedAxes && rawIdentityLine
+  const zeroLine = !changedAxes && rawZeroLine
   const series = useMemo(() => {
     if (!changedAxes) return rawSeries
     let data = rawSeries
+    if (rawZeroLine) {
+      const xs = rawSeries.flatMap((s) => s.x).filter(Number.isFinite)
+      const lo = xs.reduce((a, b) => Math.min(a, b), Infinity),
+        hi = xs.reduce((a, b) => Math.max(a, b), -Infinity)
+      if (Number.isFinite(lo) && Number.isFinite(hi)) {
+        const x = Array.from(
+          { length: 201 },
+          (_, i) => lo * (1 - i / 200) + (hi * i) / 200,
+        )
+        data = [
+          ...data,
+          { name: 'Reference: original residual = 0', x, y: x.map(() => 0) },
+        ]
+      }
+    }
     if (rawIdentityLine) {
       const finite = rawSeries
         .flatMap((s) => [...s.x, ...s.y])
@@ -72,7 +90,7 @@ export default function ScientificChart({
       }
     }
     return transformSeries(data, axes)
-  }, [rawSeries, axes.x, axes.y, changedAxes, rawIdentityLine])
+  }, [rawSeries, axes.x, axes.y, changedAxes, rawIdentityLine, rawZeroLine])
   const omitted = changedAxes
     ? series.reduce(
         (n, s) =>
@@ -146,7 +164,7 @@ export default function ScientificChart({
         ymax = Math.max(ymax, y)
       }
     if (!Number.isFinite(xmin)) return null
-    if (area) {
+    if (area || zeroLine) {
       ymin = Math.min(ymin, 0)
       ymax = Math.max(ymax, 0)
     }
@@ -163,7 +181,7 @@ export default function ScientificChart({
     y0 -= dy * 0.08
     y1 += dy * 0.08
     return { xs, ys, x0, x1, y0, y1 }
-  }, [series, area])
+  }, [series, area, zeroLine])
   const width = size.width,
     height = size.height,
     left = 70,
@@ -354,7 +372,7 @@ export default function ScientificChart({
                 )
               }
             >
-              <i style={{ background: colors[i % colors.length] }} />
+              <i style={{ background: s.color ?? colors[i % colors.length] }} />
               {s.name}
             </button>
           ))}
@@ -382,7 +400,7 @@ export default function ScientificChart({
         <svg
           ref={svg}
           role="img"
-          aria-label={`X: ${displayX || 'x'}, Y: ${displayY || 'y'}${identityLine ? ', y = x reference' : ''}`}
+          aria-label={`X: ${displayX || 'x'}, Y: ${displayY || 'y'}${identityLine ? ', y = x reference' : ''}${zeroLine ? ', residual zero reference' : ''}`}
           tabIndex={0}
           width={width}
           height={height}
@@ -469,6 +487,16 @@ export default function ScientificChart({
               )
             })}
           <g clipPath={`url(#${clip})`}>
+            {zeroLine && !area && geometry && (
+              <line
+                x1={left}
+                y1={geometry.y(0)}
+                x2={right}
+                y2={geometry.y(0)}
+                className="science-zero-line"
+                strokeDasharray="6 5"
+              />
+            )}
             {areaPolygons.map((polygon, i) => (
               <polygon
                 key={i}
@@ -519,7 +547,7 @@ export default function ScientificChart({
                     <path
                       d={paths[i]}
                       fill="none"
-                      stroke={colors[i % colors.length]}
+                      stroke={s.color ?? colors[i % colors.length]}
                       strokeWidth="2.3"
                     />
                   )}
@@ -534,7 +562,7 @@ export default function ScientificChart({
                           cy={geometry.y(s.y[j])}
                           r="3.4"
                           fill="white"
-                          stroke={colors[i % colors.length]}
+                          stroke={s.color ?? colors[i % colors.length]}
                           strokeWidth="1.7"
                         />
                       ) : null,
@@ -548,7 +576,7 @@ export default function ScientificChart({
                         cx={geometry.x(s.x[cursorIndex])}
                         cy={geometry.y(s.y[cursorIndex])}
                         r="5"
-                        fill={colors[i % colors.length]}
+                        fill={s.color ?? colors[i % colors.length]}
                         stroke="white"
                         strokeWidth="2"
                       />
